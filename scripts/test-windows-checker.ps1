@@ -36,6 +36,7 @@ function Invoke-Validator([string]$mode) {
     $info.CreateNoWindow = $true
     $info.RedirectStandardOutput = $true
     $info.RedirectStandardError = $true
+    if ($moduleScenario -eq 'clean-default') { $info.EnvironmentVariables.Remove('PSModulePath') }
     $process = New-Object Diagnostics.Process
     $process.StartInfo = $info
     try {
@@ -87,7 +88,8 @@ try {
     $manifest = @{schemaVersion=1; suiteVersion='0.0.0-fixture'; platform='windows'; architecture='amd64'; launcherFiles=$launcherFiles; components=$components}
     [IO.File]::WriteAllText((Join-Path $root 'suite-manifest.json'), ($manifest | ConvertTo-Json -Depth 12), $utf8)
     foreach ($windowsPowerShell in $windowsPowerShells) {
-        Write-Host "Testing native validator host: $windowsPowerShell"
+      foreach ($moduleScenario in @('inherited', 'clean-default')) {
+        Write-Host "Testing native validator host: $windowsPowerShell; module environment: $moduleScenario"
         Assert-Validator 'verify' $true 'complete eight-role UTF-8 payload'
         Assert-Validator 'target' $true 'owned healthy installation'
 
@@ -105,6 +107,7 @@ try {
         Assert-Validator 'verify' $false 'unknown file blocks verification'
         if ([IO.File]::ReadAllText($unknown, $utf8) -ne 'preserve unrelated fixture') { throw 'Validator changed the unknown file.' }
         Remove-Item -LiteralPath $unknown
+      }
     }
     $records = @(Get-Content -LiteralPath $diagnosticLog -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json })
     if (!($records | Where-Object { $_.status -eq 'failure' -and $_.detail -like '*Unrelated file*' })) { throw 'Validator did not record its explicit rejection reason.' }

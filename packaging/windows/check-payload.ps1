@@ -1,13 +1,15 @@
 $ErrorActionPreference = 'Stop'
 $root = ''
 $mode = $env:SIMLAB_CHECK_MODE
+$inheritedModulePath = $env:PSModulePath
+$nativeModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 function Write-CheckDiagnostic([string]$status, [string]$detail = '') {
     if (!$env:SIMLAB_CHECK_LOG) { return }
     try {
         $logPath = [IO.Path]::GetFullPath($env:SIMLAB_CHECK_LOG)
         if ($root -and $logPath.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { return }
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($logPath)) | Out-Null
-        $entry = @{time=[DateTime]::UtcNow.ToString('o'); mode=$mode; root=$root; status=$status; detail=$detail; processBits=([IntPtr]::Size * 8); powershellVersion=$PSVersionTable.PSVersion.ToString()}
+        $entry = @{time=[DateTime]::UtcNow.ToString('o'); mode=$mode; root=$root; status=$status; detail=$detail; processBits=([IntPtr]::Size * 8); powershellVersion=$PSVersionTable.PSVersion.ToString(); psHome=$PSHOME; modulePath=$env:PSModulePath; inheritedModulePath=$inheritedModulePath}
         [IO.File]::AppendAllText($logPath, (($entry | ConvertTo-Json -Compress) + [Environment]::NewLine), (New-Object Text.UTF8Encoding($false)))
     } catch {
         Write-Warning ('Could not write optional validator diagnostics: ' + $_.Exception.Message)
@@ -17,7 +19,12 @@ try {
     if (!$env:SIMLAB_CHECK_ROOT) { throw 'Missing installation root' }
     $root = [IO.Path]::GetFullPath($env:SIMLAB_CHECK_ROOT).TrimEnd('\')
     Write-CheckDiagnostic 'start'
+    # NSIS starts Windows PowerShell, which may inherit PowerShell 7 module
+    # paths. Load this process's own shipped modules without changing the host.
+    $env:PSModulePath = $nativeModulePath + [IO.Path]::PathSeparator + $inheritedModulePath
+    Import-Module ([IO.Path]::Combine($nativeModulePath, 'Microsoft.PowerShell.Utility/Microsoft.PowerShell.Utility.psd1')) -ErrorAction Stop
     if ($mode -in @('active', 'target', 'owned')) {
+        Import-Module ([IO.Path]::Combine($nativeModulePath, 'CimCmdlets/CimCmdlets.psd1')) -ErrorAction Stop
         $prefix = $root + '\'
         $active = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
             $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
