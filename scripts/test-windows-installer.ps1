@@ -4,9 +4,19 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('SimLab-installer-' + [Guid]::NewG
 $target = Join-Path $work 'installed'
 $foreign = Join-Path $work 'unrelated'
 New-Item -ItemType Directory -Path $foreign -Force | Out-Null
+$env:SIMLAB_CHECK_LOG = Join-Path $work 'checker.log'
 Set-Content -LiteralPath (Join-Path $foreign 'keep.txt') -Value 'unrelated data'
 function Install-To([string]$directory) {
+    if (Test-Path -LiteralPath $env:SIMLAB_CHECK_LOG) { Remove-Item -LiteralPath $env:SIMLAB_CHECK_LOG }
     $process = Start-Process -FilePath $Installer -ArgumentList @('/S', "/D=$directory") -Wait -PassThru
+    if ($process.ExitCode -ne 0) {
+        Write-Host "Installer exit code: $($process.ExitCode); destination: $directory"
+        if (Test-Path -LiteralPath $env:SIMLAB_CHECK_LOG) {
+            Get-Content -LiteralPath $env:SIMLAB_CHECK_LOG -Encoding UTF8 | Write-Host
+        } else {
+            Write-Host 'No validator diagnostics were produced.'
+        }
+    }
     return $process.ExitCode
 }
 if ((Install-To $foreign) -eq 0) { throw 'Installer accepted an unrelated nonempty directory' }

@@ -1,8 +1,22 @@
 $ErrorActionPreference = 'Stop'
+$root = ''
+$mode = $env:SIMLAB_CHECK_MODE
+function Write-CheckDiagnostic([string]$status, [string]$detail = '') {
+    if (!$env:SIMLAB_CHECK_LOG) { return }
+    try {
+        $logPath = [IO.Path]::GetFullPath($env:SIMLAB_CHECK_LOG)
+        if ($root -and $logPath.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { return }
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($logPath)) | Out-Null
+        $entry = @{time=[DateTime]::UtcNow.ToString('o'); mode=$mode; root=$root; status=$status; detail=$detail; processBits=([IntPtr]::Size * 8); powershellVersion=$PSVersionTable.PSVersion.ToString()}
+        [IO.File]::AppendAllText($logPath, (($entry | ConvertTo-Json -Compress) + [Environment]::NewLine), (New-Object Text.UTF8Encoding($false)))
+    } catch {
+        Write-Warning ('Could not write optional validator diagnostics: ' + $_.Exception.Message)
+    }
+}
 try {
     if (!$env:SIMLAB_CHECK_ROOT) { throw 'Missing installation root' }
     $root = [IO.Path]::GetFullPath($env:SIMLAB_CHECK_ROOT).TrimEnd('\')
-    $mode = $env:SIMLAB_CHECK_MODE
+    Write-CheckDiagnostic 'start'
     if ($mode -in @('active', 'target', 'owned')) {
         $prefix = $root + '\'
         $active = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
@@ -10,10 +24,10 @@ try {
         } | Select-Object -First 1
         if ($active) { throw ('Close all SimLab windows first: ' + $active.Name) }
     }
-    if ($mode -eq 'active') { exit 0 }
+    if ($mode -eq 'active') { Write-CheckDiagnostic 'success'; exit 0 }
     if ($mode -eq 'target') {
-        if (!(Test-Path -LiteralPath $root)) { exit 0 }
-        if (@(Get-ChildItem -LiteralPath $root -Force).Count -eq 0) { exit 0 }
+        if (!(Test-Path -LiteralPath $root)) { Write-CheckDiagnostic 'success'; exit 0 }
+        if (@(Get-ChildItem -LiteralPath $root -Force).Count -eq 0) { Write-CheckDiagnostic 'success'; exit 0 }
     }
     $marker = Join-Path $root '.simlab-owned'
     if (!(Test-Path -LiteralPath $marker) -or (Get-Content -LiteralPath $marker -Raw).Trim() -ne 'SimLab-Desktop cloud.carldai.simlab') {
@@ -49,8 +63,11 @@ try {
         $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
         if (!$allowed.ContainsKey($relative)) { throw ('Unrelated file in installation directory; preserved: ' + $relative) }
     }
+    Write-CheckDiagnostic 'success'
     exit 0
 } catch {
-    Write-Error $_ -ErrorAction Continue
+    $failure = $_
+    Write-CheckDiagnostic 'failure' $failure.Exception.Message
+    Write-Error $failure -ErrorAction Continue
     exit 1
 }

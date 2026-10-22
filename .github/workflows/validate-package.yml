@@ -1,0 +1,76 @@
+name: Validate complete suite packages
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Native package target
+        type: choice
+        required: true
+        options: [windows, linux]
+      source_run:
+        description: Completed main-branch build-suite run containing the original package
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  validate:
+    runs-on: ${{ inputs.platform == 'windows' && 'windows-latest' || 'ubuntu-22.04' }}
+    timeout-minutes: 35
+    env:
+      PYTHONUTF8: '1'
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: ${{ inputs.source_run }}
+      PACKAGE_PLATFORM: ${{ inputs.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Packaging regression checks
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Windows checker fixture and packaging tool
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        run: |
+          ./scripts/test-windows-checker.ps1
+          choco install nsis --no-progress -y
+          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Verify trusted source and reuse original native payloads
+        run: python scripts/revalidate_package.py --platform "$PACKAGE_PLATFORM" --source-run "$SOURCE_RUN"
+      - name: Preserve complete packages and provenance before runtime checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimLab-${{ inputs.platform }}-amd64
+          path: |
+            dist/packages/*
+            dist/provenance.json
+            dist/staging/**/suite-manifest.json
+            dist/staging/**/closure.json
+          if-no-files-found: error
+      - name: Linux offline clean-host startup checks
+        if: inputs.platform == 'linux'
+        run: |
+          docker build -f packaging/linux/validation.Dockerfile -t simlab-clean-host .
+          trap 'docker rm -f simlab-offline-check >/dev/null 2>&1 || true' EXIT
+          # Expand the quoted script inside the offline container.
+          # shellcheck disable=SC2016
+          timeout --signal=TERM --kill-after=15s 10m docker run --rm --name simlab-offline-check --network none --security-opt seccomp=unconfined -v "$PWD:/source:ro" simlab-clean-host bash -euc '
+            package=$(find /source/dist/packages -name "*.run" -print -quit)
+            printf "%s\n" "Extracting and verifying the complete suite" >&2
+            stage=$(timeout --signal=TERM --kill-after=10s 3m sh -x "$package" --extract-only)
+            printf "%s\n" "Extraction complete; starting offline display and application checks" >&2
+            timeout --signal=TERM --kill-after=10s 4m xvfb-run -a -e /dev/stderr dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
+          '
+      - name: Windows native installer transaction and startup checks
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
+          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
