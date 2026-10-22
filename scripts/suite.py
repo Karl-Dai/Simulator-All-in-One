@@ -426,7 +426,8 @@ def launcher_receipt(root, lock, target, arch):
 
 def assert_architecture(executable, target, arch):
     if target == "darwin":
-        run(["lipo", "-verify_arch", "arm64" if arch == "arm64" else "x86_64", executable])
+        # -verify_arch consumes all following arguments as architecture names.
+        run(["lipo", executable, "-verify_arch", "arm64" if arch == "arm64" else "x86_64"])
     elif target == "windows":
         with executable.open("rb") as stream:
             if stream.read(2) != b"MZ":
