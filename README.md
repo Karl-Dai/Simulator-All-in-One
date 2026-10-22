@@ -9,7 +9,7 @@
 | PMU V2 / V3 | PmuSim、PmuSub | 0.13.2 |
 | OPC UA | OPCUAMaster、OPCUAServer | 0.8.0 |
 
-当前套件版本为 **0.1.0**。本地已生成 macOS Apple Silicon 完整 DMG / ZIP，验证八个组件、清单哈希、资源树和嵌套签名；macOS Intel、Windows 和 Linux 的原生构建/安装验收尚未完成。构建工作流已提供，尚未在 GitHub 执行。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
+当前套件版本为 **0.1.0**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 和 Linux 的原生验证正在进行，结果见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
 
 ## 安装与使用
 
@@ -110,8 +110,10 @@ sh -n packaging/linux/run-simlab.sh packaging/linux/self-extract.sh
 actionlint .github/workflows/*.yml
 ```
 
-本机已通过 8 项打包测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留。最终 macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
+本机已通过 13 项打包与检查脚本测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留、Windows 明确选择 Git Bash、cp1252 环境下的中文配置与资源收集，以及独立日志游标和有界读取。macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
 
-`validate.yml` 执行源码及打包静态检查；手动触发的 `build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
+`validate.yml` 执行源码及打包静态检查；手动触发的 `build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
 
-Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护、活动实例禁止替换、启动和卸载测试；runner 可能预装 WebView2，因此这仍不能替代“无 WebView2 的干净 Windows 断网首次安装”验收。Linux 工作流安排无宿主 GTK/WebKit 的断网容器启动检查。`smoke.py` 只验证进程启动存活和已知依赖错误，不代表完整 UI、真实设备或协议一致性验收。当前工作流尚未实际执行，Windows / Linux 不标为已通过。
+Rust 缓存保留失败任务的编译结果。完整包在运行验收之前上传，便于检查失败产物；可下载产物不代表该任务已通过。Linux 解压、虚拟显示与启动检查有阶段日志和超时限制。
+
+Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护、活动实例禁止替换、启动和卸载测试；runner 可能预装 WebView2，因此这仍不能替代“无 WebView2 的干净 Windows 断网首次安装”验收。Linux 工作流安排无宿主 GTK/WebKit 的断网容器启动检查。`smoke.py` 只验证进程启动存活和已知依赖错误，不代表完整 UI、真实设备或协议一致性验收。各平台结果在[实施记录](docs/implementation-status.md)中按实际证据记录。
