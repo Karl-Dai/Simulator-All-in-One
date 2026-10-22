@@ -12,7 +12,7 @@ function Install-To([string]$directory) {
 if ((Install-To $foreign) -eq 0) { throw 'Installer accepted an unrelated nonempty directory' }
 if ((Get-Content -LiteralPath (Join-Path $foreign 'keep.txt')).Trim() -ne 'unrelated data') { throw 'Installer changed unrelated data' }
 if ((Install-To $target) -ne 0) { throw 'Initial suite installation failed' }
-$manifest = Get-Content -LiteralPath (Join-Path $target 'suite-manifest.json') -Raw | ConvertFrom-Json
+$manifest = Get-Content -LiteralPath (Join-Path $target 'suite-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $component = $manifest.components[0]
 $componentPath = Join-Path $target $component.executable
 Remove-Item -LiteralPath $componentPath

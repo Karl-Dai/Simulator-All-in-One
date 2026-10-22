@@ -37,7 +37,7 @@ def run(args, cwd=None, env=None, capture=False):
         args = [require("node"), str(cli)] + args[1:]
     print("+ " + " ".join(map(str, args)), flush=True)
     result = subprocess.run(args, cwd=cwd, env=env, check=True,
-                            text=True, stdout=subprocess.PIPE if capture else None)
+                            text=True, encoding="utf-8", stdout=subprocess.PIPE if capture else None)
     return result.stdout.strip() if capture else None
 
 
@@ -170,7 +170,7 @@ def assert_source(workspace, repo, root=ROOT, allow_adopt=False):
         raise SuiteError(f"Source commit mismatch: {path}")
     stamp = state_path(workspace, repo)
     if stamp.exists():
-        state = json.loads(stamp.read_text())
+        state = json.loads(stamp.read_text(encoding="utf-8"))
         if state != {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "fingerprint": fingerprint(path)}:
             raise SuiteError(f"Source was changed outside the recorded build: {path}; preserve it and use a fresh workspace")
     elif allow_adopt:
@@ -352,7 +352,7 @@ def copy_portable(source, component, target, destination, arch=None):
     # Tauri currently embeds its frontends, but collect declared resources and
     # neighboring DLLs too; unsupported resource declarations fail explicitly.
     if component["repository"] != "modbus":
-        config = json.loads((source / component["project"] / "tauri.conf.json").read_text())
+        config = json.loads((source / component["project"] / "tauri.conf.json").read_text(encoding="utf-8"))
         bundle = config.get("bundle", {})
         resources = bundle.get("resources", []) or []
         mappings = resources.items() if isinstance(resources, dict) else [(name, name) for name in resources]
@@ -407,7 +407,7 @@ def copy_launcher(root, target, destination):
 
 
 def launcher_receipt(root, lock, target, arch):
-    config = json.loads((root / "wails.json").read_text())
+    config = json.loads((root / "wails.json").read_text(encoding="utf-8"))
     if config["info"]["productVersion"] != lock["suiteVersion"]:
         raise SuiteError("Launcher source version does not match the suite lock")
     if target == "darwin":
@@ -452,7 +452,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
         assert_source(workspace, repo, root, allow_adopt=adopt)
     if not (adopt and target == "darwin"):
         stamp = workspace / ".state/launcher.build.json"
-        if not stamp.is_file() or json.loads(stamp.read_text()) != launcher_receipt(root, lock, target, arch):
+        if not stamp.is_file() or json.loads(stamp.read_text(encoding="utf-8")) != launcher_receipt(root, lock, target, arch):
             raise SuiteError("Missing or stale launcher source/version/payload receipt")
     output = root / "dist/staging" / f"{target}-{arch}"
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -489,7 +489,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             receipt = workspace / ".state" / (component["id"] + ".build.json")
             if not (adopt and target == "darwin"):
                 expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "payloadTreeSha256": source_payload_digest(source, component, target, arch)}
-                if not receipt.is_file() or json.loads(receipt.read_text()) != expected:
+                if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != expected:
                     raise SuiteError(f"Missing or stale suite-build receipt: {component['id']}")
             if target == "darwin":
                 source_app = original.parents[2]
@@ -534,7 +534,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
 
 def verify_manifest(suite_root, lock=None):
     manifest_path = suite_root / ("Resources/suite-manifest.json" if suite_root.name == "Contents" else "suite-manifest.json")
-    value = json.loads(manifest_path.read_text())
+    value = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = value.get("components", [])
     if value.get("schemaVersion") != 1 or len(entries) != 8 or {item["id"] for item in entries} != EXPECTED_IDS:
         raise SuiteError("Manifest is incomplete or contains duplicate/unknown roles")
@@ -598,7 +598,7 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
     elif target == "windows":
         makensis = require("makensis")
         if webview2 is None and webview2_sha256 is None:
-            runtime_lock = json.loads((root / "packaging/windows/webview2.lock.json").read_text())
+            runtime_lock = json.loads((root / "packaging/windows/webview2.lock.json").read_text(encoding="utf-8"))
             if runtime_lock["architecture"] != arch:
                 raise SuiteError("No default offline WebView2 runtime is locked for this architecture")
             webview2 = root / ".tools/WebView2Runtime.exe"
@@ -627,12 +627,12 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
                 if any(char in relative for char in ("\n", "\r", "\\")):
                     raise SuiteError(f"Filename cannot be indexed safely: {relative}")
                 indexed.append(f"{digest(path)}  {relative}\n")
-        index.write_text("".join(indexed))
+        index.write_text("".join(indexed), encoding="utf-8")
         with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temporary:
             with tarfile.open(temporary.name, "w:gz") as archive:
                 archive.add(stage, arcname="SimLab", recursive=True)
             payload_hash = digest(temporary.name)
-            header = (root / "packaging/linux/self-extract.sh").read_text().replace("@PAYLOAD_SHA256@", payload_hash).replace("@INDEX_SHA256@", digest(index)).replace("@VERSION@", lock["suiteVersion"]).replace("@ARCH@", arch)
+            header = (root / "packaging/linux/self-extract.sh").read_text(encoding="utf-8").replace("@PAYLOAD_SHA256@", payload_hash).replace("@INDEX_SHA256@", digest(index)).replace("@VERSION@", lock["suiteVersion"]).replace("@ARCH@", arch)
             with destination.open("wb") as stream:
                 stream.write(header.encode())
                 stream.write(Path(temporary.name).read_bytes())

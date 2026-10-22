@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 120
     env:
       CARGO_INCREMENTAL: '0'
+      PYTHONUTF8: '1'
       MACOSX_DEPLOYMENT_TARGET: '13.0'
       WEBVIEW2_URL: ${{ matrix.platform == 'windows' && vars[matrix.webview_url_var] || '' }}
       WEBVIEW2_SHA256: ${{ matrix.platform == 'windows' && vars[matrix.webview_sha_var] || '' }}
@@ -93,6 +94,17 @@ jobs:
         run: python -m unittest discover -s scripts/tests -v
       - name: Clone exact commits and strictly apply suite patches
         run: python scripts/suite.py bootstrap
+      - name: Cache native Rust build outputs, including failed packaging runs
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('components.lock.json', 'patches/*.patch', 'packaging/locks/*.lock') }}
+          workspaces: |
+            .components/IEC60870-5-104-Simulator -> target
+            .components/PmuSim -> target
+            .components/OPCUASim -> target
+          cache-on-failure: true
+          cache-all-crates: true
+          cache-bin: false
       - name: Build all eight suite payloads and launcher
         run: python scripts/suite.py build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - name: Launcher backend tests
@@ -115,9 +127,11 @@ jobs:
         if: matrix.platform == 'linux'
         run: python packaging/linux/runtime.py prepare dist/staging/linux-amd64
       - name: Package macOS or Linux suite
+        id: package_unix
         if: matrix.platform != 'windows'
         run: python scripts/suite.py package --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - name: Package Windows with one offline WebView2 runtime
+        id: package_windows
         if: matrix.platform == 'windows'
         run: python scripts/suite.py package --platform windows --arch ${{ matrix.arch }} --webview2 .tools/WebView2Runtime.exe --webview2-sha256 "${{ env.WEBVIEW2_SHA256 }}"
       - name: Linux offline clean-host startup checks
@@ -137,6 +151,7 @@ jobs:
           $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
           ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
       - name: Upload complete suite artifacts
+        if: always() && (steps.package_unix.outcome == 'success' || steps.package_windows.outcome == 'success')
         uses: actions/upload-artifact@v4
         with:
           name: SimLab-${{ matrix.platform }}-${{ matrix.arch }}

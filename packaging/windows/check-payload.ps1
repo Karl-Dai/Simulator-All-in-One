@@ -21,7 +21,7 @@ try {
     }
     if (@(Get-ChildItem -LiteralPath $root -Recurse -Force -Attributes ReparsePoint).Count) { throw 'Reparse points are not permitted in the installation directory' }
     if ($mode -ne 'target' -and !(Test-Path -LiteralPath (Join-Path $root 'SimLab.exe') -PathType Leaf)) { throw 'Missing launcher' }
-    $manifest = Get-Content -LiteralPath (Join-Path $root 'suite-manifest.json') -Raw | ConvertFrom-Json
+    $manifest = Get-Content -LiteralPath (Join-Path $root 'suite-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $expected = @('iec104.master','iec104.slave','modbus.master','modbus.slave','pmu.master','pmu.sub','opcua.master','opcua.server')
     $actual = @($manifest.components | ForEach-Object { $_.id } | Sort-Object -Unique)
     if ($manifest.schemaVersion -ne 1 -or $manifest.platform -ne 'windows' -or @($manifest.components).Count -ne 8 -or (Compare-Object ($expected | Sort-Object) $actual)) { throw 'Incomplete suite manifest' }
