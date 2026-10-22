@@ -42,6 +42,21 @@ class SuiteTests(unittest.TestCase):
         (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
         return binary
 
+    def test_windows_build_uses_git_bash_instead_of_system_wsl_shim(self):
+        git = self.root / "Git/cmd/git.exe"
+        shell = self.root / "Git/bin/bash.exe"
+        git.parent.mkdir(parents=True)
+        git.touch()
+        shell.parent.mkdir(parents=True)
+        shell.touch()
+        self.assertEqual(Path(suite.git_bash(git)), shell.resolve())
+        shell.unlink()
+        system_shell = self.root / "System32/bash.exe"
+        system_shell.parent.mkdir()
+        system_shell.touch()
+        with self.assertRaisesRegex(suite.SuiteError, "WSL"):
+            suite.git_bash(git)
+
     def mac_fixture(self):
         self.make_app(self.root / "build/bin/SimLab.app", "cloud.carldai.simlab", "0.1.0")
         repos = {item["id"]: item for item in self.lock["repositories"]}

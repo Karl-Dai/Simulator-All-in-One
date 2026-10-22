@@ -1,28 +1,45 @@
 name: Build and validate complete suites
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Native target to build
+        type: choice
+        default: all
+        options: [all, darwin-arm64, darwin-amd64, windows-amd64, linux-amd64]
 permissions:
   contents: read
 jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        env:
+          TARGET: ${{ inputs.target || 'all' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          targets = [
+              {"runner": "macos-15", "platform": "darwin", "arch": "arm64"},
+              {"runner": "macos-15-intel", "platform": "darwin", "arch": "amd64"},
+              {"runner": "windows-latest", "platform": "windows", "arch": "amd64", "webview_url_var": "WEBVIEW2_X64_URL", "webview_sha_var": "WEBVIEW2_X64_SHA256"},
+              {"runner": "ubuntu-22.04", "platform": "linux", "arch": "amd64"},
+          ]
+          target = os.environ["TARGET"]
+          selected = [row for row in targets if target == "all" or target == row["platform"] + "-" + row["arch"]]
+          if not selected:
+              raise SystemExit("Unknown native target: " + target)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("matrix=" + json.dumps({"include": selected}) + "\n")
+          PY
   native:
+    needs: plan
+    name: native (${{ matrix.platform }}/${{ matrix.arch }})
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            platform: darwin
-            arch: arm64
-          - runner: macos-15-intel
-            platform: darwin
-            arch: amd64
-          - runner: windows-latest
-            platform: windows
-            arch: amd64
-            webview_url_var: WEBVIEW2_X64_URL
-            webview_sha_var: WEBVIEW2_X64_SHA256
-          - runner: ubuntu-22.04
-            platform: linux
-            arch: amd64
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     env:

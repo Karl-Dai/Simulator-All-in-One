@@ -48,6 +48,23 @@ def require(command):
     return path
 
 
+def git_bash(git_executable):
+    git_directory = Path(git_executable).resolve().parent
+    for candidate in (
+        git_directory / "bash.exe",
+        git_directory.parent / "bin/bash.exe",
+        git_directory.parent / "usr/bin/bash.exe",
+        git_directory.parent.parent / "bin/bash.exe",
+    ):
+        if candidate.is_file():
+            return str(candidate)
+    raise SuiteError("Git for Windows Bash was not found; the WSL bash shim is not a supported build shell")
+
+
+def bash():
+    return git_bash(require("git")) if os.name == "nt" else require("bash")
+
+
 def digest(path):
     value = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -232,7 +249,7 @@ def build(workspace, target, arch, root=ROOT):
             run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=source, env=env)
         for component in components:
             if repo["id"] == "modbus":
-                args = ["bash", source / "go/scripts/suite.sh", component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath"]
+                args = [bash(), (source / "go/scripts/suite.sh").as_posix(), component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath"]
                 if target == "windows":
                     args += ["-webview2", "error"]
                 run(args, cwd=source, env=env)
