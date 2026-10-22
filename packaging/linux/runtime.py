@@ -10,7 +10,10 @@ import shutil
 import subprocess
 import sys
 
-HOST_LIBS = re.compile(r"^(?:ld-linux.*|lib(?:c|m|dl|pthread|rt|resolv|util|anl|nss_[^.]+)\.so.*|lib(?:EGL|GL|GLX|GLES.*|OpenGL|gbm|drm.*|wayland-.*|vulkan)\.so.*)$")
+# Core Wayland client/server stay with the host Mesa/display transport stack.
+# Cursor themes and the wayland-egl window adapter are GTK-side helpers, so
+# bundle those instead of assuming every desktop/graphics host provides them.
+HOST_LIBS = re.compile(r"^(?:ld-linux.*|lib(?:c|m|dl|pthread|rt|resolv|util|anl|nss_[^.]+)\.so.*|lib(?:EGL|GL|GLX|GLES.*|OpenGL|gbm|drm.*|wayland-(?:client|server)|vulkan)\.so.*)$")
 
 
 def sha(path):
@@ -53,6 +56,33 @@ def environment(stage):
     value = os.environ.copy()
     value["LD_LIBRARY_PATH"] = str(stage / "lib")
     return value
+
+
+def bundle_dependencies(stage, sources):
+    """Copy the non-host ELF closure, returning original files for notices."""
+    libdir = stage / "lib"
+    libdir.mkdir(parents=True, exist_ok=True)
+    sources = list(sources)
+    env = environment(stage)
+    visited = set()
+    source_libraries = set()
+    while sources:
+        path = sources.pop()
+        if path.resolve() in visited:
+            continue
+        visited.add(path.resolve())
+        for dependency in dependencies(path, env):
+            if HOST_LIBS.fullmatch(dependency.name):
+                continue
+            destination = libdir / dependency.name
+            if destination.exists():
+                if dependency.resolve() != destination.resolve() and sha(dependency) != sha(destination):
+                    raise RuntimeError(f"Two different libraries share one SONAME: {dependency.name}")
+                continue
+            shutil.copy2(dependency, destination, follow_symlinks=True)
+            source_libraries.add(dependency)
+            sources.append(destination)
+    return source_libraries
 
 
 def runtime_files(stage):
@@ -159,26 +189,7 @@ def prepare(stage):
         if not scanner.is_file():
             raise RuntimeError(f"GStreamer plugin scanner is missing: {scanner}")
         shutil.copy2(scanner, bindir / "gst-plugin-scanner")
-    sources = [path for path in stage.rglob("*") if elf(path)]
-    env = environment(stage)
-    visited = set()
-    source_libraries = set()
-    while sources:
-        path = sources.pop()
-        if path.resolve() in visited:
-            continue
-        visited.add(path.resolve())
-        for dependency in dependencies(path, env):
-            if HOST_LIBS.fullmatch(dependency.name):
-                continue
-            destination = libdir / dependency.name
-            if destination.exists():
-                if dependency.resolve() != destination.resolve() and sha(dependency) != sha(destination):
-                    raise RuntimeError(f"Two different libraries share one SONAME: {dependency.name}")
-                continue
-            shutil.copy2(dependency, destination, follow_symlinks=True)
-            source_libraries.add(dependency)
-            sources.append(destination)
+    source_libraries = bundle_dependencies(stage, [path for path in stage.rglob("*") if elf(path)])
     # Match Tauri's GTK AppImage bundler's equal-length /usr -> ././ rewrite.
     # All processes must have cwd=runtime/usr; no environment override of
     # WEBKIT_EXEC_PATH is assumed in distribution builds of WebKitGTK.
