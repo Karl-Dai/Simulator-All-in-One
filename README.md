@@ -9,15 +9,15 @@
 | PMU V2 / V3 | PmuSim、PmuSub | 0.13.2 |
 | OPC UA | OPCUAMaster、OPCUAServer | 0.8.0 |
 
-当前套件版本为 **0.1.0**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 和 Linux 的原生验证正在进行，结果见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
+当前套件版本为 **0.1.0**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
 
 ## 安装与使用
 
-macOS 要求 **13.0+**。打开 `SimLab_0.1.0_darwin-arm64.dmg`，将 `SimLab.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。当前本地产物位于 `dist/packages/`，旁边的 `.sha256.json` 提供校验值；这些产物尚未发布到 GitHub Releases。
+macOS 要求 **13.0+**。打开 `SimLab_0.1.0_darwin-arm64.dmg`，将 `SimLab.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。本轮已验证的四个原生安装包汇总在本机 `dist/ci-packages/`，`SHA256SUMS` 和 `.sha256.json` 提供校验值；GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
 
-Windows 设计为一个 NSIS 安装包，内置八个免安装 payload，并携带一份对应架构的 WebView2 离线 Standalone Installer。安装器检测已有 WebView2，仅在缺少时安装；不会逐一启动八个子安装器。套件运行中禁止替换，完整新目录先准备并校验，再切换，切换失败保留或恢复旧目录。非空目标目录必须有 SimLab 所有权标记及可识别文件清单，未知文件会阻止覆盖；声明内程序缺失或损坏可以重装修复。该流程尚未在本机 Windows 实测。
+Windows 使用一个 NSIS 安装包，内置八个免安装 payload，并携带一份对应架构的 WebView2 离线 Standalone Installer。安装器检测已有 WebView2，仅在缺少时安装；不会逐一启动八个子安装器。套件运行中禁止替换，完整新目录先准备并校验，再切换，切换失败保留或恢复旧目录。非空目标目录必须有 SimLab 所有权标记及可识别文件清单，未知文件会阻止覆盖；声明内程序缺失或损坏可以重装修复。该流程已在原生 Windows CI 通过安装、修复、目录保护、活动实例检查、入口与八角色启动和卸载；runner 可能预装 WebView2，尚未验证无 WebView2 的干净 Windows 断网首次安装。
 
-Linux 目标基线为 **Ubuntu 22.04 x64**，产物为一个 `.run` 自解压包，包含 GTK3 / WebKitGTK 4.1 运行时。第一次运行解压到 `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/` 下的稳定版本目录，再启动入口；不依赖 FUSE 或每次随机临时目录。已有目录先核对全文件清单，损坏时保留旧目录后重新铺设，活动实例会阻止修复。宿主仍提供 glibc 2.35+、显示服务以及匹配的显卡/EGL/GLX 驱动。运行时闭包审计和干净主机离线启动验收是两层检查，本机尚无 Linux 原生验收结果。
+Linux 目标基线为 **Ubuntu 22.04 x64**，产物为一个 `.run` 自解压包，包含 GTK3 / WebKitGTK 4.1 运行时。第一次运行解压到 `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/` 下的稳定版本目录，再启动入口；不依赖 FUSE 或每次随机临时目录。已有目录先核对全文件清单，损坏时保留旧目录后重新铺设，活动实例会阻止修复。宿主仍提供 glibc 2.35+、显示服务以及匹配的显卡/EGL/GLX 驱动。运行时闭包审计和干净主机离线启动验收是两层检查；原生 CI 已通过 Ubuntu 22.04 无 GTK/WebKit、无网络容器中的入口与八角色进程启动检查，尚未验收完整窗口操作及协议互联。
 
 ## 数据与更新
 
@@ -110,9 +110,11 @@ sh -n packaging/linux/run-simlab.sh packaging/linux/self-extract.sh
 actionlint .github/workflows/*.yml
 ```
 
-本机已通过 13 项打包与检查脚本测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留、Windows 明确选择 Git Bash、cp1252 环境下的中文配置与资源收集，以及独立日志游标和有界读取。macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
+本机已通过 16 项打包与检查脚本测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留、Windows 明确选择 Git Bash、cp1252 环境下的中文配置与资源收集，独立日志游标和有界读取、Wayland UI 依赖收集，以及原生包复用的来源与文件边界。macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
 
 `validate.yml` 执行源码及打包静态检查；手动触发的 `build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
+
+`validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和八角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前安装脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
 
 Rust 缓存保留失败任务的编译结果。完整包在运行验收之前上传，便于检查失败产物；可下载产物不代表该任务已通过。Linux 解压、虚拟显示与启动检查有阶段日志和超时限制。
 

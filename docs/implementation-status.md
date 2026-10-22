@@ -27,7 +27,7 @@
 | PMU | 内置主/子站 V3 握手及约 50 帧/秒连续接收通过 |
 | OPC UA | 内置客户端连接本机内置服务端；服务端建立验证变量；PKI 位于套件用户数据目录，安装树无新建 pki 目录 |
 | 安装后启动 | 从 DMG 安装到 `/Applications/SimLab.app`，异地 8/8 验证、签名验证、原生主窗口渲染及包内 Modbus 启动通过 |
-| 自动化检查 | Go race/vet、5 项入口交互测试、13 项打包与检查脚本测试、Python/shell 语法、actionlint、前端生产构建和 npm audit 通过；各子项目的相关测试由适配代理执行通过 |
+| 自动化检查 | Go race/vet、5 项入口交互测试、16 项打包与检查脚本测试、Python/shell 语法、actionlint、前端生产构建和 npm audit 通过；各子项目的相关测试由适配代理执行通过 |
 
 测试原始记录保存在本机忽略跟踪的 `.validation/`。离线检查是在当前 macOS 主机做的进程网络隔离，不等同于另一台全新机器的系统安装验收。
 
@@ -35,19 +35,28 @@
 
 仓库：[Karl-Dai/SimLab-Desktop](https://github.com/Karl-Dai/SimLab-Desktop)，私有。源码与锁文件已提交推送；构建产物不提交进 Git。
 
-- [源码及打包静态检查](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39773936556)：提交 `04d26a3`，通过。
-- [首轮完整原生矩阵](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39765082475)：提交 `91eecb9`。Windows 构建遇到系统 WSL shim 被误作 Bash，已改为绝对 Git Bash 路径；macOS ARM 和 Intel 均已构建全部八个组件并通过后端测试，在收集时遇到 Xcode 16.4 `lipo -verify_arch` 参数解析错误，已将输入文件移到架构列表之前。Linux 已完成八个组件和入口构建、后端测试、完整清单、运行时闭包及 `.run` 打包；验证镜像准备成功后长期没有启动检查输出，已停止旧的无超时检查任务，完整日志保存在本机 `.validation/`；旧任务未证明断网启动成功。
-- [Windows 首次单目标重跑](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39766065716)：提交 `41907c0`。已构建 Modbus、IEC104、PMU 六个角色，在 PMU 子站构建后的资源收集中因 cp1252 默认编码读取 UTF-8 配置失败。已统一 Python/PowerShell 文本编码，并增加中文配置、资源的回归测试。
-- [macOS ARM 单目标重跑](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39766494441)：提交 `858a04a`，全部通过。八个角色构建、后端测试、完整清单、嵌套签名和 DMG 校验通过；[完整 DMG / ZIP 产物](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39766494441/artifacts/12420289226)已上传。本机下载后另行复核包哈希、完整资源树、签名、DMG，以及 CI 编译的入口 `--verify` 报告 8/8 就绪。此 job 未做图形界面操作验收。
-- [macOS Intel 单目标验证](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39767223585)：提交 `858a04a`，全部通过。八个组件、后端测试、清单、签名、DMG/ZIP 打包与镜像校验通过；[完整产物](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39767223585/artifacts/12423911828)已上传。本机下载后另行复核包哈希、完整资源树、全部九个 x86_64 二进制、嵌套签名与 DMG；未执行 Intel 代码或做 Intel 图形界面验收。
-- [Windows UTF-8 修复重跑](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39772981768)：提交 `90ac9c4`，进行中。
-- [Linux 有界启动检查重跑](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39773937303)：提交 `04d26a3`，进行中。增加独立文件描述符、至多 64KiB 的固定日志读取、START 标记、解压与 Xvfb/进程检查超时、Xvfb 错误输出；尚未据此确认旧任务等待的根因。
+| 目标 | 原生构建与打包 | 运行验收与产物 |
+| --- | --- | --- |
+| macOS ARM | [39766494441](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39766494441)，`858a04a`，通过 | [DMG / ZIP](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39766494441/artifacts/12420289226)；本机另外复核哈希、完整资源树、签名、DMG 和入口 `--verify` 8/8。真实窗口及协议操作见上表 |
+| macOS Intel | [39767223585](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39767223585)，`858a04a`，通过 | [DMG / ZIP](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39767223585/artifacts/12423911828)；本机复核哈希、完整资源树、九个 x86_64 二进制、嵌套签名和 DMG；未执行 Intel 代码 |
+| Linux x64 | [39780973379](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39780973379)，`bca65d6`，八角色、入口、后端、3208 文件闭包及 `.run` 打包通过 | [离线复验 39786221290](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39786221290)，`ddc14a7`，通过；[完整 `.run` 与来源记录](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39786221290/artifacts/12429376456) |
+| Windows x64 | [39772981768](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39772981768)，`90ac9c4`，八角色、入口、后端、完整清单及 NSIS 打包通过 | [修复后复验 39786938061](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39786938061)，`bd7e3e7`，全部通过；[完整 NSIS 安装包与来源记录](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/39786938061/artifacts/12429287605)。覆盖安装、缺文件修复、未知文件保护、活动实例检查、九个进程启动及卸载 |
+
+Windows 原生校验在 32/64 位 Windows PowerShell 5.1、继承和默认模块环境四种组合中通过。之前出现 `Get-FileHash` 未能加载，已在校验器进程内显式加载本机 PowerShell 自带模块；真实安装事务随后通过。本机只对 Windows 包做静态解包与校验：九个 amd64 PE、8/8 完整资源树、内置校验脚本和离线 WebView2 锁文件均匹配，没有执行 Windows 二进制。最终安装包 SHA256 为 `e8ef142a8063c1b3a6b48e6ceb3cd6202d1abe91169491bb5016c938fab5894e`。
+
+Linux 离线复验使用同一个 `bca65d6` 原包，SHA256 为 `b21d26a101639f03b716eedf68fd23baeeb1e678988f840ec947a4416c614a53`。宿主仅提供声明的 glibc、显示及图形库，没有安装 GTK/WebKit，容器使用 `--network none`。通过进程启动检查不等同于完整 GUI 或协议验收。
+
+前几轮原生 CI 暴露的 Git Bash 选择、Xcode `lipo` 参数、Windows cp1252 文本解码和 Wayland UI 依赖收集问题已修复；Linux 校验镜像补齐声明的宿主 GLES 图形库。旧 Linux 任务曾长时间无日志，已改为独立且有界的日志读取和阶段超时，未据后续缺库错误倒推出旧等待根因。
+
+`validate-package.yml` 对原生包来源、祖先提交、允许改动范围、包哈希及八角色资源清单逐层核对，记录原始编译提交和复验提交。Windows 仅恢复原清单内的 payload 后重新打包；Linux 原包内容不变。调整编译输入或 Linux 运行时内容时禁止复用。构建工作流的工具链或编译参数变化仍需人工选择完整原生构建。
 
 ## 尚未完成
 
-- Windows、Linux 的完整原生 CI 与运行验收；macOS Intel 的窗口和协议操作验收。
-- 无 WebView2 的干净 Windows 断网安装；Linux 声明基线上的完整窗口与协议操作。
+- Windows、Linux 和 macOS Intel 的完整窗口与协议操作验收。
+- 无 WebView2 的干净 Windows 断网首次安装。
 - macOS 最低版本 13.0 的实机验收；本轮本机系统为 macOS 27.0.1。
 - Developer ID 签名、Apple 公证和正式发布。
 
 安装包与 stage 内容的 37 个文件路径、哈希和权限一致。通过本机 CLI `open` 的一次启动出现黑屏及 WebKit/XPC 异常；停止该验证进程后，原生应用接口首次启动正常，主窗口显示 8/8 就绪。具体系统机制未确认，未通过修改资源或关闭保护规避。
+
+本轮已验证安装包集中在本机 `dist/ci-packages/`，包含 macOS ARM/Intel DMG、Windows NSIS、Linux `.run`、校验值和 Windows/Linux 来源记录。私有仓库已交付，未创建 release 或 tag。
