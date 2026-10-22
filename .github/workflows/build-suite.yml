@@ -134,23 +134,7 @@ jobs:
         id: package_windows
         if: matrix.platform == 'windows'
         run: python scripts/suite.py package --platform windows --arch ${{ matrix.arch }} --webview2 .tools/WebView2Runtime.exe --webview2-sha256 "${{ env.WEBVIEW2_SHA256 }}"
-      - name: Linux offline clean-host startup checks
-        if: matrix.platform == 'linux'
-        run: |
-          docker build -f packaging/linux/validation.Dockerfile -t simlab-clean-host .
-          chmod +x dist/packages/*.run
-          docker run --rm --network none --security-opt seccomp=unconfined -v "$PWD:/source:ro" simlab-clean-host bash -ec '
-            package=$(find /source/dist/packages -name "*.run" -print -quit)
-            stage=$("$package" --extract-only)
-            xvfb-run -a dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
-          '
-      - name: Windows native installer transaction and startup checks
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
-          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
-      - name: Upload complete suite artifacts
+      - name: Upload complete suite artifacts before runtime validation
         if: always() && (steps.package_unix.outcome == 'success' || steps.package_windows.outcome == 'success')
         uses: actions/upload-artifact@v4
         with:
@@ -160,3 +144,24 @@ jobs:
             dist/staging/**/suite-manifest.json
             dist/staging/**/closure.json
           if-no-files-found: error
+      - name: Linux offline clean-host startup checks
+        if: matrix.platform == 'linux'
+        run: |
+          docker build -f packaging/linux/validation.Dockerfile -t simlab-clean-host .
+          chmod +x dist/packages/*.run
+          trap 'docker rm -f simlab-offline-check >/dev/null 2>&1 || true' EXIT
+          # Expand the quoted script inside the offline container.
+          # shellcheck disable=SC2016
+          timeout --signal=TERM --kill-after=15s 10m docker run --rm --name simlab-offline-check --network none --security-opt seccomp=unconfined -v "$PWD:/source:ro" simlab-clean-host bash -euc '
+            package=$(find /source/dist/packages -name "*.run" -print -quit)
+            printf "%s\n" "Extracting and verifying the complete suite" >&2
+            stage=$(timeout --signal=TERM --kill-after=10s 3m sh -x "$package" --extract-only)
+            printf "%s\n" "Extraction complete; starting offline display and application checks" >&2
+            timeout --signal=TERM --kill-after=10s 4m xvfb-run -a -e /dev/stderr dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
+          '
+      - name: Windows native installer transaction and startup checks
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
+          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
