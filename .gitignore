@@ -1,0 +1,13 @@
+.components/
+.scaffold/
+.tools/
+dist/
+build/bin/
+frontend/node_modules/
+frontend/dist/
+frontend/wailsjs/
+frontend/package.json.md5
+*.log
+__pycache__/
+.DS_Store
+.validation/

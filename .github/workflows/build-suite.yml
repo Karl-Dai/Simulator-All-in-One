@@ -1,0 +1,130 @@
+name: Build and validate complete suites
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: darwin
+            arch: arm64
+          - runner: macos-15-intel
+            platform: darwin
+            arch: amd64
+          - runner: windows-latest
+            platform: windows
+            arch: amd64
+            webview_url_var: WEBVIEW2_X64_URL
+            webview_sha_var: WEBVIEW2_X64_SHA256
+          - runner: ubuntu-22.04
+            platform: linux
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    env:
+      CARGO_INCREMENTAL: '0'
+      MACOSX_DEPLOYMENT_TARGET: '13.0'
+      WEBVIEW2_URL: ${{ matrix.platform == 'windows' && vars[matrix.webview_url_var] || '' }}
+      WEBVIEW2_SHA256: ${{ matrix.platform == 'windows' && vars[matrix.webview_sha_var] || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.platform == 'windows'
+        with:
+          arch: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
+      - name: Linux build/runtime prerequisites
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libgdk-pixbuf2.0-bin fonts-dejavu-core bubblewrap xdg-dbus-proxy
+      - name: Windows packaging prerequisite checks
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $lock = Get-Content packaging/windows/webview2.lock.json -Raw | ConvertFrom-Json
+          if (!$env:WEBVIEW2_URL -and !$env:WEBVIEW2_SHA256) {
+            $env:WEBVIEW2_URL = $lock.url
+            $env:WEBVIEW2_SHA256 = $lock.sha256
+          }
+          if (!$env:WEBVIEW2_URL -or $env:WEBVIEW2_SHA256 -notmatch '^[0-9a-f]{64}$') { throw 'WebView2 URL and SHA256 overrides must be provided together.' }
+          "WEBVIEW2_SHA256=$env:WEBVIEW2_SHA256" | Out-File -FilePath $env:GITHUB_ENV -Append
+          choco install nsis --no-progress -y
+          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
+          $tokens = $null; $parseErrors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile("$pwd/packaging/windows/check-payload.ps1", [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors) { throw $parseErrors }
+          python scripts/fetch.py "$env:WEBVIEW2_URL" "$env:WEBVIEW2_SHA256" .tools/WebView2Runtime.exe
+          $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'WebView2 runtime is not signed by Microsoft' }
+      - name: Install pinned Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.14.0
+      - name: Packaging tests
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Clone exact commits and strictly apply suite patches
+        run: python scripts/suite.py bootstrap
+      - name: Build all eight suite payloads and launcher
+        run: python scripts/suite.py build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - name: Launcher backend tests
+        shell: bash
+        run: |
+          case "${{ matrix.platform }}" in
+            darwin)
+              export CGO_CFLAGS='-mmacosx-version-min=13.0'
+              export CGO_LDFLAGS='-framework UniformTypeIdentifiers -mmacosx-version-min=13.0'
+              go test -race ./...
+              ;;
+            linux) go test -race -tags webkit2_41 ./... ;;
+            windows) CGO_ENABLED=0 go test ./... ;;
+          esac
+      - name: Collect all payloads and verify
+        run: |
+          python scripts/suite.py collect --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+          python scripts/suite.py verify --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - name: Prepare Linux runtime closure
+        if: matrix.platform == 'linux'
+        run: python packaging/linux/runtime.py prepare dist/staging/linux-amd64
+      - name: Package macOS or Linux suite
+        if: matrix.platform != 'windows'
+        run: python scripts/suite.py package --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+      - name: Package Windows with one offline WebView2 runtime
+        if: matrix.platform == 'windows'
+        run: python scripts/suite.py package --platform windows --arch ${{ matrix.arch }} --webview2 .tools/WebView2Runtime.exe --webview2-sha256 "${{ env.WEBVIEW2_SHA256 }}"
+      - name: Linux offline clean-host startup checks
+        if: matrix.platform == 'linux'
+        run: |
+          docker build -f packaging/linux/validation.Dockerfile -t simlab-clean-host .
+          chmod +x dist/packages/*.run
+          docker run --rm --network none --security-opt seccomp=unconfined -v "$PWD:/source:ro" simlab-clean-host bash -ec '
+            package=$(find /source/dist/packages -name "*.run" -print -quit)
+            stage=$("$package" --extract-only)
+            xvfb-run -a dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
+          '
+      - name: Windows native installer transaction and startup checks
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
+          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
+      - name: Upload complete suite artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimLab-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/packages/*
+            dist/staging/**/suite-manifest.json
+            dist/staging/**/closure.json
+          if-no-files-found: error

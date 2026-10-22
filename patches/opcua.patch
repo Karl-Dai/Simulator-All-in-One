@@ -1,0 +1,454 @@
+diff --git a/crates/opcuamaster-app/Cargo.toml b/crates/opcuamaster-app/Cargo.toml
+index b30d3fb..011550a 100644
+--- a/crates/opcuamaster-app/Cargo.toml
++++ b/crates/opcuamaster-app/Cargo.toml
+@@ -12,6 +12,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
+ [build-dependencies]
+ tauri-build = { version = "2.5.6", features = [] }
+ 
++[features]
++simlab-suite = ["opcuasim-core/simlab-suite"]
++
+ [dependencies]
+ opcuasim-core = { path = "../opcuasim-core" }
+ async-opcua-types = "0.18"
+diff --git a/crates/opcuamaster-app/src/commands.rs b/crates/opcuamaster-app/src/commands.rs
+index bcd189a..1aed653 100644
+--- a/crates/opcuamaster-app/src/commands.rs
++++ b/crates/opcuamaster-app/src/commands.rs
+@@ -1520,20 +1520,29 @@ pub async fn call_method(
+ // Certificates
+ // ---------------------------------------------------------------------------
+ 
+-const PKI_DIR: &str = "./pki";
++fn master_pki_dir() -> Result<std::path::PathBuf, String> {
++    #[cfg(feature = "simlab-suite")]
++    {
++        opcuasim_core::suite::master_pki_dir().map_err(|e| e.to_string())
++    }
++    #[cfg(not(feature = "simlab-suite"))]
++    {
++        Ok(std::path::PathBuf::from("./pki"))
++    }
++}
+ 
+ #[tauri::command]
+ pub fn list_certificates(role: CertRoleDto) -> Result<Vec<CertSummaryDto>, String> {
+-    let pki = std::path::Path::new(PKI_DIR);
++    let pki = master_pki_dir()?;
+     let list =
+-        cert_manager::list_certificates(pki, role_to_core(role)).map_err(|e| e.to_string())?;
++        cert_manager::list_certificates(&pki, role_to_core(role)).map_err(|e| e.to_string())?;
+     Ok(list.into_iter().map(cert_summary_to_dto).collect())
+ }
+ 
+ #[tauri::command]
+ pub fn move_certificate(path: String, to_role: CertRoleDto) -> Result<(), String> {
+-    let pki = std::path::Path::new(PKI_DIR);
+-    cert_manager::move_certificate(pki, std::path::Path::new(&path), role_to_core(to_role))
++    let pki = master_pki_dir()?;
++    cert_manager::move_certificate(&pki, std::path::Path::new(&path), role_to_core(to_role))
+         .map_err(|e| e.to_string())?;
+     Ok(())
+ }
+diff --git a/crates/opcuamaster-app/src/lib.rs b/crates/opcuamaster-app/src/lib.rs
+index f387015..296eb6b 100644
+--- a/crates/opcuamaster-app/src/lib.rs
++++ b/crates/opcuamaster-app/src/lib.rs
+@@ -1,6 +1,7 @@
+ mod commands;
+ mod project;
+ mod state;
++#[cfg(not(feature = "simlab-suite"))]
+ pub mod update;
+ 
+ use state::AppState;
+@@ -8,14 +9,17 @@ use tauri::Manager;
+ 
+ #[cfg_attr(mobile, tauri::mobile_entry_point)]
+ pub fn run() {
+-    tauri::Builder::default()
+-        .plugin(tauri_plugin_updater::Builder::new().build())
++    let builder = tauri::Builder::default()
+         .plugin(tauri_plugin_process::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .plugin(tauri_plugin_dialog::init())
+         .plugin(tauri_plugin_opener::init())
+-        .manage(AppState::new())
+-        .manage(update::UpdateState::default())
++        .manage(AppState::new());
++    #[cfg(not(feature = "simlab-suite"))]
++    let builder = builder
++        .plugin(tauri_plugin_updater::Builder::new().build())
++        .manage(update::UpdateState::default());
++    builder
+         .invoke_handler(tauri::generate_handler![
+             commands::ping,
+             commands::create_connection,
+@@ -55,15 +59,25 @@ pub fn run() {
+             commands::get_communication_logs,
+             commands::clear_communication_logs,
+             commands::export_communication_logs,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::check_for_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::can_install_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::install_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::skip_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::schedule_update_on_next_launch,
+         ])
+         .setup(|app| {
+             let state = app.state::<AppState>();
+-            match app.path().app_data_dir() {
++            #[cfg(feature = "simlab-suite")]
++            let data_dir =
++                opcuasim_core::suite::role_dir("opcua-master").map_err(|e| e.to_string());
++            #[cfg(not(feature = "simlab-suite"))]
++            let data_dir = app.path().app_data_dir().map_err(|e| e.to_string());
++            match data_dir {
+                 Ok(dir) => {
+                     if let Err(error) =
+                         state.initialize_persistence(dir.join("last-session.opcuaproj"))
+@@ -80,12 +94,15 @@ pub fn run() {
+                         .build(),
+                 )?;
+             }
+-            let app_handle = app.handle().clone();
+-            tauri::async_runtime::spawn(async move {
+-                if let Err(error) = update::install_pending_update(app_handle).await {
+-                    log::warn!("automatic update on launch failed: {error}");
+-                }
+-            });
++            #[cfg(not(feature = "simlab-suite"))]
++            {
++                let app_handle = app.handle().clone();
++                tauri::async_runtime::spawn(async move {
++                    if let Err(error) = update::install_pending_update(app_handle).await {
++                        log::warn!("automatic update on launch failed: {error}");
++                    }
++                });
++            }
+             Ok(())
+         })
+         .run(tauri::generate_context!())
+diff --git a/crates/opcuamaster-app/tauri.suite.conf.json b/crates/opcuamaster-app/tauri.suite.conf.json
+new file mode 100644
+index 0000000..4ac838a
+--- /dev/null
++++ b/crates/opcuamaster-app/tauri.suite.conf.json
+@@ -0,0 +1,16 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.opcua.master",
++  "bundle": {
++    "createUpdaterArtifacts": false
++  },
++  "plugins": {
++    "updater": null
++  },
++  "build": {
++    "beforeBuildCommand": {
++      "script": "npm run build",
++      "cwd": "../../master-frontend"
++    }
++  }
++}
+diff --git a/crates/opcuaserver-app/Cargo.toml b/crates/opcuaserver-app/Cargo.toml
+index f133a94..0573539 100644
+--- a/crates/opcuaserver-app/Cargo.toml
++++ b/crates/opcuaserver-app/Cargo.toml
+@@ -12,6 +12,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
+ [build-dependencies]
+ tauri-build = { version = "2.5.6", features = [] }
+ 
++[features]
++simlab-suite = ["opcuasim-core/simlab-suite"]
++
+ [dependencies]
+ opcuasim-core = { path = "../opcuasim-core" }
+ serde_json = "1.0"
+diff --git a/crates/opcuaserver-app/src/lib.rs b/crates/opcuaserver-app/src/lib.rs
+index 5d48587..0dd559e 100644
+--- a/crates/opcuaserver-app/src/lib.rs
++++ b/crates/opcuaserver-app/src/lib.rs
+@@ -1,19 +1,23 @@
+ mod commands;
+ mod state;
++#[cfg(not(feature = "simlab-suite"))]
+ pub mod update;
+ 
+ use state::AppState;
+ 
+ #[cfg_attr(mobile, tauri::mobile_entry_point)]
+ pub fn run() {
+-    tauri::Builder::default()
+-        .plugin(tauri_plugin_updater::Builder::new().build())
++    let builder = tauri::Builder::default()
+         .plugin(tauri_plugin_process::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .plugin(tauri_plugin_dialog::init())
+         .plugin(tauri_plugin_opener::init())
+-        .manage(AppState::new())
+-        .manage(update::UpdateState::default())
++        .manage(AppState::new());
++    #[cfg(not(feature = "simlab-suite"))]
++    let builder = builder
++        .plugin(tauri_plugin_updater::Builder::new().build())
++        .manage(update::UpdateState::default());
++    builder
+         .invoke_handler(tauri::generate_handler![
+             commands::ping,
+             commands::start_server,
+@@ -29,9 +33,13 @@ pub fn run() {
+             commands::save_project,
+             commands::load_project,
+             commands::get_simulation_values_since,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::check_for_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::install_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::skip_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::schedule_update_on_next_launch,
+         ])
+         .setup(|app| {
+@@ -42,12 +50,15 @@ pub fn run() {
+                         .build(),
+                 )?;
+             }
+-            let app_handle = app.handle().clone();
+-            tauri::async_runtime::spawn(async move {
+-                if let Err(error) = update::install_pending_update(app_handle).await {
+-                    log::warn!("automatic update on launch failed: {error}");
+-                }
+-            });
++            #[cfg(not(feature = "simlab-suite"))]
++            {
++                let app_handle = app.handle().clone();
++                tauri::async_runtime::spawn(async move {
++                    if let Err(error) = update::install_pending_update(app_handle).await {
++                        log::warn!("automatic update on launch failed: {error}");
++                    }
++                });
++            }
+             Ok(())
+         })
+         .run(tauri::generate_context!())
+diff --git a/crates/opcuaserver-app/tauri.suite.conf.json b/crates/opcuaserver-app/tauri.suite.conf.json
+new file mode 100644
+index 0000000..b6c57b8
+--- /dev/null
++++ b/crates/opcuaserver-app/tauri.suite.conf.json
+@@ -0,0 +1,16 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.opcua.server",
++  "bundle": {
++    "createUpdaterArtifacts": false
++  },
++  "plugins": {
++    "updater": null
++  },
++  "build": {
++    "beforeBuildCommand": {
++      "script": "npm run build",
++      "cwd": "../../frontend"
++    }
++  }
++}
+diff --git a/crates/opcuasim-core/Cargo.toml b/crates/opcuasim-core/Cargo.toml
+index a70da25..cd40d8b 100644
+--- a/crates/opcuasim-core/Cargo.toml
++++ b/crates/opcuasim-core/Cargo.toml
+@@ -3,6 +3,9 @@ name = "opcuasim-core"
+ version = "0.6.0"
+ edition = "2021"
+ 
++[features]
++simlab-suite = []
++
+ [dependencies]
+ async-opcua-client = "0.18"
+ async-opcua-core = "0.18"
+diff --git a/crates/opcuasim-core/src/client.rs b/crates/opcuasim-core/src/client.rs
+index 57ac15a..2b8b3d4 100644
+--- a/crates/opcuasim-core/src/client.rs
++++ b/crates/opcuasim-core/src/client.rs
+@@ -179,7 +179,7 @@ impl OpcUaConnection {
+         info!("Connecting to OPC UA server: {}", self.config.endpoint_url);
+ 
+         // Build client
+-        let mut client = ClientBuilder::new()
++        let builder = ClientBuilder::new()
+             .application_name("OPCUAMaster")
+             .application_uri("urn:OPCUAMaster")
+             .create_sample_keypair(true)
+@@ -195,7 +195,13 @@ impl OpcUaConnection {
+             .max_message_size(128 * 1024 * 1024) // 128MB
+             .max_chunk_size(65535)
+             .max_incoming_chunk_size(65535 * 4)
+-            .max_chunk_count(1024)
++            .max_chunk_count(1024);
++        #[cfg(feature = "simlab-suite")]
++        let builder = builder.pki_dir(
++            crate::suite::master_pki_dir()
++                .map_err(|e| OpcUaSimError::ConnectionFailed(format!("SimLab PKI path: {e}")))?,
++        );
++        let mut client = builder
+             .client()
+             .map_err(|errs| OpcUaSimError::ConnectionFailed(errs.join("; ")))?;
+ 
+diff --git a/crates/opcuasim-core/src/lib.rs b/crates/opcuasim-core/src/lib.rs
+index cf07c61..c1a0bd5 100644
+--- a/crates/opcuasim-core/src/lib.rs
++++ b/crates/opcuasim-core/src/lib.rs
+@@ -15,6 +15,8 @@ pub mod polling;
+ pub mod reconnect;
+ pub mod server;
+ pub mod subscription; // OPC UA server simulation module
++#[cfg(feature = "simlab-suite")]
++pub mod suite;
+ pub mod values;
+ 
+ /// Re-export the OPC UA Session type for downstream crates.
+diff --git a/crates/opcuasim-core/src/server/server.rs b/crates/opcuasim-core/src/server/server.rs
+index 74241ea..2434cbd 100644
+--- a/crates/opcuasim-core/src/server/server.rs
++++ b/crates/opcuasim-core/src/server/server.rs
+@@ -127,21 +127,24 @@ fn build_server(
+         EventsHistoryNodeManager::new(inmem)
+     };
+ 
++    #[cfg(feature = "simlab-suite")]
++    let pki_dir = crate::suite::role_dir("opcua-server")
++        .map_err(|e| OpcUaSimError::ConnectionFailed(format!("SimLab PKI path: {e}")))?
++        .join(format!("pki-server-{}", config.port));
++    #[cfg(not(feature = "simlab-suite"))]
++    let pki_dir = dirs::config_dir()
++        .map(|d| {
++            d.join("OPCUASim")
++                .join(format!("pki-server-{}", config.port))
++        })
++        .unwrap_or_else(|| std::path::PathBuf::from(format!("./pki-server-{}", config.port)));
++
+     let mut builder = ServerBuilder::new()
+         .application_name(&config.name)
+         .application_uri(&config.application_uri)
+         .product_uri("urn:opcuasim")
+         .create_sample_keypair(true)
+-        .pki_dir(
+-            dirs::config_dir()
+-                .map(|d| {
+-                    d.join("OPCUASim")
+-                        .join(format!("pki-server-{}", config.port))
+-                })
+-                .unwrap_or_else(|| {
+-                    std::path::PathBuf::from(format!("./pki-server-{}", config.port))
+-                }),
+-        )
++        .pki_dir(pki_dir)
+         .host(&config.host)
+         .port(config.port)
+         .trust_client_certs(config.trust_client_certs)
+diff --git a/crates/opcuasim-core/src/suite.rs b/crates/opcuasim-core/src/suite.rs
+new file mode 100644
+index 0000000..35f30af
+--- /dev/null
++++ b/crates/opcuasim-core/src/suite.rs
+@@ -0,0 +1,71 @@
++//! Writable paths for the bundled SimLab applications. Never use the install tree.
++use std::path::{Component, Path, PathBuf};
++
++fn resolve(root: Option<PathBuf>, config: Option<PathBuf>, role: &str) -> std::io::Result<PathBuf> {
++    let root = root
++        .or_else(|| config.map(|p| p.join("SimLab")))
++        .ok_or_else(|| {
++            std::io::Error::new(
++                std::io::ErrorKind::NotFound,
++                "No user configuration directory",
++            )
++        })?;
++    let mut components = Path::new(role).components();
++    if !root.is_absolute()
++        || !matches!(components.next(), Some(Component::Normal(_)))
++        || components.next().is_some()
++    {
++        return Err(std::io::Error::new(
++            std::io::ErrorKind::InvalidInput,
++            "Invalid SimLab data path",
++        ));
++    }
++    Ok(root.join(role))
++}
++
++pub fn role_dir(role: &str) -> std::io::Result<PathBuf> {
++    let dir = resolve(
++        std::env::var_os("SIMLAB_DATA_DIR").map(PathBuf::from),
++        dirs::config_dir(),
++        role,
++    )?;
++    std::fs::create_dir_all(&dir)?;
++    Ok(dir)
++}
++
++pub fn master_pki_dir() -> std::io::Result<PathBuf> {
++    Ok(role_dir("opcua-master")?.join("pki"))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn configured_root_and_roles_are_isolated() {
++        let root = std::env::temp_dir().join("simlab-path-test");
++        let master = resolve(Some(root.clone()), None, "opcua-master").unwrap();
++        let server = resolve(Some(root.clone()), None, "opcua-server").unwrap();
++        assert_eq!(master, root.join("opcua-master"));
++        assert_ne!(master, server);
++        assert!(master.is_absolute());
++        assert!(resolve(Some(root.clone()), None, "..").is_err());
++        assert!(resolve(Some(root), None, "master/other").is_err());
++    }
++
++    #[test]
++    fn fallback_never_uses_the_working_directory() {
++        let config = std::env::temp_dir().join("user-config");
++        assert_eq!(
++            resolve(None, Some(config.clone()), "opcua-master").unwrap(),
++            config.join("SimLab/opcua-master")
++        );
++        assert!(resolve(
++            Some(PathBuf::from("relative")),
++            Some(config),
++            "opcua-master"
++        )
++        .is_err());
++        assert!(resolve(None, None, "opcua-master").is_err());
++    }
++}
+diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
+index 34e6947..9e72d86 100644
+--- a/master-frontend/src/components/Toolbar.vue
++++ b/master-frontend/src/components/Toolbar.vue
+@@ -13,6 +13,7 @@ import { useMasterContext } from '../inject'
+ import { useConnectionRename } from '../useConnectionRename'
+ import type { ConnectionInfo, DiscoveredEndpointDto } from '../types'
+ 
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
+ const { t } = useI18n()
+ const { requestRename, renaming } = useConnectionRename()
+ const {
+@@ -204,7 +205,7 @@ function onCreated(conn: ConnectionInfo) {
+         <button class="toolbar-btn" @click="certVisible = true">🔐 {{ t('toolbar.certManager') }}</button>
+       </div>
+       <div class="toolbar-aside">
+-        <UpdateControl />
++        <UpdateControl v-if="!suiteBuild" />
+         <span
+           class="persistence-status"
+           :class="{ 'persistence-error': persistenceStatus.error }"

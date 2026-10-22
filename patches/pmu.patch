@@ -1,0 +1,359 @@
+diff --git a/crates/pmusim-app/Cargo.toml b/crates/pmusim-app/Cargo.toml
+index 744b0d7..217499e 100644
+--- a/crates/pmusim-app/Cargo.toml
++++ b/crates/pmusim-app/Cargo.toml
+@@ -7,6 +7,9 @@ edition = "2021"
+ name = "pmusim_app"
+ crate-type = ["staticlib", "cdylib", "rlib"]
+ 
++[features]
++simlab-suite = []
++
+ [dependencies]
+ pmusim-core = { path = "../pmusim-core" }
+ serde = { version = "1.0", features = ["derive"] }
+diff --git a/crates/pmusim-app/src/lib.rs b/crates/pmusim-app/src/lib.rs
+index 8f72797..1a7d3da 100644
+--- a/crates/pmusim-app/src/lib.rs
++++ b/crates/pmusim-app/src/lib.rs
+@@ -2,4 +2,5 @@ pub mod commands;
+ pub mod events;
+ pub mod network;
+ pub mod state;
++#[cfg(not(feature = "simlab-suite"))]
+ pub mod update;
+diff --git a/crates/pmusim-app/src/main.rs b/crates/pmusim-app/src/main.rs
+index 75a60ae..84adc71 100644
+--- a/crates/pmusim-app/src/main.rs
++++ b/crates/pmusim-app/src/main.rs
+@@ -1,16 +1,21 @@
+ #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+ 
+-use pmusim_app::{commands, state::AppState, update};
++#[cfg(not(feature = "simlab-suite"))]
++use pmusim_app::update;
++use pmusim_app::{commands, state::AppState};
+ 
+ fn main() {
+-    tauri::Builder::default()
++    let builder = tauri::Builder::default()
+         .plugin(tauri_plugin_log::Builder::new().build())
+-        .plugin(tauri_plugin_updater::Builder::new().build())
+         .plugin(tauri_plugin_process::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .plugin(tauri_plugin_dialog::init())
+-        .manage(AppState::default())
+-        .manage(update::UpdateState::default())
++        .manage(AppState::default());
++    #[cfg(not(feature = "simlab-suite"))]
++    let builder = builder
++        .plugin(tauri_plugin_updater::Builder::new().build())
++        .manage(update::UpdateState::default());
++    builder
+         .invoke_handler(tauri::generate_handler![
+             commands::start_server,
+             commands::stop_server,
+@@ -22,18 +27,25 @@ fn main() {
+             commands::set_heartbeat_interval,
+             commands::poll_events,
+             commands::open_url,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::check_for_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::install_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::skip_update,
++            #[cfg(not(feature = "simlab-suite"))]
+             update::schedule_update_on_next_launch,
+         ])
+-        .setup(|app| {
+-            let update_app = app.handle().clone();
+-            tauri::async_runtime::spawn(async move {
+-                if let Err(error) = update::install_pending_update(update_app).await {
+-                    log::warn!("automatic update on launch failed: {error}");
+-                }
+-            });
++        .setup(|_app| {
++            #[cfg(not(feature = "simlab-suite"))]
++            {
++                let update_app = _app.handle().clone();
++                tauri::async_runtime::spawn(async move {
++                    if let Err(error) = update::install_pending_update(update_app).await {
++                        log::warn!("automatic update on launch failed: {error}");
++                    }
++                });
++            }
+             Ok(())
+         })
+         .run(tauri::generate_context!())
+diff --git a/crates/pmusim-app/tauri.suite.conf.json b/crates/pmusim-app/tauri.suite.conf.json
+new file mode 100644
+index 0000000..16e146f
+--- /dev/null
++++ b/crates/pmusim-app/tauri.suite.conf.json
+@@ -0,0 +1,27 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.pmu.master",
++  "bundle": {
++    "createUpdaterArtifacts": false
++  },
++  "plugins": {
++    "updater": null
++  },
++  "app": {
++    "security": {
++      "capabilities": [
++        {
++          "identifier": "simlab-suite",
++          "windows": [
++            "main"
++          ],
++          "permissions": [
++            "core:default",
++            "store:default",
++            "dialog:default"
++          ]
++        }
++      ]
++    }
++  }
++}
+diff --git a/crates/pmusim-sub/Cargo.toml b/crates/pmusim-sub/Cargo.toml
+index 5ad7243..255f7a7 100644
+--- a/crates/pmusim-sub/Cargo.toml
++++ b/crates/pmusim-sub/Cargo.toml
+@@ -7,6 +7,9 @@ edition = "2021"
+ name = "pmusim_sub"
+ crate-type = ["staticlib", "cdylib", "rlib"]
+ 
++[features]
++simlab-suite = []
++
+ [dependencies]
+ pmusim-core = { path = "../pmusim-core" }
+ serde = { version = "1.0", features = ["derive"] }
+diff --git a/crates/pmusim-sub/src/lib.rs b/crates/pmusim-sub/src/lib.rs
+index 23014cd..07945d7 100644
+--- a/crates/pmusim-sub/src/lib.rs
++++ b/crates/pmusim-sub/src/lib.rs
+@@ -3,3 +3,5 @@ pub mod datagen;
+ pub mod events;
+ pub mod network;
+ pub mod state;
++#[cfg(feature = "simlab-suite")]
++pub mod suite;
+diff --git a/crates/pmusim-sub/src/main.rs b/crates/pmusim-sub/src/main.rs
+index 7280bec..fcfe28f 100644
+--- a/crates/pmusim-sub/src/main.rs
++++ b/crates/pmusim-sub/src/main.rs
+@@ -1,5 +1,7 @@
+ #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+ 
++#[cfg(feature = "simlab-suite")]
++use pmusim_sub::suite;
+ use pmusim_sub::{commands, state::AppState};
+ 
+ fn main() {
+@@ -8,6 +10,8 @@ fn main() {
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .manage(AppState::default())
+         .invoke_handler(tauri::generate_handler![
++            #[cfg(feature = "simlab-suite")]
++            suite::preset_store_path,
+             commands::start_substation,
+             commands::stop_substation,
+             commands::update_config,
+diff --git a/crates/pmusim-sub/src/suite.rs b/crates/pmusim-sub/src/suite.rs
+new file mode 100644
+index 0000000..0bfebae
+--- /dev/null
++++ b/crates/pmusim-sub/src/suite.rs
+@@ -0,0 +1,40 @@
++//! Presets for the bundled application live outside the installation directory.
++use std::path::PathBuf;
++use tauri::Manager;
++
++fn preset_path(root: PathBuf) -> Result<PathBuf, String> {
++    if !root.is_absolute() {
++        return Err("SIMLAB_DATA_DIR must be an absolute path".into());
++    }
++    Ok(root.join("pmu-sub").join("presets.json"))
++}
++
++#[tauri::command]
++pub fn preset_store_path(app: tauri::AppHandle) -> Result<String, String> {
++    let root = match std::env::var_os("SIMLAB_DATA_DIR") {
++        Some(path) => PathBuf::from(path),
++        None => app
++            .path()
++            .config_dir()
++            .map_err(|e| e.to_string())?
++            .join("SimLab"),
++    };
++    let path = preset_path(root)?;
++    std::fs::create_dir_all(path.parent().expect("preset parent")).map_err(|e| e.to_string())?;
++    Ok(path.to_string_lossy().into_owned())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn presets_are_role_scoped_and_never_relative_to_the_executable() {
++        let root = std::env::temp_dir().join("simlab-test");
++        assert_eq!(
++            preset_path(root.clone()).unwrap(),
++            root.join("pmu-sub/presets.json")
++        );
++        assert!(preset_path(PathBuf::from("relative")).is_err());
++    }
++}
+diff --git a/crates/pmusim-sub/tauri.suite.conf.json b/crates/pmusim-sub/tauri.suite.conf.json
+new file mode 100644
+index 0000000..06c6b65
+--- /dev/null
++++ b/crates/pmusim-sub/tauri.suite.conf.json
+@@ -0,0 +1,10 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.pmu.sub",
++  "bundle": {
++    "createUpdaterArtifacts": false
++  },
++  "plugins": {
++    "updater": null
++  }
++}
+diff --git a/frontend-sub/src/components/ConfigFormPanel.vue b/frontend-sub/src/components/ConfigFormPanel.vue
+index 8e99780..5796f81 100644
+--- a/frontend-sub/src/components/ConfigFormPanel.vue
++++ b/frontend-sub/src/components/ConfigFormPanel.vue
+@@ -32,18 +32,20 @@ async function stop() { await invoke("stop_substation"); running.value = false;
+ async function apply() { await invoke("update_config", { config: { ...form } }); }
+ 
+ // --- Presets ---
+-const PRESET_STORE = "presets.json";
++const presetStorePath = import.meta.env.VITE_SIMLAB_SUITE === "1"
++  ? invoke<string>("preset_store_path")
++  : Promise.resolve("presets.json");
+ const presetName = ref("");
+ const presetNames = ref<string[]>([]);
+ const selectedPreset = ref("");
+ 
+ async function refreshPresetNames() {
+-  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
+   presetNames.value = await store.keys();
+ }
+ async function savePreset() {
+   if (!presetName.value.trim()) return;
+-  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
+   await store.set(presetName.value.trim(), { ...form });
+   await store.save();
+   await refreshPresetNames();
+@@ -51,13 +53,13 @@ async function savePreset() {
+ }
+ async function loadPreset() {
+   if (!selectedPreset.value) return;
+-  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
+   const cfg = await store.get<ConfigInput>(selectedPreset.value);
+   if (cfg) Object.assign(form, cfg);
+ }
+ async function deletePreset() {
+   if (!selectedPreset.value) return;
+-  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
+   await store.delete(selectedPreset.value);
+   await store.save();
+   selectedPreset.value = "";
+diff --git a/frontend/src/App.vue b/frontend/src/App.vue
+index 67e47ba..ddcb29a 100644
+--- a/frontend/src/App.vue
++++ b/frontend/src/App.vue
+@@ -13,6 +13,8 @@ import { useI18n } from "./i18n";
+ const { toasts, dismiss, push } = useToast();
+ const { t, locale, setLocale } = useI18n();
+ 
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1";
++
+ type UpdateMeta = { version: string; notes: string; pub_date?: string | null };
+ const updateMeta = ref<UpdateMeta | null>(null);
+ const updateVisible = ref(false);
+@@ -20,7 +22,7 @@ const checking = ref(false);
+ const appVersion = ref("");
+ 
+ async function checkUpdate(force = false) {
+-  if (checking.value) return;
++  if (suiteBuild || checking.value) return;
+   checking.value = true;
+   try {
+     const meta = await invoke<UpdateMeta | null>("check_for_update", { force });
+@@ -71,7 +73,7 @@ onMounted(async () => {
+             <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+           </svg>
+         </button>
+-        <button class="check-btn" :disabled="checking" @click="checkUpdate(true)">
++        <button v-if="!suiteBuild" class="check-btn" :disabled="checking" @click="checkUpdate(true)">
+           {{ checking ? t("app.checking") : t("app.checkUpdate") }}
+         </button>
+       </div>
+@@ -88,6 +90,7 @@ onMounted(async () => {
+     </div>
+ 
+     <UpdateDialog
++      v-if="!suiteBuild"
+       :visible="updateVisible"
+       :version="updateMeta?.version ?? ''"
+       :notes="updateMeta?.notes ?? ''"
+diff --git a/frontend/tests/app-suite.test.ts b/frontend/tests/app-suite.test.ts
+new file mode 100644
+index 0000000..373fa82
+--- /dev/null
++++ b/frontend/tests/app-suite.test.ts
+@@ -0,0 +1,42 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { flushPromises, mount } from "@vue/test-utils";
++
++const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
++vi.mock("@tauri-apps/api/core", () => ({ invoke }));
++vi.mock("@tauri-apps/api/app", () => ({ getVersion: async () => "0.13.2" }));
++import App from "../src/App.vue";
++
++function render() {
++  return mount(App, {
++    global: { stubs: { ConfigInfoPanel: true, DataTablePanel: true, UpdateDialog: true } },
++  });
++}
++
++afterEach(() => {
++  vi.unstubAllEnvs();
++  invoke.mockReset();
++});
++
++describe("suite update ownership", () => {
++  it("does not check or offer per-app updates in a suite build", async () => {
++    vi.stubEnv("VITE_SIMLAB_SUITE", "1");
++    const wrapper = render();
++    await flushPromises();
++    expect(invoke).not.toHaveBeenCalled();
++    expect(wrapper.find(".check-btn").exists()).toBe(false);
++    expect(wrapper.findComponent({ name: "UpdateDialog" }).exists()).toBe(false);
++    wrapper.unmount();
++  });
++
++  it("retains automatic and manual checks in the standalone build", async () => {
++    vi.stubEnv("VITE_SIMLAB_SUITE", "");
++    invoke.mockResolvedValue(null);
++    const wrapper = render();
++    await flushPromises();
++    expect(invoke).toHaveBeenCalledWith("check_for_update", { force: false });
++    await wrapper.get(".check-btn").trigger("click");
++    await flushPromises();
++    expect(invoke).toHaveBeenCalledWith("check_for_update", { force: true });
++    wrapper.unmount();
++  });
++});

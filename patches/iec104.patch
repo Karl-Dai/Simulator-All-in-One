@@ -1,0 +1,675 @@
+diff --git a/crates/iec104master-app/Cargo.toml b/crates/iec104master-app/Cargo.toml
+index a66daa2..ec8c4e7 100644
+--- a/crates/iec104master-app/Cargo.toml
++++ b/crates/iec104master-app/Cargo.toml
+@@ -5,6 +5,10 @@ description = "IEC104Sim - IEC 60870-5-104 Master Client"
+ edition = "2021"
+ rust-version = "1.77.2"
+ 
++[features]
++default = []
++simlab-suite = []
++
+ [lib]
+ name = "iec104master_app_lib"
+ crate-type = ["staticlib", "cdylib", "rlib"]
+diff --git a/crates/iec104master-app/src/commands.rs b/crates/iec104master-app/src/commands.rs
+index 31c806f..fac3c50 100644
+--- a/crates/iec104master-app/src/commands.rs
++++ b/crates/iec104master-app/src/commands.rs
+@@ -1460,7 +1460,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
+     // snapshots can be large and remain an explicit Save Config feature.
+     let json = serialize_workspace(state, false).await?;
+     let store = app_handle
+-        .store(WORKSPACE_STORE_FILE)
++        .store(crate::suite::store_path(app_handle, WORKSPACE_STORE_FILE))
+         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
+     store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
+     store
+@@ -1470,7 +1470,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
+ 
+ pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
+     let store = app_handle
+-        .store(WORKSPACE_STORE_FILE)
++        .store(crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE))
+         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
+     let Some(content) = store
+         .get(WORKSPACE_STORE_KEY)
+diff --git a/crates/iec104master-app/src/lib.rs b/crates/iec104master-app/src/lib.rs
+index ff2ff1c..8a0b563 100644
+--- a/crates/iec104master-app/src/lib.rs
++++ b/crates/iec104master-app/src/lib.rs
+@@ -1,6 +1,8 @@
+ mod commands;
+ pub mod reconnect;
+ mod state;
++#[path = "../../shared/suite.rs"]
++mod suite;
+ #[path = "../../shared/tls_file_dialog.rs"]
+ mod tls_file_dialog;
+ pub mod update;
+@@ -10,8 +12,10 @@ use tauri::Manager;
+ 
+ #[cfg_attr(mobile, tauri::mobile_entry_point)]
+ pub fn run() {
+-    tauri::Builder::default()
+-        .plugin(tauri_plugin_updater::Builder::new().build())
++    let builder = tauri::Builder::default();
++    #[cfg(not(feature = "simlab-suite"))]
++    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
++    builder
+         .plugin(tauri_plugin_process::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .plugin(tauri_plugin_dialog::init())
+@@ -60,6 +64,8 @@ pub fn run() {
+             update::schedule_update_on_next_launch,
+         ])
+         .setup(|app| {
++            #[cfg(feature = "simlab-suite")]
++            suite::initialize(app, "iec104-master", "cloud.carldai.simlab.iec104.master")?;
+             if cfg!(debug_assertions) {
+                 app.handle().plugin(
+                     tauri_plugin_log::Builder::default()
+@@ -75,6 +81,7 @@ pub fn run() {
+                     log::warn!("failed to restore persisted master workspace: {error}");
+                 }
+                 app_handle.state::<AppState>().mark_workspace_ready();
++                #[cfg(not(feature = "simlab-suite"))]
+                 if let Err(error) = update::install_pending_update(app_handle).await {
+                     log::warn!("automatic update on launch failed: {error}");
+                 }
+diff --git a/crates/iec104master-app/src/update.rs b/crates/iec104master-app/src/update.rs
+index 087832e..6a69e90 100644
+--- a/crates/iec104master-app/src/update.rs
++++ b/crates/iec104master-app/src/update.rs
+@@ -119,6 +119,7 @@ pub async fn check_for_update(
+     state: State<'_, UpdateState>,
+     force: Option<bool>,
+ ) -> Result<Option<UpdateMeta>, String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let force = force.unwrap_or(false);
+ 
+     // A choice made in the previous run is handled by the startup task. Do not
+@@ -171,6 +172,7 @@ pub async fn check_for_update(
+ /// Installs the already downloaded package. No network request is made here.
+ #[tauri::command]
+ pub async fn install_update(app: AppHandle, state: State<'_, UpdateState>) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let prepared = state.prepared.lock().await;
+     let update = prepared
+         .as_ref()
+@@ -194,6 +196,7 @@ pub async fn skip_update(
+     state: State<'_, UpdateState>,
+     version: String,
+ ) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let mut prepared = state.prepared.lock().await;
+     if !prepared
+         .as_ref()
+@@ -215,6 +218,7 @@ pub async fn schedule_update_on_next_launch(
+     state: State<'_, UpdateState>,
+     version: String,
+ ) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let prepared = state.prepared.lock().await;
+     if !prepared
+         .as_ref()
+@@ -230,6 +234,7 @@ pub async fn schedule_update_on_next_launch(
+ /// Called from Tauri setup on every launch. It is a no-op unless the user chose
+ /// "install on next launch" in the previous run.
+ pub async fn install_pending_update(app: AppHandle) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     if !read_bool(&app, KEY_INSTALL_ON_NEXT_LAUNCH) {
+         return Ok(());
+     }
+diff --git a/crates/iec104master-app/tauri.suite.conf.json b/crates/iec104master-app/tauri.suite.conf.json
+new file mode 100644
+index 0000000..d5b2ac0
+--- /dev/null
++++ b/crates/iec104master-app/tauri.suite.conf.json
+@@ -0,0 +1,32 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.iec104.master",
++  "app": {
++    "windows": [
++      {
++        "label": "main",
++        "title": "IEC104Master",
++        "create": false,
++        "width": 1200,
++        "height": 800,
++        "minWidth": 800,
++        "minHeight": 600,
++        "resizable": true,
++        "fullscreen": false
++      }
++    ]
++  },
++  "bundle": {
++    "createUpdaterArtifacts": false,
++    "windows": {
++      "webviewInstallMode": {
++        "type": "skip"
++      }
++    }
++  },
++  "plugins": {
++    "updater": {
++      "endpoints": []
++    }
++  }
++}
+diff --git a/crates/iec104sim-app/Cargo.toml b/crates/iec104sim-app/Cargo.toml
+index 2a8a2a6..f3b297d 100644
+--- a/crates/iec104sim-app/Cargo.toml
++++ b/crates/iec104sim-app/Cargo.toml
+@@ -5,6 +5,10 @@ description = "IEC104Sim - IEC 60870-5-104 Slave Simulator"
+ edition = "2021"
+ rust-version = "1.77.2"
+ 
++[features]
++default = []
++simlab-suite = []
++
+ [lib]
+ name = "iec104sim_app_lib"
+ crate-type = ["staticlib", "cdylib", "rlib"]
+diff --git a/crates/iec104sim-app/src/commands.rs b/crates/iec104sim-app/src/commands.rs
+index d3bc853..4f1d7a6 100644
+--- a/crates/iec104sim-app/src/commands.rs
++++ b/crates/iec104sim-app/src/commands.rs
+@@ -2375,7 +2375,7 @@ pub(crate) async fn persist_workspace(
+     let _persistence_guard = state.persistence_mutation.lock().await;
+     let json = serialize_workspace(state).await?;
+     let store = app_handle
+-        .store(WORKSPACE_STORE_FILE)
++        .store(crate::suite::store_path(app_handle, WORKSPACE_STORE_FILE))
+         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
+     store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
+     store
+@@ -2395,7 +2395,7 @@ pub(crate) async fn persist_workspace_after(
+ 
+ pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
+     let store = app_handle
+-        .store(WORKSPACE_STORE_FILE)
++        .store(crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE))
+         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
+     let Some(content) = store
+         .get(WORKSPACE_STORE_KEY)
+diff --git a/crates/iec104sim-app/src/lib.rs b/crates/iec104sim-app/src/lib.rs
+index 1b20444..4baf828 100644
+--- a/crates/iec104sim-app/src/lib.rs
++++ b/crates/iec104sim-app/src/lib.rs
+@@ -2,6 +2,8 @@ mod commands;
+ mod point_event_json;
+ mod point_csv;
+ mod state;
++#[path = "../../shared/suite.rs"]
++mod suite;
+ #[path = "../../shared/tls_file_dialog.rs"]
+ mod tls_file_dialog;
+ pub mod update;
+@@ -11,8 +13,10 @@ use tauri::Manager;
+ 
+ #[cfg_attr(mobile, tauri::mobile_entry_point)]
+ pub fn run() {
+-    tauri::Builder::default()
+-        .plugin(tauri_plugin_updater::Builder::new().build())
++    let builder = tauri::Builder::default();
++    #[cfg(not(feature = "simlab-suite"))]
++    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
++    builder
+         .plugin(tauri_plugin_process::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+         .plugin(tauri_plugin_dialog::init())
+@@ -93,6 +97,8 @@ pub fn run() {
+             update::schedule_update_on_next_launch,
+         ])
+         .setup(|app| {
++            #[cfg(feature = "simlab-suite")]
++            suite::initialize(app, "iec104-slave", "cloud.carldai.simlab.iec104.slave")?;
+             if cfg!(debug_assertions) {
+                 app.handle().plugin(
+                     tauri_plugin_log::Builder::default()
+@@ -108,6 +114,7 @@ pub fn run() {
+                     log::warn!("failed to restore persisted slave workspace: {error}");
+                 }
+                 app_handle.state::<AppState>().mark_workspace_ready();
++                #[cfg(not(feature = "simlab-suite"))]
+                 if let Err(error) = update::install_pending_update(app_handle).await {
+                     log::warn!("automatic update on launch failed: {error}");
+                 }
+diff --git a/crates/iec104sim-app/src/update.rs b/crates/iec104sim-app/src/update.rs
+index 087832e..6a69e90 100644
+--- a/crates/iec104sim-app/src/update.rs
++++ b/crates/iec104sim-app/src/update.rs
+@@ -119,6 +119,7 @@ pub async fn check_for_update(
+     state: State<'_, UpdateState>,
+     force: Option<bool>,
+ ) -> Result<Option<UpdateMeta>, String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let force = force.unwrap_or(false);
+ 
+     // A choice made in the previous run is handled by the startup task. Do not
+@@ -171,6 +172,7 @@ pub async fn check_for_update(
+ /// Installs the already downloaded package. No network request is made here.
+ #[tauri::command]
+ pub async fn install_update(app: AppHandle, state: State<'_, UpdateState>) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let prepared = state.prepared.lock().await;
+     let update = prepared
+         .as_ref()
+@@ -194,6 +196,7 @@ pub async fn skip_update(
+     state: State<'_, UpdateState>,
+     version: String,
+ ) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let mut prepared = state.prepared.lock().await;
+     if !prepared
+         .as_ref()
+@@ -215,6 +218,7 @@ pub async fn schedule_update_on_next_launch(
+     state: State<'_, UpdateState>,
+     version: String,
+ ) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     let prepared = state.prepared.lock().await;
+     if !prepared
+         .as_ref()
+@@ -230,6 +234,7 @@ pub async fn schedule_update_on_next_launch(
+ /// Called from Tauri setup on every launch. It is a no-op unless the user chose
+ /// "install on next launch" in the previous run.
+ pub async fn install_pending_update(app: AppHandle) -> Result<(), String> {
++    crate::suite::ensure_component_updates_allowed()?;
+     if !read_bool(&app, KEY_INSTALL_ON_NEXT_LAUNCH) {
+         return Ok(());
+     }
+diff --git a/crates/iec104sim-app/tauri.suite.conf.json b/crates/iec104sim-app/tauri.suite.conf.json
+new file mode 100644
+index 0000000..6edd4a9
+--- /dev/null
++++ b/crates/iec104sim-app/tauri.suite.conf.json
+@@ -0,0 +1,32 @@
++{
++  "$schema": "https://schema.tauri.app/config/2",
++  "identifier": "cloud.carldai.simlab.iec104.slave",
++  "app": {
++    "windows": [
++      {
++        "label": "main",
++        "title": "IEC104Slave",
++        "create": false,
++        "width": 1200,
++        "height": 800,
++        "minWidth": 800,
++        "minHeight": 600,
++        "resizable": true,
++        "fullscreen": false
++      }
++    ]
++  },
++  "bundle": {
++    "createUpdaterArtifacts": false,
++    "windows": {
++      "webviewInstallMode": {
++        "type": "skip"
++      }
++    }
++  },
++  "plugins": {
++    "updater": {
++      "endpoints": []
++    }
++  }
++}
+diff --git a/crates/shared/suite.rs b/crates/shared/suite.rs
+new file mode 100644
+index 0000000..a85e1fc
+--- /dev/null
++++ b/crates/shared/suite.rs
+@@ -0,0 +1,94 @@
++use std::path::PathBuf;
++use tauri::AppHandle;
++#[cfg(feature = "simlab-suite")]
++use tauri::Manager;
++
++#[cfg(feature = "simlab-suite")]
++struct SuiteDataRoot(PathBuf);
++
++/// Suite stores use an absolute path; standalone stores retain their old path.
++pub(crate) fn store_path(app: &AppHandle, filename: &str) -> PathBuf {
++    #[cfg(feature = "simlab-suite")]
++    {
++        return app.state::<SuiteDataRoot>().0.join(filename);
++    }
++    #[cfg(not(feature = "simlab-suite"))]
++    {
++        let _ = app;
++        PathBuf::from(filename)
++    }
++}
++
++pub(crate) fn ensure_component_updates_allowed() -> Result<(), String> {
++    if cfg!(feature = "simlab-suite") {
++        Err("套件内组件由 SimLab 整包更新，请从套件入口获取新版。".into())
++    } else {
++        Ok(())
++    }
++}
++
++#[cfg(feature = "simlab-suite")]
++fn role_data_root(base: PathBuf, role: &str) -> Result<PathBuf, String> {
++    if !base.is_absolute() {
++        return Err("SIMLAB_DATA_DIR 必须是绝对路径。".into());
++    }
++    Ok(base.join(role))
++}
++
++#[cfg(feature = "simlab-suite")]
++pub(crate) fn initialize(
++    app: &mut tauri::App,
++    role: &str,
++    expected_identifier: &str,
++) -> Result<(), Box<dyn std::error::Error>> {
++    if app.config().identifier != expected_identifier {
++        return Err("套件构建缺少 tauri.suite.conf.json 配置。".into());
++    }
++    let base = match std::env::var_os("SIMLAB_DATA_DIR") {
++        Some(value) => PathBuf::from(value),
++        None => app.path().config_dir()?.join("SimLab"),
++    };
++    let root = role_data_root(base, role)?;
++    std::fs::create_dir_all(&root)?;
++    let webview_root = root.join("webview");
++    std::fs::create_dir_all(&webview_root)?;
++    app.manage(SuiteDataRoot(root));
++
++    // The suite overlay delays initial window creation until its storage path
++    // is available. Windows/Linux honor this directory. WKWebView storage on
++    // macOS is isolated by the suite-only bundle identifier instead.
++    let window = app
++        .config()
++        .app
++        .windows
++        .first()
++        .ok_or("套件缺少主窗口配置。")?;
++    tauri::WebviewWindowBuilder::from_config(app.handle(), window)?
++        .data_directory(webview_root)
++        .build()?;
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn updates_belong_to_the_selected_distribution() {
++        assert_eq!(
++            ensure_component_updates_allowed().is_err(),
++            cfg!(feature = "simlab-suite")
++        );
++    }
++
++    #[cfg(feature = "simlab-suite")]
++    #[test]
++    fn role_storage_is_absolute_and_separated() {
++        let base = std::env::temp_dir().join("SimLab 中文 space");
++        let master = role_data_root(base.clone(), "iec104-master").unwrap();
++        let slave = role_data_root(base.clone(), "iec104-slave").unwrap();
++        assert_eq!(master, base.join("iec104-master"));
++        assert_ne!(master, slave);
++        assert!(role_data_root(PathBuf::from("relative"), "iec104-master").is_err());
++    }
++}
+diff --git a/frontend/src/App.vue b/frontend/src/App.vue
+index c759201..e2592aa 100644
+--- a/frontend/src/App.vue
++++ b/frontend/src/App.vue
+@@ -12,6 +12,7 @@ import ServerSettingsModal from './components/ServerSettingsModal.vue'
+ import type { ServerInfo } from './types'
+ import AppDialog from '@shared/components/AppDialog.vue'
+ import UpdateDialog from '@shared/components/UpdateDialog.vue'
++import { isSimLabSuite } from '@shared/suite'
+ import ParseFrameDialog from '@shared/components/ParseFrameDialog.vue'
+ import Splitter from '@shared/components/Splitter.vue'
+ import { invoke } from '@tauri-apps/api/core'
+@@ -176,6 +177,7 @@ const updateMeta = ref<UpdateMeta | null>(null)
+ const updateVisible = ref(false)
+ 
+ async function checkUpdate(force = false): Promise<UpdateMeta | null> {
++  if (isSimLabSuite) return null
+   const meta = await invoke<UpdateMeta | null>('check_for_update', { force })
+   if (meta) {
+     updateMeta.value = meta
+@@ -207,9 +209,11 @@ onMounted(async () => {
+       void showAlert(`${t('remoteParams.configTimingCorrected')}\n${lines.join('\n')}`)
+     },
+   )
+-  setTimeout(() => {
+-    checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
+-  }, 2000)
++  if (!isSimLabSuite) {
++    setTimeout(() => {
++      checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
++    }, 2000)
++  }
+ })
+ 
+ onUnmounted(() => {
+@@ -341,6 +345,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
+       @close="parseFrameVisible = false"
+     />
+     <UpdateDialog
++      v-if="!isSimLabSuite"
+       :visible="updateVisible"
+       :version="updateMeta?.version ?? ''"
+       :notes="updateMeta?.notes ?? ''"
+diff --git a/frontend/src/components/Toolbar.vue b/frontend/src/components/Toolbar.vue
+index 54d8cba..dec6b81 100644
+--- a/frontend/src/components/Toolbar.vue
++++ b/frontend/src/components/Toolbar.vue
+@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
+ import { dialogKey } from '@shared/composables/useDialog'
+ import type { showAlert as ShowAlert, showPrompt as ShowPrompt, showConfirm as ShowConfirm } from '@shared/composables/useDialog'
+ import { useI18n } from '@shared/i18n'
++import { isSimLabSuite } from '@shared/suite'
+ import AboutDialog from '@shared/components/AboutDialog.vue'
+ import LangSwitch from '@shared/components/LangSwitch.vue'
+ import ThemeSwitch from '@shared/components/ThemeSwitch.vue'
+@@ -49,6 +50,7 @@ const updateChecking = ref(false)
+ const MIRROR_RELEASE_URL = 'https://ghfast.top/https://github.com/Karl-Dai/IEC60870-5-104-Simulator/releases/latest'
+ 
+ async function manualCheckUpdate() {
++  if (isSimLabSuite) return
+   if (busy.value || updateChecking.value) return
+   busy.value = true
+   updateChecking.value = true
+@@ -102,7 +104,7 @@ const secondaryMenus = computed(() => [
+   ] },
+ ])
+ const helpItems = computed(() => [
+-  { id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), action: manualCheckUpdate },
++  ...(!isSimLabSuite ? [{ id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), action: manualCheckUpdate }] : []),
+   { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
+ ])
+ </script>
+diff --git a/frontend/tests/suiteUpdate.spec.ts b/frontend/tests/suiteUpdate.spec.ts
+new file mode 100644
+index 0000000..b52b5a6
+--- /dev/null
++++ b/frontend/tests/suiteUpdate.spec.ts
+@@ -0,0 +1,31 @@
++import { afterEach, describe, expect, it, vi } from 'vitest'
++import { shallowMount, flushPromises } from '@vue/test-utils'
++import App from '../src/App.vue'
++import UpdateDialog from '@shared/components/UpdateDialog.vue'
++import AboutDialog from '@shared/components/AboutDialog.vue'
++
++const invokeMock = vi.fn((..._args: unknown[]) => Promise.resolve(null))
++vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invokeMock(...args) }))
++
++describe.skipIf(import.meta.env.VITE_SIMLAB_SUITE !== '1')('suite update ownership', () => {
++  afterEach(() => { vi.useRealTimers(); invokeMock.mockClear() })
++
++  it('does not offer standalone release downloads in About', () => {
++    const wrapper = shallowMount(AboutDialog, { props: { visible: true } })
++    expect(wrapper.find('[data-testid=release-history-link]').exists()).toBe(false)
++    wrapper.unmount()
++  })
++
++  it('never invokes component updates on startup or manual requests', async () => {
++    vi.useFakeTimers()
++    const wrapper = shallowMount(App)
++    await flushPromises()
++    await vi.advanceTimersByTimeAsync(3000)
++    const vm = wrapper.vm as unknown as { checkUpdate: (force: boolean) => Promise<unknown> }
++    expect(await vm.checkUpdate(true)).toBeNull()
++    expect(invokeMock.mock.calls.some(([command]) => command === 'check_for_update')).toBe(false)
++    expect(wrapper.findComponent(UpdateDialog).exists()).toBe(false)
++    wrapper.unmount()
++  })
++})
+diff --git a/master-frontend/src/App.vue b/master-frontend/src/App.vue
+index 37d162e..16a006c 100644
+--- a/master-frontend/src/App.vue
++++ b/master-frontend/src/App.vue
+@@ -9,6 +9,7 @@ import ValuePanel from './components/ValuePanel.vue'
+ import LogPanel from './components/LogPanel.vue'
+ import AppDialog from '@shared/components/AppDialog.vue'
+ import UpdateDialog from '@shared/components/UpdateDialog.vue'
++import { isSimLabSuite } from '@shared/suite'
+ import ParseFrameDialog from '@shared/components/ParseFrameDialog.vue'
+ import Splitter from '@shared/components/Splitter.vue'
+ import { showAlert, showConfirm, showPrompt, dialogKey } from '@shared/composables/useDialog'
+@@ -165,9 +166,11 @@ onMounted(async () => {
+       refreshTree()
+     },
+   )
+-  setTimeout(() => {
+-    checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
+-  }, 2000)
++  if (!isSimLabSuite) {
++    setTimeout(() => {
++      checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
++    }, 2000)
++  }
+ })
+ 
+ onUnmounted(() => {
+@@ -219,6 +222,7 @@ const updateMeta = ref<{ version: string; notes: string; pub_date?: string | nul
+ const updateVisible = ref(false)
+ 
+ async function checkUpdate(force = false): Promise<{ version: string; notes: string; pub_date?: string | null } | null> {
++  if (isSimLabSuite) return null
+   const meta = await invoke<{ version: string; notes: string; pub_date?: string | null } | null>('check_for_update', { force })
+   if (meta) {
+     updateMeta.value = meta
+@@ -306,6 +310,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
+       @close="parseFrameVisible = false"
+     />
+     <UpdateDialog
++      v-if="!isSimLabSuite"
+       :visible="updateVisible"
+       :version="updateMeta?.version ?? ''"
+       :notes="updateMeta?.notes ?? ''"
+diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
+index ae050d8..4be70e3 100644
+--- a/master-frontend/src/components/Toolbar.vue
++++ b/master-frontend/src/components/Toolbar.vue
+@@ -14,6 +14,7 @@ import LangSwitch from '@shared/components/LangSwitch.vue'
+ import ThemeSwitch from '@shared/components/ThemeSwitch.vue'
+ import VersionBadge from '@shared/components/VersionBadge.vue'
+ import { useI18n } from '@shared/i18n'
++import { isSimLabSuite } from '@shared/suite'
+ 
+ const { t } = useI18n()
+ 
+@@ -33,6 +34,7 @@ const updateChecking = ref(false)
+ const MIRROR_RELEASE_URL = 'https://ghfast.top/https://github.com/Karl-Dai/IEC60870-5-104-Simulator/releases/latest'
+ 
+ async function manualCheckUpdate() {
++  if (isSimLabSuite) return
+   if (updateChecking.value) return
+   updateChecking.value = true
+   try {
+@@ -448,7 +450,7 @@ const menus = computed(() => [
+   ] },
+ ])
+ const helpItems = computed(() => [
+-  { id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), disabled: updateChecking.value, busy: updateChecking.value, action: manualCheckUpdate },
++  ...(!isSimLabSuite ? [{ id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), disabled: updateChecking.value, busy: updateChecking.value, action: manualCheckUpdate }] : []),
+   { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
+ ])
+ function menuHeading(id: string) {
+diff --git a/master-frontend/tests/suiteUpdate.spec.ts b/master-frontend/tests/suiteUpdate.spec.ts
+new file mode 100644
+index 0000000..b52b5a6
+--- /dev/null
++++ b/master-frontend/tests/suiteUpdate.spec.ts
+@@ -0,0 +1,31 @@
++import { afterEach, describe, expect, it, vi } from 'vitest'
++import { shallowMount, flushPromises } from '@vue/test-utils'
++import App from '../src/App.vue'
++import UpdateDialog from '@shared/components/UpdateDialog.vue'
++import AboutDialog from '@shared/components/AboutDialog.vue'
++
++const invokeMock = vi.fn((..._args: unknown[]) => Promise.resolve(null))
++vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: (...args: unknown[]) => invokeMock(...args) }))
++
++describe.skipIf(import.meta.env.VITE_SIMLAB_SUITE !== '1')('suite update ownership', () => {
++  afterEach(() => { vi.useRealTimers(); invokeMock.mockClear() })
++
++  it('does not offer standalone release downloads in About', () => {
++    const wrapper = shallowMount(AboutDialog, { props: { visible: true } })
++    expect(wrapper.find('[data-testid=release-history-link]').exists()).toBe(false)
++    wrapper.unmount()
++  })
++
++  it('never invokes component updates on startup or manual requests', async () => {
++    vi.useFakeTimers()
++    const wrapper = shallowMount(App)
++    await flushPromises()
++    await vi.advanceTimersByTimeAsync(3000)
++    const vm = wrapper.vm as unknown as { checkUpdate: (force: boolean) => Promise<unknown> }
++    expect(await vm.checkUpdate(true)).toBeNull()
++    expect(invokeMock.mock.calls.some(([command]) => command === 'check_for_update')).toBe(false)
++    expect(wrapper.findComponent(UpdateDialog).exists()).toBe(false)
++    wrapper.unmount()
++  })
++})
+diff --git a/shared-frontend/components/AboutDialog.vue b/shared-frontend/components/AboutDialog.vue
+index f32445e..81df5d7 100644
+--- a/shared-frontend/components/AboutDialog.vue
++++ b/shared-frontend/components/AboutDialog.vue
+@@ -5,6 +5,7 @@ import { ABOUT_RELEASE_NOTES, APP_NAME, REPO_URL, RELEASES_URL, SIMLAB_URL } fro
+ import { useI18n } from '../i18n'
+ import { documentationUrlForLocale } from '../i18n/documentation'
+ import { useClipboardFlash } from '../composables/useClipboardFlash'
++import { isSimLabSuite } from '../suite'
+ 
+ defineProps<{ visible: boolean }>()
+ const emit = defineEmits<{ (e: 'close'): void }>()
+@@ -46,8 +47,10 @@ onMounted(async () => {
+               data-testid="documentation-link"
+               @click.prevent="openOrCopy(documentationUrl, t('about.homepageLabel'))"
+             >{{ t('about.homepageLabel') }}</a>
+-            <span class="about-sep">·</span>
+-            <a href="#" @click.prevent="openOrCopy(RELEASES_URL, t('about.releasesLabel'))">{{ t('about.releasesLabel') }}</a>
++            <template v-if="!isSimLabSuite">
++              <span class="about-sep">·</span>
++              <a href="#" data-testid="release-history-link" @click.prevent="openOrCopy(RELEASES_URL, t('about.releasesLabel'))">{{ t('about.releasesLabel') }}</a>
++            </template>
+             <span v-if="copied" class="about-toast">{{ copied }}</span>
+           </div>
+         </div>
+diff --git a/shared-frontend/suite.ts b/shared-frontend/suite.ts
+new file mode 100644
+index 0000000..4ec7695
+--- /dev/null
++++ b/shared-frontend/suite.ts
+@@ -0,0 +1,2 @@
++/** The suite owns updates; standalone builds keep their existing updater. */
++export const isSimLabSuite = import.meta.env.VITE_SIMLAB_SUITE === '1'

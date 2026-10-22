@@ -1,0 +1,97 @@
+:root {
+  color-scheme: light;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  --font-display: "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --workspace: #eff3f6;
+  --sidebar: #f8fafb;
+  --topbar: #f8fafbcc;
+  --surface: #fff;
+  --role-surface: #fbfcfd;
+  --text: #203441;
+  --secondary: #536774;
+  --muted: #5d707c;
+  --line: #dce4e9;
+  --brand: #244d61;
+  --on-brand: #fff;
+  --copper: #9d572e;
+  --hover: #eaf0f4;
+  --selected: #e4edf2;
+  --green: #286b60;
+  --green-line: #cbdfd7;
+  --green-surface: #edf5f1;
+  --focus: #4d8eae;
+  --shadow: #16324306;
+  --iec: #356983;
+  --iec-surface: #eef5f9;
+  --modbus: #995f35;
+  --modbus-surface: #fbf3ed;
+  --pmu: #39766c;
+  --pmu-surface: #edf6f2;
+  --opcua: #715a98;
+  --opcua-surface: #f4f0f9;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --workspace: #14212a;
+  --sidebar: #172730;
+  --topbar: #172730dd;
+  --surface: #1c2f3a;
+  --role-surface: #1a2b35;
+  --text: #e5edf2;
+  --secondary: #b2c3ce;
+  --muted: #9bafbd;
+  --line: #344a57;
+  --brand: #b4d7e8;
+  --on-brand: #14212a;
+  --copper: #e4a47a;
+  --hover: #263e4b;
+  --selected: #294452;
+  --green: #9dd8c2;
+  --green-line: #365c51;
+  --green-surface: #203a34;
+  --focus: #8bbfd9;
+  --shadow: #0002;
+  --iec: #9dc7e0;
+  --iec-surface: #213f50;
+  --modbus: #e7b58d;
+  --modbus-surface: #42372e;
+  --pmu: #9dd4c5;
+  --pmu-surface: #25423b;
+  --opcua: #c6b3e3;
+  --opcua-surface: #37314b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+    --workspace: #14212a;
+    --sidebar: #172730;
+    --topbar: #172730dd;
+    --surface: #1c2f3a;
+    --role-surface: #1a2b35;
+    --text: #e5edf2;
+    --secondary: #b2c3ce;
+    --muted: #9bafbd;
+    --line: #344a57;
+    --brand: #b4d7e8;
+    --on-brand: #14212a;
+    --copper: #e4a47a;
+    --hover: #263e4b;
+    --selected: #294452;
+    --green: #9dd8c2;
+    --green-line: #365c51;
+    --green-surface: #203a34;
+    --focus: #8bbfd9;
+    --shadow: #0002;
+    --iec: #9dc7e0;
+    --iec-surface: #213f50;
+    --modbus: #e7b58d;
+    --modbus-surface: #42372e;
+    --pmu: #9dd4c5;
+    --pmu-surface: #25423b;
+    --opcua: #c6b3e3;
+    --opcua-surface: #37314b;
+  }
+}

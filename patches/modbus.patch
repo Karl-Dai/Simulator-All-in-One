@@ -1,0 +1,393 @@
+diff --git a/docs/simlab-suite.md b/docs/simlab-suite.md
+new file mode 100644
+index 0000000..11eb749
+--- /dev/null
++++ b/docs/simlab-suite.md
+@@ -0,0 +1,42 @@
++# SimLab embedded builds
++
++The standalone commands and `wails.json` files keep their existing behavior.
++The suite script merges the small `wails.suite.json` overlay for the build and
++restores the original config and macOS plist on exit. Do not run a standalone
++build of the same role concurrently with a suite build.
++
++From the repository root, with Go, Node.js and native Wails prerequisites:
++
++```sh
++npm ci --ignore-scripts
++./go/scripts/suite.sh master -platform darwin/arm64
++./go/scripts/suite.sh slave -platform darwin/arm64
++# On a Linux host with GTK3 and WebKitGTK 4.1 development packages:
++./go/scripts/suite.sh master -platform linux/amd64
++./go/scripts/suite.sh slave -platform linux/amd64
++# On a Windows host (Git Bash):
++./go/scripts/suite.sh master -platform windows/amd64 -webview2 error
++./go/scripts/suite.sh slave -platform windows/amd64 -webview2 error
++```
++
++The script always enables `simlab_suite`; Linux also enables `webkit2_41`.
++It emits the normal `go/cmd/{master,slave}gui/build/bin` payloads, with the
++macOS bundle IDs `cloud.carldai.simlab.modbus.master` and
++`cloud.carldai.simlab.modbus.slave`. No child installer is needed on Windows;
++the suite owns the WebView2 prerequisite and the complete suite update.
++
++The launcher supplies an absolute `SIMLAB_DATA_DIR` (its user configuration
++directory plus `SimLab`). Each role owns `modbus.master` or `modbus.slave`
++below it. A missing override defaults to `os.UserConfigDir()/SimLab`; relative
++overrides fail explicitly. Windows places its WebView2 profile there; Linux
++sets per-role XDG data/config/cache directories before Wails initializes.
++macOS WKWebView storage uses the separate suite bundle ID in the standard
++macOS website-data location. User-selected `.modbusproj` and certificate paths
++retain their existing semantics and are never rewritten by suite startup.
++
++Checks (apply the normal macOS CGO flags when testing on macOS):
++
++```sh
++./go/scripts/mastergui.sh test ./...
++./go/scripts/mastergui.sh test -tags simlab_suite ./...
++```
+diff --git a/go/cmd/mastergui/main.go b/go/cmd/mastergui/main.go
+index b01a3de..35592e2 100644
+--- a/go/cmd/mastergui/main.go
++++ b/go/cmd/mastergui/main.go
+@@ -26,12 +26,16 @@ func main() {
+ 		appMenu.Append(menu.AppMenu())
+ 	}
+ 	appMenu.Append(menu.EditMenu())
+-	if err := wails.Run(&options.App{
++	appOptions := &options.App{
+ 		Title: "ModbusMaster — Go", Width: 1280, Height: 800,
+ 		MinWidth: 900, MinHeight: 600, Menu: appMenu,
+ 		AssetServer: &assetserver.Options{Assets: frontend},
+ 		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
+-	}); err != nil {
++	}
++	if err := configureSuite(appOptions); err != nil {
++		log.Fatal(err)
++	}
++	if err := wails.Run(appOptions); err != nil {
+ 		log.Fatal(err)
+ 	}
+ }
+diff --git a/go/cmd/mastergui/suite_default.go b/go/cmd/mastergui/suite_default.go
+new file mode 100644
+index 0000000..acbd098
+--- /dev/null
++++ b/go/cmd/mastergui/suite_default.go
+@@ -0,0 +1,7 @@
++//go:build !simlab_suite
++
++package main
++
++import "github.com/wailsapp/wails/v2/pkg/options"
++
++func configureSuite(*options.App) error { return nil }
+diff --git a/go/cmd/mastergui/suite_enabled.go b/go/cmd/mastergui/suite_enabled.go
+new file mode 100644
+index 0000000..085b9e6
+--- /dev/null
++++ b/go/cmd/mastergui/suite_enabled.go
+@@ -0,0 +1,10 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
++	"github.com/wailsapp/wails/v2/pkg/options"
++)
++
++func configureSuite(app *options.App) error { return suitehost.Configure(app, "master") }
+diff --git a/go/cmd/mastergui/wails.suite.json b/go/cmd/mastergui/wails.suite.json
+new file mode 100644
+index 0000000..ca5bbba
+--- /dev/null
++++ b/go/cmd/mastergui/wails.suite.json
+@@ -0,0 +1,6 @@
++{
++  "build:tags": "simlab_suite",
++  "info": {
++    "comments": "SimLab embedded ModbusMaster"
++  }
++}
+diff --git a/go/cmd/slavegui/main.go b/go/cmd/slavegui/main.go
+index 693cce8..385cdf8 100644
+--- a/go/cmd/slavegui/main.go
++++ b/go/cmd/slavegui/main.go
+@@ -26,12 +26,16 @@ func main() {
+ 		appMenu.Append(menu.AppMenu())
+ 	}
+ 	appMenu.Append(menu.EditMenu())
+-	if err := wails.Run(&options.App{
++	appOptions := &options.App{
+ 		Title: "ModbusSlave — Go", Width: 1280, Height: 800,
+ 		MinWidth: 900, MinHeight: 600, Menu: appMenu,
+ 		AssetServer: &assetserver.Options{Assets: frontend},
+ 		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
+-	}); err != nil {
++	}
++	if err := configureSuite(appOptions); err != nil {
++		log.Fatal(err)
++	}
++	if err := wails.Run(appOptions); err != nil {
+ 		log.Fatal(err)
+ 	}
+ }
+diff --git a/go/cmd/slavegui/suite_default.go b/go/cmd/slavegui/suite_default.go
+new file mode 100644
+index 0000000..acbd098
+--- /dev/null
++++ b/go/cmd/slavegui/suite_default.go
+@@ -0,0 +1,7 @@
++//go:build !simlab_suite
++
++package main
++
++import "github.com/wailsapp/wails/v2/pkg/options"
++
++func configureSuite(*options.App) error { return nil }
+diff --git a/go/cmd/slavegui/suite_enabled.go b/go/cmd/slavegui/suite_enabled.go
+new file mode 100644
+index 0000000..c6e1e0d
+--- /dev/null
++++ b/go/cmd/slavegui/suite_enabled.go
+@@ -0,0 +1,10 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
++	"github.com/wailsapp/wails/v2/pkg/options"
++)
++
++func configureSuite(app *options.App) error { return suitehost.Configure(app, "slave") }
+diff --git a/go/cmd/slavegui/wails.suite.json b/go/cmd/slavegui/wails.suite.json
+new file mode 100644
+index 0000000..a17eda0
+--- /dev/null
++++ b/go/cmd/slavegui/wails.suite.json
+@@ -0,0 +1,6 @@
++{
++  "build:tags": "simlab_suite",
++  "info": {
++    "comments": "SimLab embedded ModbusSlave"
++  }
++}
+diff --git a/go/internal/suitehost/config.go b/go/internal/suitehost/config.go
+new file mode 100644
+index 0000000..d5dd0f7
+--- /dev/null
++++ b/go/internal/suitehost/config.go
+@@ -0,0 +1,79 @@
++// Package suitehost isolates the embedded SimLab build from standalone apps.
++package suitehost
++
++import (
++	"fmt"
++	"os"
++	"path/filepath"
++	"runtime"
++
++	"github.com/wailsapp/wails/v2/pkg/options"
++	"github.com/wailsapp/wails/v2/pkg/options/linux"
++	"github.com/wailsapp/wails/v2/pkg/options/windows"
++)
++
++// DataDir never resolves against the launcher's working directory. A relative
++// override is rejected instead of silently creating data beside a payload.
++func DataDir(role string) (string, error) {
++	if role != "master" && role != "slave" {
++		return "", fmt.Errorf("unsupported Modbus suite role %q", role)
++	}
++	root := os.Getenv("SIMLAB_DATA_DIR")
++	if root == "" {
++		config, err := os.UserConfigDir()
++		if err != nil {
++			return "", fmt.Errorf("resolve SimLab data directory: %w", err)
++		}
++		root = filepath.Join(config, "SimLab")
++	}
++	if !filepath.IsAbs(root) {
++		return "", fmt.Errorf("SIMLAB_DATA_DIR must be an absolute path")
++	}
++	return filepath.Join(root, "modbus."+role), nil
++}
++
++// Configure is called only by the simlab_suite build-tagged entry point.
++func Configure(app *options.App, role string) error {
++	dir, err := DataDir(role)
++	if err != nil {
++		return err
++	}
++	if err := os.MkdirAll(dir, 0700); err != nil {
++		return fmt.Errorf("create Modbus suite data directory: %w", err)
++	}
++	identity := "cloud.carldai.simlab.modbus." + role
++	if role == "master" {
++		app.Title = "ModbusMaster — SimLab"
++	} else {
++		app.Title = "ModbusSlave — SimLab"
++	}
++	switch runtime.GOOS {
++	case "windows":
++		if app.Windows == nil {
++			app.Windows = &windows.Options{}
++		}
++		app.Windows.WebviewUserDataPath = filepath.Join(dir, "webview")
++	case "linux":
++		// WebKitGTK's default context follows GLib's XDG locations. Set these
++		// before Wails initializes GTK/WebKit and keep the two roles separate.
++		for name, leaf := range map[string]string{
++			"XDG_DATA_HOME": "data", "XDG_CONFIG_HOME": "config", "XDG_CACHE_HOME": "cache",
++		} {
++			path := filepath.Join(dir, leaf)
++			if err := os.MkdirAll(path, 0700); err != nil {
++				return fmt.Errorf("create %s: %w", name, err)
++			}
++			if err := os.Setenv(name, path); err != nil {
++				return fmt.Errorf("set %s: %w", name, err)
++			}
++		}
++		if app.Linux == nil {
++			// Preserve Wails' default GPU policy when setting ProgramName.
++			app.Linux = &linux.Options{WebviewGpuPolicy: linux.WebviewGpuPolicyNever}
++		}
++		app.Linux.ProgramName = identity
++	}
++	// WKWebView on macOS uses the suite-specific CFBundleIdentifier written
++	// by suite.sh, rather than the standalone app's website-data namespace.
++	return nil
++}
+diff --git a/go/internal/suitehost/config_test.go b/go/internal/suitehost/config_test.go
+new file mode 100644
+index 0000000..35bb6e9
+--- /dev/null
++++ b/go/internal/suitehost/config_test.go
+@@ -0,0 +1,43 @@
++package suitehost
++
++import (
++	"os"
++	"path/filepath"
++	"testing"
++
++	"github.com/wailsapp/wails/v2/pkg/options"
++)
++
++func TestDataDirSeparatesRolesAndRejectsRelativeRoot(t *testing.T) {
++	root := t.TempDir()
++	t.Setenv("SIMLAB_DATA_DIR", root)
++	master, err := DataDir("master")
++	if err != nil {
++		t.Fatal(err)
++	}
++	slave, err := DataDir("slave")
++	if err != nil {
++		t.Fatal(err)
++	}
++	if master != filepath.Join(root, "modbus.master") || slave != filepath.Join(root, "modbus.slave") {
++		t.Fatalf("unexpected suite paths: %q, %q", master, slave)
++	}
++	if _, err := DataDir("../master"); err == nil {
++		t.Fatal("accepted a role that escapes its data root")
++	}
++	t.Setenv("SIMLAB_DATA_DIR", "relative-data")
++	if _, err := DataDir("master"); err == nil {
++		t.Fatal("accepted a working-directory-dependent override")
++	}
++}
++
++func TestConfigureFailsForUnwritableDataRoot(t *testing.T) {
++	file := filepath.Join(t.TempDir(), "file")
++	if err := os.WriteFile(file, []byte("not a directory"), 0600); err != nil {
++		t.Fatal(err)
++	}
++	t.Setenv("SIMLAB_DATA_DIR", file)
++	if err := Configure(&options.App{}, "master"); err == nil {
++		t.Fatal("accepted a data root that cannot contain a profile")
++	}
++}
+diff --git a/go/scripts/suite.sh b/go/scripts/suite.sh
+new file mode 100755
+index 0000000..2d9c1e6
+--- /dev/null
++++ b/go/scripts/suite.sh
+@@ -0,0 +1,77 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
++role="${1:-}"
++case "$role" in
++  master|slave) shift ;;
++  *) echo 'Usage: suite.sh master|slave [Wails build flags]' >&2; exit 2 ;;
++esac
++project_dir="$repo_root/go/cmd/${role}gui"
++platform="$(go env GOOS)/$(go env GOARCH)"
++expect_platform=0
++for arg in "$@"; do
++  if [[ "$expect_platform" == 1 ]]; then platform="$arg"; expect_platform=0; fi
++  case "$arg" in
++    -platform) expect_platform=1 ;;
++    -platform=*) platform="${arg#-platform=}" ;;
++  esac
++done
++if [[ "$expect_platform" == 1 ]]; then
++  echo '-platform requires a value' >&2; exit 2
++fi
++
++# Wails 2 reads wails.json only. Restore the standalone config and plist even
++# after a failed build, and prevent two suite builds of one role from racing.
++lock_dir="$project_dir/.simlab-build.lock"
++if ! mkdir "$lock_dir" 2>/dev/null; then
++  echo "Another suite build owns $lock_dir" >&2; exit 1
++fi
++backup_dir="$(mktemp -d "${TMPDIR:-/tmp}/simlab-modbus-${role}.XXXXXX")"
++cp "$project_dir/wails.json" "$backup_dir/wails.json"
++cp "$project_dir/build/darwin/Info.plist" "$backup_dir/Info.plist"
++restore() {
++  cp "$backup_dir/wails.json" "$project_dir/wails.json"
++  cp "$backup_dir/Info.plist" "$project_dir/build/darwin/Info.plist"
++  rm -rf "$backup_dir"
++  rmdir "$lock_dir"
++}
++trap restore EXIT
++trap 'exit 130' INT
++trap 'exit 143' TERM
++
++node - "$project_dir" "$role" <<'NODE'
++const fs = require('node:fs')
++const path = require('node:path')
++const [project, role] = process.argv.slice(2)
++const configPath = path.join(project, 'wails.json')
++const base = JSON.parse(fs.readFileSync(configPath, 'utf8'))
++const suite = JSON.parse(fs.readFileSync(path.join(project, 'wails.suite.json'), 'utf8'))
++fs.writeFileSync(configPath, JSON.stringify({ ...base, ...suite, info: { ...base.info, ...suite.info } }, null, 2) + '\n')
++const plistPath = path.join(project, 'build/darwin/Info.plist')
++const original = fs.readFileSync(plistPath, 'utf8')
++const standaloneId = `com.modbus${role}.dev`
++if (!original.includes(`<string>${standaloneId}</string>`)) throw new Error('unexpected standalone bundle identifier')
++fs.writeFileSync(plistPath, original.replace(`<string>${standaloneId}</string>`, `<string>cloud.carldai.simlab.modbus.${role}</string>`))
++NODE
++
++if [[ "$(uname -s)" == Darwin ]]; then
++  export CGO_ENABLED=1
++  export CGO_CFLAGS="${CGO_CFLAGS:+$CGO_CFLAGS }-mmacosx-version-min=13.0"
++  export CGO_LDFLAGS="${CGO_LDFLAGS:+$CGO_LDFLAGS }-framework UniformTypeIdentifiers -mmacosx-version-min=13.0"
++fi
++tags=simlab_suite
++if [[ "$platform" == linux/* ]]; then tags="$tags,webkit2_41"; fi
++
++wails_binary="$(command -v wails || true)"
++if [[ -z "$wails_binary" ]]; then
++  go_path="$(go env GOPATH)"
++  wails_binary="${go_path%%:*}/bin/wails"
++fi
++wails_command=(go run github.com/wailsapp/wails/v2/cmd/wails@v2.14.0)
++if [[ -x "$wails_binary" ]]; then
++  wails_version="$("$wails_binary" version)"
++  if [[ "${wails_version%%$'\n'*}" == v2.14.0 ]]; then wails_command=("$wails_binary"); fi
++fi
++cd "$project_dir"
++"${wails_command[@]}" build -tags "$tags" "$@"

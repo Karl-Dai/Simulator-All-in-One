@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "SimLab",
+  "outputfilename": "SimLab",
+  "frontend:install": "npm ci",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {"name": "Karl-Dai Karl", "email": "kelsoprotein@gmail.com"},
+  "info": {
+    "companyName": "Karl-Dai",
+    "productName": "SimLab",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright © Karl-Dai",
+    "comments": "工业协议模拟器套件"
+  }
+}

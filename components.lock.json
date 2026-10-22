@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "suiteVersion": "0.1.0",
+  "repositories": [
+    {
+      "id": "modbus",
+      "directory": "ModbusSim",
+      "url": "https://github.com/Karl-Dai/ModbusSim.git",
+      "commit": "cb7654b0b1781abd342fae65db3ed8aead388c0d",
+      "patch": "patches/modbus.patch"
+    },
+    {
+      "id": "iec104",
+      "directory": "IEC60870-5-104-Simulator",
+      "url": "https://github.com/Karl-Dai/IEC60870-5-104-Simulator.git",
+      "commit": "d9355e9dadfa8d6ab7b0d0666788bc7fa745a6cd",
+      "patch": "patches/iec104.patch",
+      "cargoLock": "packaging/locks/iec104.Cargo.lock",
+      "cargoLockSha256": "e9cddf06fdbbc4d5b5c058f50b9356bd0256dfba9ee0c55438b46c35d7e8affd"
+    },
+    {
+      "id": "pmu",
+      "directory": "PmuSim",
+      "url": "https://github.com/Karl-Dai/PmuSim.git",
+      "commit": "483661acf89dee3362a97928c78f7e1a2ca8a9f9",
+      "patch": "patches/pmu.patch",
+      "cargoLock": "packaging/locks/pmu.Cargo.lock",
+      "cargoLockSha256": "421edf2c257c002eccdbbda6f2b45c2252e2fddcc426bfef12854d696869b63d"
+    },
+    {
+      "id": "opcua",
+      "directory": "OPCUASim",
+      "url": "https://github.com/Karl-Dai/OPCUASim.git",
+      "commit": "d05cf5ef398c55955862e71874faa7321f31e87e",
+      "patch": "patches/opcua.patch",
+      "cargoLock": "packaging/locks/opcua.Cargo.lock",
+      "cargoLockSha256": "a9ee0cefcafa9c491feb99f2f4a4e7882249e963c20a6a11343c28787125b3b7"
+    }
+  ],
+  "components": [
+    {
+      "id": "modbus.master",
+      "repository": "modbus",
+      "product": "ModbusMaster",
+      "project": "go/cmd/mastergui",
+      "frontend": "master-frontend",
+      "binary": "ModbusMaster",
+      "version": "0.17.9",
+      "bundleId": "cloud.carldai.simlab.modbus.master"
+    },
+    {
+      "id": "modbus.slave",
+      "repository": "modbus",
+      "product": "ModbusSlave",
+      "project": "go/cmd/slavegui",
+      "frontend": "frontend",
+      "binary": "ModbusSlave",
+      "version": "0.17.9",
+      "bundleId": "cloud.carldai.simlab.modbus.slave"
+    },
+    {
+      "id": "iec104.master",
+      "repository": "iec104",
+      "product": "IEC104Master",
+      "project": "crates/iec104master-app",
+      "frontend": "master-frontend",
+      "binary": "iec104master-app",
+      "version": "1.15.22",
+      "bundleId": "cloud.carldai.simlab.iec104.master"
+    },
+    {
+      "id": "iec104.slave",
+      "repository": "iec104",
+      "product": "IEC104Slave",
+      "project": "crates/iec104sim-app",
+      "frontend": "frontend",
+      "binary": "iec104sim-app",
+      "version": "1.15.22",
+      "bundleId": "cloud.carldai.simlab.iec104.slave"
+    },
+    {
+      "id": "pmu.master",
+      "repository": "pmu",
+      "product": "PmuSim",
+      "project": "crates/pmusim-app",
+      "frontend": "frontend",
+      "binary": "pmusim-app",
+      "version": "0.13.2",
+      "bundleId": "cloud.carldai.simlab.pmu.master"
+    },
+    {
+      "id": "pmu.sub",
+      "repository": "pmu",
+      "product": "PmuSub",
+      "project": "crates/pmusim-sub",
+      "frontend": "frontend-sub",
+      "binary": "pmusim-sub",
+      "version": "0.13.2",
+      "bundleId": "cloud.carldai.simlab.pmu.sub"
+    },
+    {
+      "id": "opcua.master",
+      "repository": "opcua",
+      "product": "OPCUAMaster",
+      "project": "crates/opcuamaster-app",
+      "frontend": "master-frontend",
+      "binary": "opcuamaster-app",
+      "version": "0.8.0",
+      "bundleId": "cloud.carldai.simlab.opcua.master"
+    },
+    {
+      "id": "opcua.server",
+      "repository": "opcua",
+      "product": "OPCUAServer",
+      "project": "crates/opcuaserver-app",
+      "frontend": "frontend",
+      "binary": "opcuaserver-app",
+      "version": "0.8.0",
+      "bundleId": "cloud.carldai.simlab.opcua.server"
+    }
+  ]
+}
