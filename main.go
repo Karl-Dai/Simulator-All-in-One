@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Karl-Dai/SimLab-Desktop/internal/suite"
 	"github.com/wailsapp/wails/v2"
@@ -60,9 +61,14 @@ func main() {
 		return
 	}
 	app := &App{service: service}
-	appMenu := menu.NewMenu()
-	appMenu.Append(menu.AppMenu())
-	appMenu.Append(menu.EditMenu())
+	// These menu roles are macOS-only. Attaching them on Windows creates an
+	// empty native menu bar above the webview.
+	var appMenu *menu.Menu
+	if runtime.GOOS == "darwin" {
+		appMenu = menu.NewMenu()
+		appMenu.Append(menu.AppMenu())
+		appMenu.Append(menu.EditMenu())
+	}
 	err = wails.Run(&options.App{
 		Title: "SimLab", Width: 1160, Height: 900, MinWidth: 820, MinHeight: 650,
 		BackgroundColour: options.NewRGB(239, 243, 246),
