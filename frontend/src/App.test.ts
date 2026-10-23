@@ -21,6 +21,7 @@ beforeEach(() => {
     preferences: {
       schemaVersion: 1,
       theme: "system",
+      language: "zh-CN",
       favorites: [],
       recent: {},
     },
@@ -51,6 +52,10 @@ beforeEach(() => {
       favorites: favorite ? [id] : [],
     })),
     SetTheme: vi.fn(async (theme) => ({ ...state.preferences, theme })),
+    SetLanguage: vi.fn(async (language) => ({
+      ...state.preferences,
+      language,
+    })),
   };
   window.go = { main: { App: api } };
 });
@@ -116,5 +121,29 @@ describe("complete suite launcher", () => {
     await flushPromises();
     expect(api.SetTheme).toHaveBeenCalledWith("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+  it("switches the interface language and persists it", async () => {
+    const app = render();
+    await flushPromises();
+    await app.get(".lang-button").trigger("click");
+    await flushPromises();
+    expect(api.SetLanguage).toHaveBeenCalledWith("en");
+    expect(app.text()).toContain("All Simulators");
+    expect(app.get('[aria-label="Open Modbus Master"]')).toBeTruthy();
+    await app.get(".lang-button").trigger("click");
+    await flushPromises();
+    expect(api.SetLanguage).toHaveBeenCalledWith("auto");
+    await app.get(".lang-button").trigger("click");
+    await flushPromises();
+    expect(api.SetLanguage).toHaveBeenCalledWith("zh-CN");
+    expect(app.text()).toContain("全部模拟器");
+  });
+  it("resolves auto language from the system locale", async () => {
+    state.preferences.language = "auto";
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    const app = render();
+    await flushPromises();
+    expect(app.text()).toContain("All Simulators");
+    expect(document.documentElement.lang).toBe("en");
   });
 });

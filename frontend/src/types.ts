@@ -1,6 +1,8 @@
+export type Language = "auto" | "zh-CN" | "en";
 export interface Preferences {
   schemaVersion: number;
   theme: "system" | "light" | "dark";
+  language: Language;
   favorites: string[];
   recent: Record<string, string>;
 }
@@ -32,4 +34,5 @@ export interface SuiteAPI {
   Launch(id: string): Promise<LaunchResult>;
   SetFavorite(id: string, favorite: boolean): Promise<Preferences>;
   SetTheme(theme: Preferences["theme"]): Promise<Preferences>;
+  SetLanguage(language: Language): Promise<Preferences>;
 }

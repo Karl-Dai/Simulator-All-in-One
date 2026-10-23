@@ -11,12 +11,13 @@ import (
 type Preferences struct {
 	SchemaVersion int               `json:"schemaVersion"`
 	Theme         string            `json:"theme"`
+	Language      string            `json:"language"`
 	Favorites     []string          `json:"favorites"`
 	Recent        map[string]string `json:"recent"`
 }
 
 func defaultPreferences() Preferences {
-	return Preferences{1, "system", []string{}, map[string]string{}}
+	return Preferences{1, "system", "auto", []string{}, map[string]string{}}
 }
 
 func clonePreferences(p Preferences) Preferences {
@@ -54,6 +55,9 @@ func loadPreferences(root string) (Preferences, string) {
 	}
 	if p.Theme != "system" && p.Theme != "light" && p.Theme != "dark" {
 		p.Theme = "system"
+	}
+	if p.Language != "auto" && p.Language != "zh-CN" && p.Language != "en" {
+		p.Language = "auto"
 	}
 	return p, ""
 }

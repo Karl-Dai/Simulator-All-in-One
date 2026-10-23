@@ -147,6 +147,21 @@ func (s *Service) SetTheme(theme string) (Preferences, error) {
 	return clonePreferences(next), nil
 }
 
+func (s *Service) SetLanguage(language string) (Preferences, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if language != "auto" && language != "zh-CN" && language != "en" {
+		return clonePreferences(s.prefs), fmt.Errorf("未知语言")
+	}
+	next := s.prefs
+	next.Language = language
+	if err := savePreferences(s.dataDir, next); err != nil {
+		return clonePreferences(s.prefs), err
+	}
+	s.prefs = next
+	return clonePreferences(next), nil
+}
+
 func (s *Service) Launch(id string) (LaunchResult, error) {
 	if _, ok := FindRole(id); !ok {
 		return LaunchResult{}, fmt.Errorf("未知模拟器角色")

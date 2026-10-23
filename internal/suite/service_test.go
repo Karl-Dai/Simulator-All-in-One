@@ -147,6 +147,27 @@ func TestPreferencesConcurrencyAndReload(t *testing.T) {
 	}
 }
 
+func TestSetLanguagePersistedAndNormalized(t *testing.T) {
+	root, data, _ := fixture(t, "program")
+	s := New(root, data)
+	if _, err := s.SetLanguage("en"); err != nil {
+		t.Fatal(err)
+	}
+	if got := New(root, data).Snapshot().Preferences.Language; got != "en" {
+		t.Fatalf("language persisted: %q", got)
+	}
+	if _, err := s.SetLanguage("fr"); err == nil {
+		t.Fatal("expected invalid language error")
+	}
+	legacy := `{"schemaVersion":1,"theme":"light","favorites":[],"recent":{}}`
+	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte(legacy), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := New(root, data).Snapshot().Preferences.Language; got != "auto" {
+		t.Fatalf("legacy language normalized: %q", got)
+	}
+}
+
 func TestCorruptPreferencesPreserved(t *testing.T) {
 	root, data, _ := fixture(t, "program")
 	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte("broken"), 0600); err != nil {
