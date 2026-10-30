@@ -46,6 +46,411 @@ index 0000000..11eb749
 +./go/scripts/mastergui.sh test ./...
 +./go/scripts/mastergui.sh test -tags simlab_suite ./...
 +```
+diff --git a/frontend/src/components/NewConnectionDialog.vue b/frontend/src/components/NewConnectionDialog.vue
+index ba2495b..09bc021 100644
+--- a/frontend/src/components/NewConnectionDialog.vue
++++ b/frontend/src/components/NewConnectionDialog.vue
+@@ -1,10 +1,13 @@
+ <script setup lang="ts">
+ import type { project } from "../../wailsjs/go/models"
+ import { vModal } from 'shared-frontend'
+-import { ref, watch } from 'vue'
++import { computed, ref, watch } from 'vue'
+ import * as App from '../../wailsjs/go/main/App'
+ import { PathField, showAlert, useI18n } from 'shared-frontend'
+ 
++import RegisterRangeEditor from './RegisterRangeEditor.vue'
++import { rangesValid, type RegisterRange } from '../utils/registerRanges'
++
+ const { t } = useI18n()
+ 
+ interface Props { show: boolean }
+@@ -15,6 +18,9 @@ const port = ref('5020')
+ const slaveId = ref('1')
+ const slaveName = ref('')
+ const initMode = ref('zero')
++const registerRanges = ref<RegisterRange[]>([])
++const isSaving = ref(false)
++const canSubmit = computed(() => !isSaving.value && rangesValid(registerRanges.value))
+ const transport = ref('tcp')
+ const serialPort = ref('')
+ const baudRate = ref(9600)
+@@ -37,6 +43,7 @@ watch(() => props.show, (visible) => {
+   slaveId.value = '1'
+   slaveName.value = ''
+   initMode.value = 'zero'
++  registerRanges.value = []
+   transport.value = 'tcp'
+   serialPort.value = ''
+   baudRate.value = 9600
+@@ -81,6 +88,7 @@ async function pickFile(target: 'cert' | 'key' | 'ca' | 'pkcs12') {
+ }
+ 
+ async function submit() {
++  if (!canSubmit.value) return
+   const portNum = Number(port.value)
+   const initialSlaveId = Number(slaveId.value)
+   const needsPort = transport.value === 'tcp' || transport.value === 'rtu_over_tcp'
+@@ -112,21 +120,25 @@ async function submit() {
+       RequireClientCert: tlsRequireClientCert.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value,
+     }
+   }
++  isSaving.value = true
+   try {
+-    await App.CreateConnection({ Transport: transportPayload, InitMode: initMode.value, SlaveID: initialSlaveId, Name: slaveName.value.trim() })
++    await App.CreateConnection({ Transport: transportPayload, InitMode: initMode.value, SlaveID: initialSlaveId, Name: slaveName.value.trim(), RegisterRanges: registerRanges.value })
+     emit('created')
+     emit('close')
+   } catch (e) {
+     await showAlert(String(e))
++  } finally {
++    isSaving.value = false
+   }
+ }
+ </script>
+ 
+ <template>
+   <Teleport to="body">
+-    <div v-if="show" v-modal="() => emit('close')" class="modal-overlay" @click.self="emit('close')">
+-      <div class="modal-box">
+-        <div class="modal-title">{{ t('toolbar.newConnection') }}</div>
++    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-connection-title" @click.self="!isSaving && emit('close')">
++      <div class="modal-box" :aria-busy="isSaving">
++        <fieldset class="creation-fields" :disabled="isSaving">
++        <div id="new-connection-title" class="modal-title">{{ t('toolbar.newConnection') }}</div>
+         <div class="modal-field">
+           <label>{{ t('dialog.transport') }}</label>
+           <select v-model="transport" class="form-select">
+@@ -138,8 +150,8 @@ async function submit() {
+         </div>
+         <template v-if="transport === 'tcp' || transport === 'rtu_over_tcp'">
+           <div class="modal-field">
+-            <label>{{ t('dialog.portNumber') }}</label>
+-            <input v-model="port" type="number" min="1" max="65535" @keyup.enter="submit" />
++            <label for="new-connection-port">{{ t('dialog.portNumber') }}</label>
++            <input id="new-connection-port" v-model="port" type="number" min="1" max="65535" @keyup.enter="submit" />
+           </div>
+         </template>
+         <template v-if="transport === 'tcp'">
+@@ -222,12 +234,12 @@ async function submit() {
+           </div>
+         </template>
+         <div class="modal-field">
+-          <label>{{ t('dialog.slaveId') }}</label>
+-          <input v-model="slaveId" type="number" min="1" max="247" />
++          <label for="new-connection-slaveId">{{ t('dialog.slaveId') }}</label>
++          <input id="new-connection-slaveId" v-model="slaveId" type="number" min="1" max="247" />
+         </div>
+         <div class="modal-field">
+-          <label>{{ t('dialog.slaveName') }}</label>
+-          <input v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" />
++          <label for="new-connection-slaveName">{{ t('dialog.slaveName') }}</label>
++          <input id="new-connection-slaveName" v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" />
+         </div>
+         <div class="modal-field">
+           <label>{{ t('dialog.initValue') }}</label>
+@@ -240,9 +252,11 @@ async function submit() {
+             </label>
+           </div>
+         </div>
++        <RegisterRangeEditor v-model="registerRanges" :disabled="isSaving" />
++        </fieldset>
+         <div class="modal-actions">
+-          <button class="modal-btn cancel" @click="emit('close')">{{ t('common.cancel') }}</button>
+-          <button class="modal-btn confirm" @click="submit">{{ t('common.ok') }}</button>
++          <button class="modal-btn cancel" :disabled="isSaving" @click="emit('close')">{{ t('common.cancel') }}</button>
++          <button class="modal-btn confirm" :disabled="!canSubmit" @click="submit">{{ t(isSaving ? 'ranges.creating' : 'common.ok') }}</button>
+         </div>
+       </div>
+     </div>
+@@ -251,7 +265,9 @@ async function submit() {
+ 
+ <style scoped>
+ .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+-.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: min(760px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.creation-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
++.modal-btn:disabled { opacity: .5; cursor: default; }
+ .modal-title { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+ .modal-field { margin-bottom: 14px; }
+ .modal-field label { display: block; font-size: 12px; color: var(--c-subtext0); margin-bottom: 6px; }
+diff --git a/frontend/src/components/NewSlaveDialog.vue b/frontend/src/components/NewSlaveDialog.vue
+index 154b6eb..960cdec 100644
+--- a/frontend/src/components/NewSlaveDialog.vue
++++ b/frontend/src/components/NewSlaveDialog.vue
+@@ -1,9 +1,12 @@
+ <script setup lang="ts">
+ import { vModal } from 'shared-frontend'
+-import { ref, watch } from 'vue'
++import { computed, ref, watch } from 'vue'
+ import * as App from '../../wailsjs/go/main/App'
+ import { useI18n, showAlert } from 'shared-frontend'
+ 
++import RegisterRangeEditor from './RegisterRangeEditor.vue'
++import { rangesValid, type RegisterRange } from '../utils/registerRanges'
++
+ const { t } = useI18n()
+ 
+ interface Props { show: boolean; connectionId: string | null }
+@@ -13,43 +16,52 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
+ const slaveId = ref('2')
+ const slaveName = ref('')
+ const initMode = ref('zero')
++const registerRanges = ref<RegisterRange[]>([])
++const isSaving = ref(false)
++const canSubmit = computed(() => !isSaving.value && rangesValid(registerRanges.value))
+ 
+ watch(() => props.show, (visible) => {
+   if (!visible) return
+   slaveId.value = '2'
+   slaveName.value = ''
+   initMode.value = 'zero'
++  registerRanges.value = []
+ })
+ 
+ async function submit() {
++  if (!canSubmit.value) return
+   if (!props.connectionId) return
+   const id = Number(slaveId.value)
+   if (!id || id < 1 || id > 247) {
+     await showAlert(t('errors.invalidSlaveId'))
+     return
+   }
+-  emit('close')
++  isSaving.value = true
+   try {
+-    await App.AddDevice({ ConnectionID: props.connectionId, SlaveID: id, Name: slaveName.value.trim(), InitMode: initMode.value })
++    await App.AddDevice({ ConnectionID: props.connectionId, SlaveID: id, Name: slaveName.value.trim(), InitMode: initMode.value, RegisterRanges: registerRanges.value })
+     emit('created')
++    emit('close')
+   } catch (e) {
+     await showAlert(String(e))
++  } finally {
++    isSaving.value = false
+   }
+ }
+ </script>
+ 
+ <template>
+   <Teleport to="body">
+-    <div v-if="show" v-modal="() => emit('close')" class="modal-overlay" @click.self="emit('close')">
+-      <div class="modal-box">
+-        <div class="modal-title">{{ t('toolbar.newSlave') }}</div>
++    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-slave-title" @click.self="!isSaving && emit('close')">
++      <div class="modal-box" :aria-busy="isSaving">
++        <fieldset class="creation-fields" :disabled="isSaving">
++        <div id="new-slave-title" class="modal-title">{{ t('toolbar.newSlave') }}</div>
+         <div class="modal-field">
+-          <label>{{ t('dialog.slaveId') }}</label>
+-          <input v-model="slaveId" type="number" min="1" max="247" @keyup.enter="submit" />
++          <label for="new-slave-slaveId">{{ t('dialog.slaveId') }}</label>
++          <input id="new-slave-slaveId" v-model="slaveId" type="number" min="1" max="247" @keyup.enter="submit" />
+         </div>
+         <div class="modal-field">
+-          <label>{{ t('dialog.slaveName') }}</label>
+-          <input v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" @keyup.enter="submit" />
++          <label for="new-slave-slaveName">{{ t('dialog.slaveName') }}</label>
++          <input id="new-slave-slaveName" v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" @keyup.enter="submit" />
+         </div>
+         <div class="modal-field">
+           <label>{{ t('dialog.initValue') }}</label>
+@@ -58,9 +70,11 @@ async function submit() {
+             <label class="radio-label"><input type="radio" v-model="initMode" value="random" /> {{ t('dialog.initRandom') }}</label>
+           </div>
+         </div>
++        <RegisterRangeEditor v-model="registerRanges" :disabled="isSaving" />
++        </fieldset>
+         <div class="modal-actions">
+-          <button class="modal-btn cancel" @click="emit('close')">{{ t('common.cancel') }}</button>
+-          <button class="modal-btn confirm" @click="submit">{{ t('common.ok') }}</button>
++          <button class="modal-btn cancel" :disabled="isSaving" @click="emit('close')">{{ t('common.cancel') }}</button>
++          <button class="modal-btn confirm" :disabled="!canSubmit" @click="submit">{{ t(isSaving ? 'ranges.creating' : 'common.ok') }}</button>
+         </div>
+       </div>
+     </div>
+@@ -69,7 +83,9 @@ async function submit() {
+ 
+ <style scoped>
+ .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+-.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: min(760px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.creation-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
++.modal-btn:disabled { opacity: .5; cursor: default; }
+ .modal-title { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+ .modal-field { margin-bottom: 14px; }
+ .modal-field label { display: block; font-size: 12px; color: var(--c-subtext0); margin-bottom: 6px; }
+diff --git a/frontend/src/components/RegisterRangeEditor.vue b/frontend/src/components/RegisterRangeEditor.vue
+new file mode 100644
+index 0000000..29bfa41
+--- /dev/null
++++ b/frontend/src/components/RegisterRangeEditor.vue
+@@ -0,0 +1,86 @@
++<script setup lang="ts">
++import { computed, useId } from 'vue'
++import { useI18n } from 'shared-frontend'
++import { REGISTER_AREAS, rangeError, rangeCounts, type RegisterRange } from '../utils/registerRanges'
++
++const ranges = defineModel<RegisterRange[]>({ required: true })
++defineProps<{ disabled?: boolean }>()
++const { t } = useI18n()
++const editorId = useId()
++const rows = computed(() => ranges.value.map((range, index) => ({ range, index })))
++const summary = computed(() => ranges.value.reduce((sum, range, index) => {
++  if (rangeError(ranges.value, index)) return sum
++  const counts = rangeCounts(range)
++  return { points: sum.points + counts.points, addresses: sum.addresses + counts.addresses }
++}, { points: 0, addresses: 0 }))
++function add(type: string, bit: boolean) {
++  const end = Math.max(-1, ...ranges.value.filter(r => r.RegisterType === type).map(r => r.EndAddress))
++  const start = Math.min(end + 1, 65535)
++  ranges.value = [...ranges.value, { RegisterType: type, StartAddress: start, EndAddress: start, DataType: bit ? 'bool' : 'uint16', Endian: 'big' }]
++}
++function remove(index: number) {
++  ranges.value = ranges.value.filter((_, i) => i !== index)
++}
++</script>
++
++<template>
++  <section class="range-editor" :aria-label="t('ranges.title')">
++    <h3>{{ t('ranges.title') }}</h3>
++    <p class="range-hint">{{ t('ranges.help') }}</p>
++    <fieldset v-for="area in REGISTER_AREAS" :key="area.type" :disabled="disabled" class="range-area" :data-area="area.type">
++      <legend>{{ t(area.label) }} <span>{{ area.fc }}</span></legend>
++      <div v-for="{ range, index } in rows.filter(row => row.range.RegisterType === area.type)" :key="index" class="range-row" :data-range-index="index">
++        <div class="range-fields">
++          <label>{{ t('table.startAddress') }}
++            <input v-model.number="range.StartAddress" type="number" min="0" max="65535" step="1" :aria-invalid="!!rangeError(ranges, index)" :aria-describedby="`${editorId}-${index}-error`" />
++          </label>
++          <label>{{ t('table.endAddress') }}
++            <input v-model.number="range.EndAddress" type="number" min="0" max="65535" step="1" :aria-invalid="!!rangeError(ranges, index)" :aria-describedby="`${editorId}-${index}-error`" />
++          </label>
++          <label>{{ t('dialog.dataType') }}
++            <select v-model="range.DataType" :aria-describedby="`${editorId}-${index}-error`">
++              <option v-if="area.bit" value="bool">Bool</option>
++              <template v-else>
++                <option value="uint16">UInt16</option><option value="int16">Int16</option>
++                <option value="uint32">UInt32</option><option value="int32">Int32</option><option value="float32">Float32</option>
++              </template>
++            </select>
++          </label>
++          <label v-if="!area.bit">{{ t('dialog.byteOrder') }}
++            <select v-model="range.Endian">
++              <option value="big">{{ t('dialog.byteOrderBig') }}</option><option value="little">{{ t('dialog.byteOrderLittle') }}</option>
++              <option value="mid_big">{{ t('dialog.byteOrderMidBig') }}</option><option value="mid_little">{{ t('dialog.byteOrderMidLittle') }}</option>
++            </select>
++          </label>
++          <button type="button" class="range-remove" @click="remove(index)">{{ t('ranges.remove') }}</button>
++        </div>
++        <p v-if="rangeError(ranges, index)" :id="`${editorId}-${index}-error`" class="range-error" role="alert">{{ t(rangeError(ranges, index)!) }}</p>
++        <p v-else class="range-count">{{ t('ranges.count', rangeCounts(range)) }}</p>
++      </div>
++      <p v-if="!rows.some(row => row.range.RegisterType === area.type)" class="range-empty">{{ t('ranges.empty') }}</p>
++      <button type="button" class="range-add" @click="add(area.type, area.bit)">{{ t('ranges.add') }}</button>
++    </fieldset>
++    <p class="range-total" aria-live="polite">{{ t('ranges.total', summary) }}</p>
++  </section>
++</template>
++
++<style scoped>
++.range-editor { margin-top: 20px; color: var(--c-text); }
++h3 { margin: 0 0 6px; font-size: 14px; }
++.range-hint, .range-empty, .range-count { color: var(--c-subtext0); font-size: 12px; margin: 6px 0; line-height: 1.5; }
++.range-area { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--c-surface1); border-radius: 6px; min-width: 0; }
++legend { padding: 0 5px; font-size: 13px; font-weight: 600; }
++legend span { color: var(--c-subtext0); margin-left: 6px; font-size: 12px; font-weight: 400; }
++.range-row + .range-row { border-top: 1px solid var(--c-surface1); padding-top: 10px; margin-top: 10px; }
++.range-fields { display: grid; grid-template-columns: 1fr 1fr 1fr 1.4fr auto; gap: 8px; align-items: end; }
++label { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 12px; color: var(--c-subtext0); }
++input, select, button { box-sizing: border-box; min-height: 34px; font: inherit; border-radius: 4px; color: var(--c-text); border: 1px solid var(--c-surface1); background: var(--c-surface0); }
++input, select { width: 100%; padding: 6px; min-width: 0; }
++button { cursor: pointer; padding: 6px 10px; font-size: 12px; }
++button:hover { background: var(--c-surface1); }
++button:disabled { opacity: .6; cursor: default; }
++input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
++.range-error { color: var(--c-red); font-size: 12px; margin: 6px 0; }
++.range-total { font-size: 13px; margin-bottom: 0; }
++@media (max-width: 650px) { .range-fields { grid-template-columns: 1fr 1fr; } .range-remove { justify-self: start; } }
++</style>
+diff --git a/frontend/src/utils/registerRanges.ts b/frontend/src/utils/registerRanges.ts
+new file mode 100644
+index 0000000..59de44f
+--- /dev/null
++++ b/frontend/src/utils/registerRanges.ts
+@@ -0,0 +1,35 @@
++import type { appstate } from '../../wailsjs/go/models'
++
++export type RegisterRange = appstate.RegisterRange
++export const REGISTER_AREAS = [
++  { type: 'coil', label: 'table.coil', fc: 'FC01 / FC05 / FC15', bit: true },
++  { type: 'discrete_input', label: 'table.discreteInput', fc: 'FC02', bit: true },
++  { type: 'holding_register', label: 'table.holdingRegister', fc: 'FC03 / FC06 / FC16', bit: false },
++  { type: 'input_register', label: 'table.inputRegister', fc: 'FC04', bit: false },
++] as const
++
++export function rangeWidth(range: RegisterRange): number {
++  return ['uint32', 'int32', 'float32'].includes(range.DataType) ? 2 : 1
++}
++
++export function rangeError(ranges: RegisterRange[], index: number): string | null {
++  const r = ranges[index]!
++  if (!Number.isInteger(r.StartAddress) || !Number.isInteger(r.EndAddress)
++    || r.StartAddress < 0 || r.EndAddress > 65535 || r.StartAddress > r.EndAddress) return 'ranges.invalidAddress'
++  const area = REGISTER_AREAS.find(a => a.type === r.RegisterType)
++  if (!area || (area.bit ? r.DataType !== 'bool' : !['uint16', 'int16', 'uint32', 'int32', 'float32'].includes(r.DataType))
++    || !['big', 'little', 'mid_big', 'mid_little'].includes(r.Endian)) return 'ranges.invalidType'
++  if ((r.EndAddress - r.StartAddress + 1) % rangeWidth(r) !== 0) return 'ranges.incompletePoint'
++  if (ranges.some((other, j) => j !== index && other.RegisterType === r.RegisterType
++    && r.StartAddress <= other.EndAddress && other.StartAddress <= r.EndAddress)) return 'ranges.overlap'
++  return null
++}
++
++export function rangesValid(ranges: RegisterRange[]): boolean {
++  return ranges.every((_, index) => !rangeError(ranges, index))
++}
++
++export function rangeCounts(range: RegisterRange): { points: number; addresses: number } {
++  const addresses = range.EndAddress - range.StartAddress + 1
++  return { points: addresses / rangeWidth(range), addresses }
++}
+diff --git a/frontend/wailsjs/go/models.ts b/frontend/wailsjs/go/models.ts
+index 070383d..804d978 100755
+--- a/frontend/wailsjs/go/models.ts
++++ b/frontend/wailsjs/go/models.ts
+@@ -1,10 +1,18 @@
+ export namespace appstate {
+ 
++	export interface RegisterRange {
++	    RegisterType: string;
++	    StartAddress: number;
++	    EndAddress: number;
++	    DataType: string;
++	    Endian: string;
++	}
+ 	export interface AddDeviceRequest {
+ 	    ConnectionID: string;
+ 	    SlaveID: number;
+ 	    Name: string;
+ 	    InitMode: string;
++	    RegisterRanges: RegisterRange[];
+ 	}
+ 	export interface AddRegisterRequest {
+ 	    ConnectionID: string;
+@@ -21,6 +29,7 @@ export namespace appstate {
+ 	    InitMode: string;
+ 	    SlaveID: number;
+ 	    Name: string;
++	    RegisterRanges: RegisterRange[];
+ 	}
+ 	export interface DeviceInfo {
+ 	    SlaveID: number;
+@@ -42,6 +51,7 @@ export namespace appstate {
+ 	    Min: number;
+ 	    Max: number;
+ 	}
++
+ 	export interface RegisterValueInfo {
+ 	    Address: number;
+ 	    Value: number;
 diff --git a/go/cmd/mastergui/main.go b/go/cmd/mastergui/main.go
 index b01a3de..35592e2 100644
 --- a/go/cmd/mastergui/main.go
@@ -173,6 +578,365 @@ index 0000000..a17eda0
 +  "info": {
 +    "comments": "SimLab embedded ModbusSlave"
 +  }
++}
+diff --git a/go/internal/appstate/manager.go b/go/internal/appstate/manager.go
+index 6c22533..8f77f5d 100644
+--- a/go/internal/appstate/manager.go
++++ b/go/internal/appstate/manager.go
+@@ -38,6 +38,8 @@ type CreateConnectionRequest struct {
+ 	InitMode  string
+ 	SlaveID   uint8
+ 	Name      string
++	// A non-nil slice selects explicit ranges; an empty slice creates no points.
++	RegisterRanges []RegisterRange
+ }
+ 
+ // CreateConnection registers a stopped connection with one default device, as
+@@ -46,6 +48,10 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
+ 	if req.SlaveID < 1 || req.SlaveID > 247 {
+ 		return ConnectionInfo{}, errors.New("slave_id must be between 1 and 247")
+ 	}
++	device, err := createDevice(req.SlaveID, req.Name, req.InitMode, req.RegisterRanges, true)
++	if err != nil {
++		return ConnectionInfo{}, err
++	}
+ 	m.mu.Lock()
+ 	defer m.mu.Unlock()
+ 
+@@ -53,12 +59,6 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
+ 	m.nextID++
+ 
+ 	conn := m.newConnection(id, req.Transport)
+-	var device *slave.Device
+-	if req.InitMode == "random" {
+-		device = slave.WithRandomRegisters(req.SlaveID, req.Name, defaultMaxAddress)
+-	} else {
+-		device = slave.WithDefaultRegisters(req.SlaveID, req.Name, defaultMaxAddress)
+-	}
+ 	if err := conn.server.AddDevice(device); err != nil {
+ 		return ConnectionInfo{}, fmt.Errorf("failed to add default device: %w", err)
+ 	}
+@@ -260,13 +260,14 @@ type DeviceInfo struct {
+ 	RegisterCount int
+ }
+ 
+-// AddDeviceRequest is add_slave_device's input. InitMode selects the seeded
+-// register set: "random", "zero", or anything else for an empty device.
++// AddDeviceRequest configures initial points and values for one new device.
++// Nil RegisterRanges preserves legacy IPC behavior; [] explicitly creates no points.
+ type AddDeviceRequest struct {
+-	ConnectionID string
+-	SlaveID      uint8
+-	Name         string
+-	InitMode     string
++	ConnectionID   string
++	SlaveID        uint8
++	Name           string
++	InitMode       string
++	RegisterRanges []RegisterRange
+ }
+ 
+ // AddDevice registers a device on a connection.
+@@ -281,14 +282,9 @@ func (m *Manager) AddDevice(req AddDeviceRequest) (DeviceInfo, error) {
+ 		return DeviceInfo{}, err
+ 	}
+ 
+-	var device *slave.Device
+-	switch req.InitMode {
+-	case "random":
+-		device = slave.WithRandomRegisters(req.SlaveID, req.Name, defaultMaxAddress)
+-	case "zero":
+-		device = slave.WithDefaultRegisters(req.SlaveID, req.Name, defaultMaxAddress)
+-	default:
+-		device = slave.NewDevice(req.SlaveID, req.Name)
++	device, err := createDevice(req.SlaveID, req.Name, req.InitMode, req.RegisterRanges, false)
++	if err != nil {
++		return DeviceInfo{}, err
+ 	}
+ 	count := len(device.RegisterDefs)
+ 	if err := conn.server.AddDevice(device); err != nil {
+diff --git a/go/internal/appstate/register_ranges.go b/go/internal/appstate/register_ranges.go
+new file mode 100644
+index 0000000..ce30227
+--- /dev/null
++++ b/go/internal/appstate/register_ranges.go
+@@ -0,0 +1,111 @@
++package appstate
++
++import (
++	"fmt"
++	"math/rand"
++	"sort"
++
++	"github.com/Karl-Dai/ModbusSim/go/internal/register"
++	"github.com/Karl-Dai/ModbusSim/go/internal/slave"
++)
++
++// RegisterRange describes inclusive raw addresses, not the number of typed points.
++// int fields ensure invalid IPC input is rejected before narrowing to uint16.
++type RegisterRange struct {
++	RegisterType string
++	StartAddress int
++	EndAddress   int
++	DataType     string
++	Endian       string
++}
++
++func rangeDefinitions(ranges []RegisterRange) ([]register.RegisterDef, error) {
++	ordered := append([]RegisterRange{}, ranges...)
++	sort.Slice(ordered, func(i, j int) bool {
++		if ordered[i].RegisterType != ordered[j].RegisterType {
++			return ordered[i].RegisterType < ordered[j].RegisterType
++		}
++		return ordered[i].StartAddress < ordered[j].StartAddress
++	})
++	// Validate intervals before expanding: even repeated full-area ranges cannot
++	// allocate an unbounded definition set.
++	for i, r := range ordered {
++		if r.StartAddress < 0 || r.EndAddress > 65535 || r.EndAddress < r.StartAddress {
++			return nil, fmt.Errorf("range %s: addresses must satisfy 0 <= start <= end <= 65535", r.RegisterType)
++		}
++		def, err := registerDef(AddRegisterRequest{RegisterType: r.RegisterType, DataType: r.DataType, Endian: r.Endian})
++		if err != nil {
++			return nil, err
++		}
++		bitArea := def.RegisterType == register.Coil || def.RegisterType == register.DiscreteInput
++		if (bitArea && def.DataType != register.TypeBool) || (!bitArea && def.DataType == register.TypeBool) {
++			return nil, fmt.Errorf("range %s: use bool for bit areas and a numeric type for register areas", r.RegisterType)
++		}
++		width := int(def.DataType.RegisterCount())
++		if (r.EndAddress-r.StartAddress+1)%width != 0 {
++			return nil, fmt.Errorf("range %s@%d..%d cannot contain complete %s points", r.RegisterType, r.StartAddress, r.EndAddress, r.DataType)
++		}
++		if i > 0 && ordered[i-1].RegisterType == r.RegisterType && ordered[i-1].EndAddress >= r.StartAddress {
++			return nil, fmt.Errorf("range %s@%d overlaps another range", r.RegisterType, r.StartAddress)
++		}
++	}
++	defs := make([]register.RegisterDef, 0)
++	for _, r := range ordered {
++		def, _ := registerDef(AddRegisterRequest{RegisterType: r.RegisterType, DataType: r.DataType, Endian: r.Endian})
++		for address := r.StartAddress; address <= r.EndAddress; address += int(def.DataType.RegisterCount()) {
++			def.Address = uint16(address)
++			defs = append(defs, def)
++		}
++	}
++	return defs, nil
++}
++
++func createDevice(id uint8, name, initMode string, ranges []RegisterRange, legacyConnection bool) (*slave.Device, error) {
++	// Preserve older IPC clients. Both current dialogs always send an explicit
++	// array, including [] for an empty device. Project loading uses saved points.
++	if ranges == nil {
++		if initMode == "random" {
++			return slave.WithRandomRegisters(id, name, defaultMaxAddress), nil
++		}
++		if legacyConnection || initMode == "zero" {
++			return slave.WithDefaultRegisters(id, name, defaultMaxAddress), nil
++		}
++		return slave.NewDevice(id, name), nil
++	}
++	if initMode != "" && initMode != "zero" && initMode != "random" {
++		return nil, fmt.Errorf("unknown initialization mode %q", initMode)
++	}
++	defs, err := rangeDefinitions(ranges)
++	if err != nil {
++		return nil, err
++	}
++	d := slave.NewDevice(id, name)
++	d.RegisterDefs = defs
++	for _, def := range defs {
++		d.RegisterMap.EnsureFromDef(def)
++		if initMode != "random" {
++			continue
++		}
++		value := float64(rand.Intn(65536))
++		switch def.DataType {
++		case register.TypeBool:
++			value = float64(rand.Intn(2))
++		case register.TypeInt16:
++			value -= 32768
++		case register.TypeUInt32:
++			value = float64(rand.Uint32())
++		case register.TypeInt32:
++			value = float64(int32(rand.Uint32()))
++		case register.TypeFloat:
++			value = rand.Float64()*2000 - 1000
++		}
++		words, err := register.EncodeValue(value, def.DataType, def.Endian)
++		if err != nil {
++			return nil, err
++		}
++		for offset, word := range words {
++			writeRaw(d.RegisterMap, def.RegisterType, def.Address+uint16(offset), word)
++		}
++	}
++	return d, nil
++}
+diff --git a/go/internal/appstate/register_ranges_test.go b/go/internal/appstate/register_ranges_test.go
+new file mode 100644
+index 0000000..a23df8b
+--- /dev/null
++++ b/go/internal/appstate/register_ranges_test.go
+@@ -0,0 +1,160 @@
++package appstate
++
++import (
++	"bytes"
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/mbap"
++	"github.com/Karl-Dai/ModbusSim/go/internal/register"
++	"math"
++	"net"
++	"path/filepath"
++	"testing"
++	"time"
++)
++
++func TestExplicitRegisterRangesWireAndProject(t *testing.T) {
++	m := NewManager(Events{})
++	defer m.CloseAll()
++	port := freePort(t)
++	ranges := []RegisterRange{
++		{"coil", 0, 15, "bool", "big"},
++		{"discrete_input", 0, 1, "bool", "big"},
++		{"holding_register", 0, 9, "uint16", "big"},
++		{"holding_register", 100, 119, "float32", "little"},
++		{"input_register", 65534, 65535, "uint32", "mid_big"},
++	}
++	info, err := m.CreateConnection(CreateConnectionRequest{Transport: tcpTransport(port), SlaveID: 1, RegisterRanges: ranges})
++	if err != nil {
++		t.Fatal(err)
++	}
++	defs, err := m.ListRegisters(info.ID, 1, "")
++	if err != nil || len(defs) != 39 {
++		t.Fatalf("definitions: %d %v", len(defs), err)
++	}
++	if err = m.StartConnection(info.ID); err != nil {
++		t.Fatal(err)
++	}
++	peer, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer peer.Close()
++	_ = peer.SetDeadline(time.Now().Add(5 * time.Second))
++	exchange := func(request, want []byte) {
++		t.Helper()
++		if err := mbap.WriteFrame(peer, 1, 1, request); err != nil {
++			t.Fatal(err)
++		}
++		_, got, err := mbap.ReadFrame(peer)
++		if err != nil || !bytes.Equal(got, want) {
++			t.Fatalf("request %x: got %x want %x (%v)", request, got, want, err)
++		}
++	}
++	exchange([]byte{6, 0, 0, 0, 42}, []byte{6, 0, 0, 0, 42})
++	exchange([]byte{3, 0, 0, 0, 1}, []byte{3, 2, 0, 42})
++	exchange([]byte{16, 0, 1, 0, 2, 4, 0, 7, 0, 8}, []byte{16, 0, 1, 0, 2})
++	exchange([]byte{3, 0, 0, 0, 3}, []byte{3, 6, 0, 42, 0, 7, 0, 8})
++	exchange([]byte{5, 0, 0, 255, 0}, []byte{5, 0, 0, 255, 0})
++	exchange([]byte{1, 0, 0, 0, 1}, []byte{1, 1, 1})
++	exchange([]byte{15, 0, 1, 0, 2, 1, 3}, []byte{15, 0, 1, 0, 2})
++	exchange([]byte{1, 0, 0, 0, 3}, []byte{1, 1, 7})
++	exchange([]byte{2, 0, 0, 0, 1}, []byte{2, 1, 0})
++	exchange([]byte{4, 255, 254, 0, 2}, []byte{4, 4, 0, 0, 0, 0})
++	exchange([]byte{3, 0, 9, 0, 2}, []byte{0x83, 2})   // crosses a hole
++	exchange([]byte{6, 0, 10, 0, 42}, []byte{0x86, 2}) // not configured
++	exchange([]byte{4, 0, 0, 0, 1}, []byte{0x84, 2})   // same address, different area
++	path := filepath.Join(t.TempDir(), "ranges.modbusproj")
++	if err := m.SaveProject(path); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := m.LoadProject(path); err != nil {
++		t.Fatal(err)
++	}
++	loaded, err := m.ListRegisters(info.ID, 1, "")
++	if err != nil || len(loaded) != 39 {
++		t.Fatalf("loaded: %d %v", len(loaded), err)
++	}
++	value, err := m.ReadRegister(info.ID, 1, "holding_register", 0)
++	if err != nil || value.Value != 42 {
++		t.Fatalf("saved value: %+v %v", value, err)
++	}
++	empty, err := m.AddDevice(AddDeviceRequest{ConnectionID: info.ID, SlaveID: 2, InitMode: "zero", RegisterRanges: []RegisterRange{}})
++	if err != nil || empty.RegisterCount != 0 {
++		t.Fatalf("empty device: %+v %v", empty, err)
++	}
++	newEmpty, err := m.CreateConnection(CreateConnectionRequest{Transport: tcpTransport(freePort(t)), SlaveID: 1, InitMode: "random", RegisterRanges: []RegisterRange{}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	emptyDefs, err := m.ListRegisters(newEmpty.ID, 1, "")
++	if err != nil || len(emptyDefs) != 0 {
++		t.Fatalf("empty connection: %d %v", len(emptyDefs), err)
++	}
++}
++
++func TestRegisterRangeValidationIsAtomic(t *testing.T) {
++	cases := map[string][]RegisterRange{
++		"negative":     {{"coil", -1, 2, "bool", "big"}},
++		"overflow":     {{"holding_register", 65534, 65536, "uint16", "big"}},
++		"reversed":     {{"holding_register", 2, 1, "uint16", "big"}},
++		"incomplete":   {{"holding_register", 0, 2, "float32", "big"}},
++		"overlap":      {{"holding_register", 0, 1, "uint32", "big"}, {"holding_register", 1, 2, "uint16", "big"}},
++		"bit type":     {{"coil", 0, 1, "uint16", "big"}},
++		"word type":    {{"input_register", 0, 1, "bool", "big"}},
++		"unknown area": {{"other", 0, 1, "uint16", "big"}},
++		"endian":       {{"input_register", 0, 1, "uint16", "bad"}},
++	}
++	for name, ranges := range cases {
++		t.Run(name, func(t *testing.T) {
++			m := NewManager(Events{})
++			defer m.CloseAll()
++			if _, err := m.CreateConnection(CreateConnectionRequest{Transport: tcpTransport(5020), SlaveID: 1, RegisterRanges: ranges}); err == nil {
++				t.Fatal("accepted invalid range")
++			}
++			if len(m.ListConnections()) != 0 {
++				t.Fatal("failed creation left a connection")
++			}
++			conn, err := m.CreateConnection(CreateConnectionRequest{Transport: tcpTransport(5020), SlaveID: 1, RegisterRanges: []RegisterRange{}})
++			if err != nil {
++				t.Fatal(err)
++			}
++			if _, err = m.AddDevice(AddDeviceRequest{ConnectionID: conn.ID, SlaveID: 2, RegisterRanges: ranges}); err == nil {
++				t.Fatal("accepted invalid device")
++			}
++			devices, err := m.ListDevices(conn.ID)
++			if err != nil || len(devices) != 1 {
++				t.Fatalf("failed add changed devices: %+v %v", devices, err)
++			}
++		})
++	}
++}
++
++func TestRandomTypedRangesAndMaximumAddress(t *testing.T) {
++	ranges := []RegisterRange{{"coil", 65535, 65535, "bool", "big"}}
++	for i, typ := range []string{"uint16", "int16", "uint32", "int32", "float32"} {
++		ranges = append(ranges, RegisterRange{"holding_register", i * 20, i*20 + 19, typ, "mid_little"})
++	}
++	d, err := createDevice(1, "random", "random", ranges, false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	anyNonZero := false
++	for _, def := range d.RegisterDefs {
++		if def.RegisterType != register.HoldingRegType {
++			continue
++		}
++		words := d.RegisterMap.ReadHoldingRegisters(def.Address, def.DataType.RegisterCount())
++		value, err := register.DecodeValue(words, def.DataType, def.Endian)
++		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
++			t.Fatalf("invalid random value: %v %v", value, err)
++		}
++		anyNonZero = anyNonZero || value != 0
++	}
++	if !anyNonZero {
++		t.Fatal("random points are all zero")
++	}
++	defs, err := rangeDefinitions([]RegisterRange{{"holding_register", 0, 65535, "uint16", "big"}})
++	if err != nil || len(defs) != 65536 {
++		t.Fatalf("full area: %d %v", len(defs), err)
++	}
 +}
 diff --git a/go/internal/suitehost/config.go b/go/internal/suitehost/config.go
 new file mode 100644
@@ -391,3 +1155,77 @@ index 0000000..2d9c1e6
 +fi
 +cd "$project_dir"
 +"${wails_command[@]}" build -tags "$tags" "$@"
+diff --git a/scripts/register-ranges.test.mjs b/scripts/register-ranges.test.mjs
+new file mode 100644
+index 0000000..2ba0068
+--- /dev/null
++++ b/scripts/register-ranges.test.mjs
+@@ -0,0 +1,18 @@
++import { test } from 'node:test'
++import assert from 'node:assert/strict'
++import { rangesValid, rangeError, rangeCounts } from '../frontend/src/utils/registerRanges.ts'
++const range = (RegisterType, StartAddress, EndAddress, DataType = 'uint16') => ({ RegisterType, StartAddress, EndAddress, DataType, Endian: 'big' })
++test('empty and mixed disjoint areas preserve typed point counts', () => {
++  assert(rangesValid([]))
++  assert(rangesValid([range('holding_register', 0, 9), range('holding_register', 100, 119, 'float32'), range('input_register', 0, 1, 'uint32')]))
++  assert.deepEqual(rangeCounts(range('holding_register', 100, 119, 'float32')), { points: 10, addresses: 20 })
++  assert(rangesValid([range('coil', 65535, 65535, 'bool')]))
++})
++test('incomplete, overlapping, invalid and missing addresses are rejected', () => {
++  assert.equal(rangeError([range('holding_register', 0, 2, 'float32')], 0), 'ranges.incompletePoint')
++  assert.equal(rangeError([range('coil', 0, 2)], 0), 'ranges.invalidType')
++  assert.equal(rangeError([range('holding_register', 0, 1), range('holding_register', 1, 3)], 0), 'ranges.overlap')
++  for (const [start, end] of [[NaN, 1], ['', 1], [-1, 1], [2, 1], [0.5, 1], [65535, 65536]]) {
++    assert.equal(rangeError([range('holding_register', start, end)], 0), 'ranges.invalidAddress')
++  }
++})
+diff --git a/shared-frontend/src/i18n/locales/en-US.ts b/shared-frontend/src/i18n/locales/en-US.ts
+index 1687f00..c8dd4f8 100644
+--- a/shared-frontend/src/i18n/locales/en-US.ts
++++ b/shared-frontend/src/i18n/locales/en-US.ts
+@@ -413,6 +413,20 @@ const messages: Messages = {
+     autoAddAfterScan: 'Auto-add to monitor after scan',
+     addingProgress: 'Adding Slave {id} {fc} 0-99...',
+   },
++  ranges: {
++    title: 'Initial points',
++    help: 'Addresses are zero-based and inclusive. 32-bit points occupy two registers. Leave all areas empty to create an empty point table.',
++    add: 'Add range',
++    remove: 'Remove range',
++    empty: 'No points configured',
++    count: '{points} points, {addresses} addresses',
++    total: 'Total: {points} points, {addresses} addresses',
++    invalidAddress: 'Use integer addresses from 0 to 65535 with start no greater than end.',
++    invalidType: 'Select a data type matching the area and a valid byte order.',
++    incompletePoint: 'The range must contain complete points: 32-bit types require an even address count.',
++    overlap: 'Ranges in the same address area must not overlap.',
++    creating: 'Creating…',
++  },
+   batchAdd: {
+     title: 'Batch Import Registers',
+     namePrefix: 'Name Prefix (optional)',
+diff --git a/shared-frontend/src/i18n/locales/zh-CN.ts b/shared-frontend/src/i18n/locales/zh-CN.ts
+index 955f0b4..c0be7a6 100644
+--- a/shared-frontend/src/i18n/locales/zh-CN.ts
++++ b/shared-frontend/src/i18n/locales/zh-CN.ts
+@@ -416,6 +416,20 @@ const messages = {
+     autoAddAfterScan: '扫描完成后自动添加到监控',
+     addingProgress: '添加 Slave {id} {fc} 0-99...',
+   },
++  ranges: {
++    title: '初始点位',
++    help: '地址从 0 开始，结束地址包含在范围内。32 位点占用两个寄存器；不添加范围即为空点表。',
++    add: '添加范围',
++    remove: '移除范围',
++    empty: '未配置点位',
++    count: '{points} 个点，占用 {addresses} 个地址',
++    total: '合计：{points} 个点，占用 {addresses} 个地址',
++    invalidAddress: '地址必须为 0～65535 的整数，且起始地址不能大于结束地址。',
++    invalidType: '请选择与地址区匹配的数据类型和有效字节序。',
++    incompletePoint: '范围必须容纳完整点位：32 位类型的地址数量须为偶数。',
++    overlap: '同一地址区的范围不能重叠。',
++    creating: '正在创建…',
++  },
+   batchAdd: {
+     title: '批量导入寄存器',
+     namePrefix: '名称前缀（可选）',
