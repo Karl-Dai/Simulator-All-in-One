@@ -118,7 +118,9 @@ actionlint .github/workflows/*.yml
 
 本机已通过 16 项打包与检查脚本测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留、Windows 明确选择 Git Bash、cp1252 环境下的中文配置与资源收集，独立日志游标和有界读取、Wayland UI 依赖收集，以及原生包复用的来源与文件边界。macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
 
-`validate.yml` 执行源码及打包静态检查；手动触发的 `build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
+三个工作流均仅保留手动触发（`workflow_dispatch`）。推送、PR、标签和定时任务都不会自动启动 CI；需要时在 GitHub Actions 中明确运行对应工作流。
+
+`validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
 
 `validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和八角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前安装脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
 

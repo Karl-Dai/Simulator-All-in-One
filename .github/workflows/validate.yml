@@ -1,8 +1,6 @@
 name: Validate source and packaging
+# All repository workflows are manual-only; pushes and PRs must not start CI.
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
