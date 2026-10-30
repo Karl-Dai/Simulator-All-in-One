@@ -58,7 +58,7 @@ class SuiteTests(unittest.TestCase):
             suite.git_bash(git)
 
     def mac_fixture(self):
-        self.make_app(self.root / "build/bin/SimLab.app", "cloud.carldai.simlab", "0.1.0")
+        self.make_app(self.root / "build/bin/Simulator All-in-One.app", "cloud.carldai.simlab", "0.1.0")
         repos = {item["id"]: item for item in self.lock["repositories"]}
         for component in self.lock["components"]:
             source = self.workspace / repos[component["repository"]]["directory"]
@@ -86,12 +86,12 @@ class SuiteTests(unittest.TestCase):
                 patch.object(suite, "sign_app", side_effect=sign_child), patch.object(suite, "run", side_effect=command):
             output = suite.collect(self.workspace, "darwin", "arm64", root=self.root, adopt=True)
         self.assertEqual(len(signed), 8)
-        manifest = suite.verify_manifest(output / "SimLab.app/Contents", self.lock)
+        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock)
         self.assertTrue(all(item["sha256"] == __import__("hashlib").sha256(b"fixturesigned").hexdigest() for item in manifest["components"]))
-        resource = output / "SimLab.app/Contents/Helpers/ModbusMaster.app/Contents/unrecorded-resource"
+        resource = output / "Simulator All-in-One.app/Contents/Helpers/ModbusMaster.app/Contents/unrecorded-resource"
         resource.write_text("unrecorded build output")
         with self.assertRaisesRegex(suite.SuiteError, "resource tree changed"):
-            suite.verify_manifest(output / "SimLab.app/Contents", self.lock)
+            suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock)
 
     def test_missing_role_leaves_previous_complete_stage_untouched(self):
         self.mac_fixture()
@@ -163,7 +163,7 @@ class SuiteTests(unittest.TestCase):
     def test_self_extractor_repairs_missing_payload_and_preserves_damaged_directory(self):
         if not shutil.which("sha256sum"):
             self.skipTest("sha256sum is required by the Linux archive format")
-        payload = self.root / "payload/SimLab"
+        payload = self.root / "payload/SAIO"
         payload.mkdir(parents=True)
         (payload / "program").write_bytes(b"expected program")
         wrapper = payload / "run-simlab.sh"
@@ -173,7 +173,7 @@ class SuiteTests(unittest.TestCase):
         index.write_text("".join(f"{suite.digest(path)}  {path.name}\n" for path in sorted(payload.iterdir()) if path.is_file()))
         archive = self.root / "archive.tar.gz"
         with tarfile.open(archive, "w:gz") as stream:
-            stream.add(payload, arcname="SimLab")
+            stream.add(payload, arcname="SAIO")
         header = (suite.ROOT / "packaging/linux/self-extract.sh").read_text().replace("@PAYLOAD_SHA256@", suite.digest(archive)).replace("@INDEX_SHA256@", suite.digest(index)).replace("@VERSION@", "test").replace("@ARCH@", "amd64")
         package = self.root / "suite.run"
         package.write_bytes(header.encode() + archive.read_bytes())

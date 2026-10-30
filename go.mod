@@ -1,4 +1,4 @@
-module github.com/Karl-Dai/SimLab-Desktop
+module github.com/Karl-Dai/Simulator-All-in-One
 
 go 1.25.0
 

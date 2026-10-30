@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "SimLab",
-  "outputfilename": "SimLab",
+  "name": "Simulator All-in-One",
+  "outputfilename": "SAIO",
   "frontend:install": "npm ci",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
@@ -9,9 +9,9 @@
   "author": {"name": "Karl-Dai Karl", "email": "kelsoprotein@gmail.com"},
   "info": {
     "companyName": "Karl-Dai",
-    "productName": "SimLab",
+    "productName": "Simulator All-in-One",
     "productVersion": "0.1.0",
     "copyright": "Copyright © Karl-Dai",
-    "comments": "工业协议模拟器套件"
+    "comments": "Industrial protocol simulator suite / 工业协议模拟器套件"
   }
 }

@@ -47,7 +47,7 @@ jobs:
       - name: Preserve complete packages and provenance before runtime checks
         uses: actions/upload-artifact@v4
         with:
-          name: SimLab-${{ inputs.platform }}-amd64
+          name: SAIO-${{ inputs.platform }}-amd64
           path: |
             dist/packages/*
             dist/provenance.json

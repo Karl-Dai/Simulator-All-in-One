@@ -34,14 +34,14 @@ class PackageReuseTests(unittest.TestCase):
             root = Path(directory)
             original = root / "extracted"
             (original / "apps/role").mkdir(parents=True)
-            for name in ("suite-manifest.json", "SimLab.exe", "Uninstall.exe", "apps/role/child.exe"):
+            for name in ("suite-manifest.json", "SAIO.exe", "Uninstall.exe", "apps/role/child.exe"):
                 (original / name).write_bytes(name.encode())
-            manifest = {"launcherFiles": {"SimLab.exe": {"type": "file"}},
+            manifest = {"launcherFiles": {"SAIO.exe": {"type": "file"}},
                         "components": [{"payloadRoot": "apps/role", "payloadFiles": {"child.exe": {"type": "file"}}}]}
             destination = root / "stage"
             reuse.copy_declared_windows_payload(original, destination, manifest)
             self.assertEqual(sorted(str(p.relative_to(destination)) for p in destination.rglob("*") if p.is_file()),
-                             sorted(str(Path(p)) for p in ("suite-manifest.json", "SimLab.exe", "apps/role/child.exe")))
+                             sorted(str(Path(p)) for p in ("suite-manifest.json", "SAIO.exe", "apps/role/child.exe")))
             self.assertEqual((destination / "apps/role/child.exe").read_bytes(), b"apps/role/child.exe")
             self.assertFalse((destination / "Uninstall.exe").exists())
 

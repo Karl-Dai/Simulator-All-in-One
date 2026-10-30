@@ -33,7 +33,7 @@ def main():
         env = os.environ.copy()
         env["SIMLAB_DATA_DIR"] = str(Path(directory) / "data")
         linux = manifest["platform"] == "linux"
-        items = [("launcher", root / ("SimLab.exe" if os.name == "nt" else "SimLab"))]
+        items = [("launcher", root / ("SAIO.exe" if os.name == "nt" else "SAIO"))]
         items += [(item["id"], root / item["executable"]) for item in manifest["components"]]
         for role, executable in items:
             command = [str(executable)]

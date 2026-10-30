@@ -5,7 +5,7 @@ expected_index='@INDEX_SHA256@'
 version='@VERSION@'
 architecture='@ARCH@'
 archive_line="$(awk '/^__SIMLAB_ARCHIVE_BELOW__$/ {print NR + 1; exit}' "$0")"
-if [ -z "$archive_line" ]; then echo 'SimLab archive header is invalid' >&2; exit 1; fi
+if [ -z "$archive_line" ]; then echo 'SAIO archive header is invalid' >&2; exit 1; fi
 
 data_root="${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions"
 destination="$data_root/$version-linux-$architecture-${expected_sha%????????????????????????????????}"
@@ -18,7 +18,7 @@ valid_install() {
 }
 if ! valid_install "$destination"; then
   lock="$destination.lock"
-  if ! mkdir "$lock" 2>/dev/null; then echo 'Another SimLab extraction is in progress; retry after it completes' >&2; exit 1; fi
+  if ! mkdir "$lock" 2>/dev/null; then echo 'Another SAIO extraction is in progress; retry after it completes' >&2; exit 1; fi
   work="$(mktemp -d "$data_root/.extract.XXXXXX")"
   cleanup() { rm -rf "$work"; rmdir "$lock"; }
   trap cleanup EXIT
@@ -26,20 +26,20 @@ if ! valid_install "$destination"; then
   trap 'exit 143' TERM
   for process in /proc/[0-9]*; do
     entry="$(readlink "$process/exe" 2>/dev/null || true)"
-    case "$entry" in "$destination"/*) echo 'Close all SimLab windows before repairing this installation' >&2; exit 1 ;; esac
+    case "$entry" in "$destination"/*) echo 'Close all SAIO windows before repairing this installation' >&2; exit 1 ;; esac
   done
   tail -n "+$archive_line" "$0" > "$work/archive.tar.gz"
   actual_sha="$(sha256sum "$work/archive.tar.gz" | cut -d ' ' -f 1)"
-  if [ "$actual_sha" != "$expected_sha" ]; then echo 'SimLab archive checksum failed' >&2; exit 1; fi
+  if [ "$actual_sha" != "$expected_sha" ]; then echo 'SAIO archive checksum failed' >&2; exit 1; fi
   tar -xzf "$work/archive.tar.gz" -C "$work"
-  test -x "$work/SimLab/run-simlab.sh"
-  touch "$work/SimLab/.complete"
-  valid_install "$work/SimLab"
+  test -x "$work/SAIO/run-simlab.sh"
+  touch "$work/SAIO/.complete"
+  valid_install "$work/SAIO"
   backup="$destination.damaged.$$"
   if [ -d "$destination" ]; then mv -T "$destination" "$backup"; fi
-  if ! mv -T "$work/SimLab" "$destination"; then
+  if ! mv -T "$work/SAIO" "$destination"; then
     if [ -d "$backup" ]; then mv -T "$backup" "$destination"; fi
-    echo 'Could not switch to the repaired SimLab payload; old files were preserved' >&2
+    echo 'Could not switch to the repaired SAIO payload; old files were preserved' >&2
     exit 1
   fi
   cleanup

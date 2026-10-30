@@ -29,7 +29,7 @@ try {
         $active = Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
             $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
         } | Select-Object -First 1
-        if ($active) { throw ('Close all SimLab windows first: ' + $active.Name) }
+        if ($active) { throw ('Close all Simulator All-in-One windows first: ' + $active.Name) }
     }
     if ($mode -eq 'active') { Write-CheckDiagnostic 'success'; exit 0 }
     if ($mode -eq 'target') {
@@ -38,10 +38,10 @@ try {
     }
     $marker = Join-Path $root '.simlab-owned'
     if (!(Test-Path -LiteralPath $marker) -or (Get-Content -LiteralPath $marker -Raw).Trim() -ne 'SimLab-Desktop cloud.carldai.simlab') {
-        throw 'The selected nonempty directory is not an owned SimLab installation; unrelated files were preserved'
+        throw 'The selected nonempty directory is not an owned Simulator All-in-One installation; unrelated files were preserved'
     }
     if (@(Get-ChildItem -LiteralPath $root -Recurse -Force -Attributes ReparsePoint).Count) { throw 'Reparse points are not permitted in the installation directory' }
-    if ($mode -ne 'target' -and !(Test-Path -LiteralPath (Join-Path $root 'SimLab.exe') -PathType Leaf)) { throw 'Missing launcher' }
+    if ($mode -ne 'target' -and !(Test-Path -LiteralPath (Join-Path $root 'SAIO.exe') -PathType Leaf) -and !(Test-Path -LiteralPath (Join-Path $root 'SimLab.exe') -PathType Leaf)) { throw 'Missing launcher' }
     $manifest = Get-Content -LiteralPath (Join-Path $root 'suite-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $expected = @('iec104.master','iec104.slave','modbus.master','modbus.slave','pmu.master','pmu.sub','opcua.master','opcua.server')
     $actual = @($manifest.components | ForEach-Object { $_.id } | Sort-Object -Unique)

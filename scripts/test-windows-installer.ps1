@@ -34,7 +34,7 @@ if ((Install-To $target) -eq 0) { throw 'Installer overwrote an installation con
 if ((Get-Content -LiteralPath $document).Trim() -ne 'preserve') { throw 'Installer changed an unrelated file' }
 Remove-Item -LiteralPath $document
 $env:SIMLAB_DATA_DIR = Join-Path $work 'data'
-$launcher = Start-Process -FilePath (Join-Path $target 'SimLab.exe') -PassThru
+$launcher = Start-Process -FilePath (Join-Path $target 'SAIO.exe') -PassThru
 try {
     Start-Sleep -Seconds 8
     if ($launcher.HasExited) { throw 'Installed launcher exited before active-instance test' }
@@ -46,5 +46,5 @@ python scripts/smoke.py $target
 if ($LASTEXITCODE -ne 0) { throw 'Installed suite startup smoke failed' }
 $uninstaller = Start-Process -FilePath (Join-Path $target 'Uninstall.exe') -ArgumentList '/S' -Wait -PassThru
 if ($uninstaller.ExitCode -ne 0) { throw 'Suite uninstall failed' }
-if (Test-Path -LiteralPath (Join-Path $target 'SimLab.exe')) { throw 'Uninstall left the launcher installed' }
+if (Test-Path -LiteralPath (Join-Path $target 'SAIO.exe')) { throw 'Uninstall left the launcher installed' }
 Write-Host "PASS: isolated install, repair, unrelated-file protection, active-instance guard, startup, uninstall. Fixture retained at $work"

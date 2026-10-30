@@ -81,7 +81,7 @@ def main():
     workspace.mkdir(parents=True, exist_ok=False)
     download = workspace / "download"
     suite.run(["gh", "run", "download", args.source_run, "--repo", repository,
-               "--name", f"SimLab-{args.platform}-amd64", "--dir", download])
+               "--name", f"SAIO-{args.platform}-amd64", "--dir", download])
     suffix = "*-setup.exe" if args.platform == "windows" else "*.run"
     packages = list(download.rglob(suffix))
     if len(packages) != 1:
@@ -133,7 +133,7 @@ def main():
         shutil.copy2(package, output / package.name)
         shutil.copy2(receipt, output / receipt.name)
     manifest = suite.verify_manifest(stage, lock)
-    entries = [stage / ("SimLab.exe" if args.platform == "windows" else "SimLab")]
+    entries = [stage / ("SAIO.exe" if args.platform == "windows" else "SAIO")]
     entries += [stage / item["executable"] for item in manifest["components"]]
     for entry in entries:
         suite.assert_architecture(entry, args.platform, "amd64")

@@ -17,7 +17,7 @@ type Preferences struct {
 }
 
 func defaultPreferences() Preferences {
-	return Preferences{1, "system", "auto", []string{}, map[string]string{}}
+	return Preferences{1, "system", "en", []string{}, map[string]string{}}
 }
 
 func clonePreferences(p Preferences) Preferences {
@@ -57,7 +57,7 @@ func loadPreferences(root string) (Preferences, string) {
 		p.Theme = "system"
 	}
 	if p.Language != "auto" && p.Language != "zh-CN" && p.Language != "en" {
-		p.Language = "auto"
+		p.Language = "en"
 	}
 	return p, ""
 }

@@ -25,7 +25,7 @@ if [ -d "$runtime_dir/usr/lib/x86_64-linux-gnu/gstreamer-1.0" ]; then
 fi
 # WebKitGTK's bundled helper/resource paths were rewritten to be relative.
 cd "$runtime_dir/usr"
-executable="$suite_dir/SimLab"
+executable="$suite_dir/SAIO"
 if [ "${1:-}" = --component ]; then
   role="${2:-}"
   case "$role" in

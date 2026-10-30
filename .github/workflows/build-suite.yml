@@ -138,7 +138,7 @@ jobs:
         if: always() && (steps.package_unix.outcome == 'success' || steps.package_windows.outcome == 'success')
         uses: actions/upload-artifact@v4
         with:
-          name: SimLab-${{ matrix.platform }}-${{ matrix.arch }}
+          name: SAIO-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             dist/packages/*
             dist/staging/**/suite-manifest.json

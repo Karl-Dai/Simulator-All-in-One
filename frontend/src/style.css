@@ -642,3 +642,9 @@ main {
     transition: none !important;
   }
 }
+
+/* Product identity and bilingual About summary. */
+.brand { white-space: nowrap; }
+.about-description { display: grid; gap: 4px; margin-top: 12px; font-size: 13px; line-height: 1.6; }
+.about-description span[lang='zh-CN'] { color: var(--muted); font-size: 12px; }
+.about-copyright a { color: var(--brand); }

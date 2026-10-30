@@ -4,10 +4,10 @@
   },
   "info": {
     "0000": {
-      "ProductName": "SimLab",
+      "ProductName": "Simulator All-in-One",
       "ProductVersion": "0.1.0",
       "CompanyName": "Karl-Dai",
-      "FileDescription": "工业协议模拟器套件",
+      "FileDescription": "Industrial protocol simulator suite / 工业协议模拟器套件",
       "Copyright": "Copyright © Karl-Dai"
     }
   }

@@ -69,7 +69,7 @@ function Assert-Validator([string]$mode, [bool]$success, [string]$scenario) {
 try {
     # All payloads are plain text fixtures. No launcher or role file is executed.
     [IO.File]::WriteAllText((Join-Path $root '.simlab-owned'), 'SimLab-Desktop cloud.carldai.simlab', $utf8)
-    $launcherFiles = @{'SimLab.exe'=(New-FixtureFile 'SimLab.exe' 'non-executable launcher fixture')}
+    $launcherFiles = @{'SAIO.exe'=(New-FixtureFile 'SAIO.exe' 'non-executable launcher fixture')}
     $roles = @('iec104.master','iec104.slave','modbus.master','modbus.slave','pmu.master','pmu.sub','opcua.master','opcua.server')
     $components = @()
     foreach ($role in $roles) {
@@ -92,6 +92,16 @@ try {
         Write-Host "Testing native validator host: $windowsPowerShell; module environment: $moduleScenario"
         Assert-Validator 'verify' $true 'complete eight-role UTF-8 payload'
         Assert-Validator 'target' $true 'owned healthy installation'
+
+        # Existing SimLab installations must remain recognizable after the rename.
+        Move-Item -LiteralPath (Join-Path $root 'SAIO.exe') -Destination (Join-Path $root 'SimLab.exe')
+        $manifest.launcherFiles = @{'SimLab.exe'=$launcherFiles['SAIO.exe']}
+        [IO.File]::WriteAllText((Join-Path $root 'suite-manifest.json'), ($manifest | ConvertTo-Json -Depth 12), $utf8)
+        Assert-Validator 'verify' $true 'legacy SimLab launcher remains valid'
+        Assert-Validator 'target' $true 'legacy installation remains upgradeable'
+        Move-Item -LiteralPath (Join-Path $root 'SimLab.exe') -Destination (Join-Path $root 'SAIO.exe')
+        $manifest.launcherFiles = $launcherFiles
+        [IO.File]::WriteAllText((Join-Path $root 'suite-manifest.json'), ($manifest | ConvertTo-Json -Depth 12), $utf8)
 
         $firstPath = Join-Path $root $components[0].executable
         $firstBytes = [IO.File]::ReadAllBytes($firstPath)

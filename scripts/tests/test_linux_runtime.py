@@ -24,7 +24,7 @@ class LinuxRuntimeTests(unittest.TestCase):
                 path.write_bytes(b"\x7fELF" + label.encode())
                 return path
 
-            launcher = binary(stage / "SimLab", "launcher")
+            launcher = binary(stage / "SAIO", "launcher")
             binary(stage / "lib/libwebkit2gtk-4.1.so.0", "relocated WebKit")
             helpers = stage / "runtime/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1"
             for name in ("WebKitWebProcess", "WebKitNetworkProcess", "injected-bundle/libwebkit2gtkinjectedbundle.so"):
@@ -36,7 +36,7 @@ class LinuxRuntimeTests(unittest.TestCase):
 
             def resolve(path, env):
                 requested = []
-                if path.name == "SimLab":
+                if path.name == "SAIO":
                     requested = [cursor, egl, client, driver]
                 elif path.name == cursor.name:
                     requested = [client]

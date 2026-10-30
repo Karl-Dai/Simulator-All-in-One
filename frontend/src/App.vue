@@ -27,6 +27,7 @@ import {
 } from "@lucide/vue";
 import { backend } from "./bridge";
 import { locale, resolveLocale, roleLabel, t } from "./i18n";
+import { PRODUCT_NAME, PRODUCT_SHORT_NAME, PRODUCT_REPOSITORY, PRODUCT_SUMMARY_EN, PRODUCT_SUMMARY_ZH } from "./product";
 import type { Language, Preferences, RoleState, Snapshot } from "./types";
 
 const protocols = [
@@ -90,7 +91,7 @@ const themeIcon = computed(() =>
 );
 const themeLabel = computed(() => t(`theme.${theme.value}`));
 const language = computed(
-  () => snapshot.value?.preferences.language ?? "auto",
+  () => snapshot.value?.preferences.language ?? "en",
 );
 const languageBadge = computed(() =>
   language.value === "auto" ? "Auto" : language.value === "en" ? "EN" : "中",
@@ -249,7 +250,7 @@ onMounted(refresh);
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
-        <strong>SimLab<span>Desktop</span></strong>
+        <strong :title="`${PRODUCT_NAME} (${PRODUCT_SHORT_NAME})`">{{ PRODUCT_SHORT_NAME }}</strong>
       </div>
       <nav :aria-label="t('nav.main')">
         <button :class="{ selected: page === 'all' }" @click="page = 'all'">
@@ -445,6 +446,7 @@ onMounted(refresh);
 
       <div v-else class="workspace about-page">
         <h1>{{ t("about.title") }}</h1>
+        <p class="about-description"><span lang="en">{{ PRODUCT_SUMMARY_EN }}</span><span lang="zh-CN">{{ PRODUCT_SUMMARY_ZH }}</span></p>
         <p class="about-meta">
           {{ t("about.suite") }} · v{{ snapshot?.version ?? "0.1.0" }} ·
           {{ platformName }} / {{ snapshot?.architecture ?? "—" }} ·
@@ -489,7 +491,7 @@ onMounted(refresh);
             </button>
           </div>
         </div>
-        <p class="about-copyright">{{ t("about.copyright") }}</p>
+        <p class="about-copyright">{{ t("about.copyright") }} <a :href="PRODUCT_REPOSITORY" target="_blank" rel="noopener noreferrer">{{ PRODUCT_SHORT_NAME }} · GitHub</a></p>
       </div>
     </main>
     <div v-if="notice" class="toast" role="status">

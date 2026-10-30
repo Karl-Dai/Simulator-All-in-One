@@ -150,11 +150,16 @@ func TestPreferencesConcurrencyAndReload(t *testing.T) {
 func TestSetLanguagePersistedAndNormalized(t *testing.T) {
 	root, data, _ := fixture(t, "program")
 	s := New(root, data)
-	if _, err := s.SetLanguage("en"); err != nil {
-		t.Fatal(err)
+	if got := s.Snapshot().Preferences.Language; got != "en" {
+		t.Fatalf("new installation must default to English: %q", got)
 	}
-	if got := New(root, data).Snapshot().Preferences.Language; got != "en" {
-		t.Fatalf("language persisted: %q", got)
+	for _, language := range []string{"zh-CN", "auto", "en"} {
+		if _, err := s.SetLanguage(language); err != nil {
+			t.Fatal(err)
+		}
+		if got := New(root, data).Snapshot().Preferences.Language; got != language {
+			t.Fatalf("language preference changed on reload: want %q, got %q", language, got)
+		}
 	}
 	if _, err := s.SetLanguage("fr"); err == nil {
 		t.Fatal("expected invalid language error")
@@ -163,7 +168,7 @@ func TestSetLanguagePersistedAndNormalized(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte(legacy), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := New(root, data).Snapshot().Preferences.Language; got != "auto" {
+	if got := New(root, data).Snapshot().Preferences.Language; got != "en" {
 		t.Fatalf("legacy language normalized: %q", got)
 	}
 }

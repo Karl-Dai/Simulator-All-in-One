@@ -3,7 +3,7 @@ import type { Language } from "./types";
 
 export type Locale = "zh-CN" | "en";
 
-export const locale = ref<Locale>("zh-CN");
+export const locale = ref<Locale>("en");
 
 const messages: Record<Locale, Record<string, string>> = {
   "zh-CN": {
@@ -20,7 +20,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "readiness.title": "重新检查内置套件",
     "lang.aria": "切换语言，当前{label}",
     "lang.auto": "跟随系统",
-    "about.entry": "关于 SimLab",
+    "about.entry": "关于 SAIO",
     "recent.label": "最近",
     "recent.section": "最近使用",
     "grid.section": "协议模拟器",
@@ -44,7 +44,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "error.help": "如果套件文件缺失或损坏，请重新运行完整安装包进行修复。",
     "error.dismiss": "知道了",
     "error.notReady": "内置程序不可用，请修复完整套件。",
-    "about.title": "关于 SimLab Desktop",
+    "about.title": "关于 Simulator All-in-One",
     "about.suite": "工业协议模拟器套件",
     "about.protocols": "{n} 种协议 · {m} 个角色",
     "about.fullUpdate": "完整套件更新",
@@ -71,7 +71,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "readiness.title": "Re-check bundled suite",
     "lang.aria": "Switch language, current {label}",
     "lang.auto": "System",
-    "about.entry": "About SimLab",
+    "about.entry": "About SAIO",
     "recent.label": "Recent",
     "recent.section": "Recently used",
     "grid.section": "Protocol simulators",
@@ -96,7 +96,7 @@ const messages: Record<Locale, Record<string, string>> = {
       "If bundled files are missing or corrupted, re-run the full installer to repair.",
     "error.dismiss": "OK",
     "error.notReady": "Bundled program unavailable; repair the suite.",
-    "about.title": "About SimLab Desktop",
+    "about.title": "About Simulator All-in-One",
     "about.suite": "Industrial protocol simulator suite",
     "about.protocols": "{n} protocols · {m} roles",
     "about.fullUpdate": "Full-suite updates",
@@ -124,7 +124,7 @@ export function t(
   key: string,
   params?: Record<string, string | number>,
 ): string {
-  let text = messages[locale.value][key] ?? messages["zh-CN"][key] ?? key;
+  let text = messages[locale.value][key] ?? messages.en[key] ?? key;
   if (params) {
     for (const [name, value] of Object.entries(params)) {
       text = text.replaceAll(`{${name}}`, String(value));

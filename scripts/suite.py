@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, collect and verify the complete SimLab suite. Python 3.10+; stdlib only."""
+"""Build, collect and verify the complete Simulator All-in-One suite. Python 3.10+; stdlib only."""
 from __future__ import annotations
 
 import argparse
@@ -391,7 +391,7 @@ def source_payload_digest(source, component, target, arch):
 
 def copy_launcher(root, target, destination):
     source = root / "build/bin"
-    name = "SimLab.exe" if target == "windows" else "SimLab"
+    name = "SAIO.exe" if target == "windows" else "SAIO"
     if not (source / name).is_file():
         raise SuiteError(f"Missing launcher: {source / name}")
     destination.mkdir(parents=True, exist_ok=True)
@@ -411,14 +411,14 @@ def launcher_receipt(root, lock, target, arch):
     if config["info"]["productVersion"] != lock["suiteVersion"]:
         raise SuiteError("Launcher source version does not match the suite lock")
     if target == "darwin":
-        app = root / "build/bin/SimLab.app"
+        app = root / "build/bin/Simulator All-in-One.app"
         entry, _ = app_entry(app)
         snapshot = tree_snapshot(app)
     else:
         with tempfile.TemporaryDirectory(prefix="simlab-launcher-") as directory:
             entry = copy_launcher(root, target, Path(directory))
             snapshot = tree_snapshot(Path(directory))
-    entry = root / "build/bin/SimLab.app/Contents/MacOS/SimLab" if target == "darwin" else root / "build/bin" / ("SimLab.exe" if target == "windows" else "SimLab")
+    entry = root / "build/bin/Simulator All-in-One.app/Contents/MacOS/SAIO" if target == "darwin" else root / "build/bin" / ("SAIO.exe" if target == "windows" else "SAIO")
     return {"suiteVersion": lock["suiteVersion"], "platform": target, "architecture": arch,
             "sourceFingerprint": launcher_source_fingerprint(root), "sha256": digest(entry),
             "payloadTreeSha256": tree_digest(snapshot)}
@@ -459,20 +459,20 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
     with tempfile.TemporaryDirectory(prefix=".collect-", dir=output.parent) as directory:
         temporary = Path(directory)
         if target == "darwin":
-            source = root / "build/bin/SimLab.app"
+            source = root / "build/bin/Simulator All-in-One.app"
             root_entry, info = app_entry(source)
             if info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
                 raise SuiteError("Launcher version does not match components.lock.json")
             if tuple(map(int, info.get("LSMinimumSystemVersion", "0").split("."))) < (13, 0):
                 raise SuiteError("The suite launcher must declare macOS 13.0 or later")
             assert_architecture(root_entry, target, arch)
-            app = temporary / "SimLab.app"
+            app = temporary / "Simulator All-in-One.app"
             shutil.copytree(source, app, symlinks=True)
             suite_root = app / "Contents"
             (suite_root / "Helpers").mkdir(exist_ok=True)
         else:
             suite_root = temporary
-            source = root / "build/bin" / ("SimLab.exe" if target == "windows" else "SimLab")
+            source = root / "build/bin" / ("SAIO.exe" if target == "windows" else "SAIO")
             if not source.is_file():
                 raise SuiteError(f"Missing launcher: {source}")
             assert_architecture(source, target, arch)
@@ -570,7 +570,7 @@ def verify_manifest(suite_root, lock=None):
 
 def suite_root_for(root, target, arch):
     stage = root / "dist/staging" / f"{target}-{arch}"
-    return stage / "SimLab.app/Contents" if target == "darwin" else stage
+    return stage / "Simulator All-in-One.app/Contents" if target == "darwin" else stage
 
 
 def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
@@ -580,20 +580,20 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
     verify_manifest(suite_root, lock)
     output = root / "dist/packages"
     output.mkdir(parents=True, exist_ok=True)
-    name = f"SimLab_{lock['suiteVersion']}_{target}-{arch}"
+    name = f"SAIO_{lock['suiteVersion']}_{target}-{arch}"
     if target == "darwin":
         require("ditto")
         require("hdiutil")
-        run(["codesign", "--verify", "--deep", "--strict", stage / "SimLab.app"])
+        run(["codesign", "--verify", "--deep", "--strict", stage / "Simulator All-in-One.app"])
         zip_path = output / (name + ".zip")
-        run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", stage / "SimLab.app", zip_path])
+        run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", stage / "Simulator All-in-One.app", zip_path])
         write_json(zip_path.with_suffix(".zip.sha256.json"), {"file": zip_path.name, "sha256": digest(zip_path)})
         destination = output / (name + ".dmg")
         with tempfile.TemporaryDirectory(prefix=".dmg-", dir=output) as directory:
             image_root = Path(directory)
-            shutil.copytree(stage / "SimLab.app", image_root / "SimLab.app", symlinks=True)
+            shutil.copytree(stage / "Simulator All-in-One.app", image_root / "Simulator All-in-One.app", symlinks=True)
             (image_root / "Applications").symlink_to("/Applications")
-            run(["hdiutil", "create", "-ov", "-format", "UDZO", "-volname", "SimLab", "-srcfolder", image_root, destination])
+            run(["hdiutil", "create", "-ov", "-format", "UDZO", "-volname", "SAIO", "-srcfolder", image_root, destination])
         run(["hdiutil", "verify", destination])
     elif target == "windows":
         makensis = require("makensis")
@@ -630,7 +630,7 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
         index.write_text("".join(indexed), encoding="utf-8")
         with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temporary:
             with tarfile.open(temporary.name, "w:gz") as archive:
-                archive.add(stage, arcname="SimLab", recursive=True)
+                archive.add(stage, arcname="SAIO", recursive=True)
             payload_hash = digest(temporary.name)
             header = (root / "packaging/linux/self-extract.sh").read_text(encoding="utf-8").replace("@PAYLOAD_SHA256@", payload_hash).replace("@INDEX_SHA256@", digest(index)).replace("@VERSION@", lock["suiteVersion"]).replace("@ARCH@", arch)
             with destination.open("wb") as stream:

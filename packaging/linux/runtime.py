@@ -104,7 +104,7 @@ def audit(stage, require_record=True):
             path = stage / relative
             if not path.is_file() or sha(path) != expected:
                 raise RuntimeError(f"Runtime file changed or disappeared: {relative}")
-        if record["launcherSha256"] != sha(stage / "SimLab"):
+        if record["launcherSha256"] != sha(stage / "SAIO"):
             raise RuntimeError("The launcher changed after runtime closure collection")
     required = ["WebKitWebProcess", "WebKitNetworkProcess", "injected-bundle/libwebkit2gtkinjectedbundle.so"]
     helper = stage / "runtime/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1"
@@ -114,7 +114,7 @@ def audit(stage, require_record=True):
     webkits = list((stage / "lib").glob("libwebkit2gtk-4.1.so*"))
     if not webkits or any(b"/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1" in path.read_bytes() for path in webkits):
         raise RuntimeError("WebKitGTK helper paths were not relocated")
-    inputs = [stage / "SimLab"] + list((stage / "apps").rglob("*")) + runtime_files(stage)
+    inputs = [stage / "SAIO"] + list((stage / "apps").rglob("*")) + runtime_files(stage)
     env = environment(stage)
     host_dependencies = set()
     for path in inputs:
@@ -215,7 +215,7 @@ def prepare(stage):
     files = {path.relative_to(stage).as_posix(): sha(path) for path in runtime_files(stage)}
     files["run-simlab.sh"] = sha(stage / "run-simlab.sh")
     record = {"schemaVersion": 1, "baseline": "ubuntu-22.04-amd64", "complete": True,
-              "hostDependencies": host_dependencies, "launcherSha256": sha(stage / "SimLab"), "files": files}
+              "hostDependencies": host_dependencies, "launcherSha256": sha(stage / "SAIO"), "files": files}
     (runtime / "closure.json").write_text(json.dumps(record, indent=2) + "\n")
     audit(stage)
     print(f"Runtime closure audited; {len(files)} files; host boundary: {host_dependencies}")

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/Karl-Dai/SimLab-Desktop/internal/suite"
+import "github.com/Karl-Dai/Simulator-All-in-One/internal/suite"
 
 type App struct{ service *suite.Service }
 
