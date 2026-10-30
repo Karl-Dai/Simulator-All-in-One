@@ -55,6 +55,7 @@ const snapshot = ref<Snapshot | null>(null);
 const loading = ref(true);
 const page = ref<"all" | "favorites" | "about">("all");
 const busy = ref(new Set<string>());
+const favoriteBusy = ref(new Set<string>());
 const error = ref("");
 const notice = ref("");
 const errorButton = ref<HTMLButtonElement | null>(null);
@@ -108,6 +109,13 @@ function protocolTitle(protocol: string) {
 function isFavorite(id: string) {
   return snapshot.value?.preferences.favorites.includes(id) ?? false;
 }
+function roleStatus(role: RoleState) {
+  if (busy.value.has(role.id)) return t("role.launching");
+  if (!role.ready) return t("role.repair");
+  return snapshot.value?.preferences.recent[role.id]
+    ? t("role.recent")
+    : t("about.ready");
+}
 function notify(text: string) {
   notice.value = text;
   clearTimeout(noticeTimer);
@@ -157,11 +165,17 @@ async function launch(role: RoleState) {
   }
 }
 async function toggleFavorite(role: RoleState) {
+  if (favoriteBusy.value.has(role.id)) return;
+  favoriteBusy.value = new Set([...favoriteBusy.value, role.id]);
   try {
     const prefs = await backend().SetFavorite(role.id, !isFavorite(role.id));
     if (snapshot.value) snapshot.value.preferences = prefs;
   } catch (cause) {
     error.value = message(cause);
+  } finally {
+    const next = new Set(favoriteBusy.value);
+    next.delete(role.id);
+    favoriteBusy.value = next;
   }
 }
 async function changeTheme(value: Preferences["theme"]) {
@@ -222,11 +236,12 @@ onMounted(refresh);
     <header class="topbar">
       <div class="brand" :title="`${PRODUCT_NAME} (${PRODUCT_SHORT_NAME})`"><Boxes :size="20" aria-hidden="true" /><strong>{{ PRODUCT_SHORT_NAME }}</strong></div>
       <nav :aria-label="t('nav.main')">
-        <button :class="{ selected: page === 'all' }" @click="page = 'all'">
+        <button :class="{ selected: page === 'all' }" :aria-current="page === 'all' ? 'page' : undefined" @click="page = 'all'">
           {{ t("nav.all") }}<span class="nav-count">{{ roleTotal }}</span>
         </button>
         <button
           :class="{ selected: page === 'favorites' }"
+          :aria-current="page === 'favorites' ? 'page' : undefined"
           @click="page = 'favorites'"
         >
           {{ t("nav.favorites") }}
@@ -236,6 +251,7 @@ onMounted(refresh);
             :size="11"
             aria-hidden="true"
           />
+          <span v-if="favoriteCount" class="nav-count">{{ favoriteCount }}</span>
         </button>
       </nav>
       <div class="topbar-right">
@@ -253,6 +269,13 @@ onMounted(refresh);
 
     <main>
       <div class="workspace" v-if="page !== 'about'">
+        <div class="workspace-heading">
+          <div>
+            <h1>{{ t(page === 'favorites' ? 'nav.favorites' : 'grid.section') }}</h1>
+            <p>{{ t('workspace.hint') }}</p>
+          </div>
+          <span class="workspace-summary">{{ t('workspace.count', { n: visibleProtocols.length, m: page === 'favorites' ? favoriteCount : roleTotal }) }}</span>
+        </div>
         <div
           v-if="page === 'favorites' && !favoriteCount && !loading"
           class="empty-state"
@@ -265,7 +288,7 @@ onMounted(refresh);
           </button>
         </div>
 
-        <section class="protocol-grid" :aria-label="t('grid.section')">
+        <section v-if="visibleProtocols.length" class="protocol-grid" :class="{ 'favorites-grid': page === 'favorites' }" :aria-label="t('grid.section')" :aria-busy="loading">
           <article
             v-for="protocol in visibleProtocols"
             :key="protocol.id"
@@ -281,7 +304,10 @@ onMounted(refresh);
                   aria-hidden="true"
                 />
               </span>
-              <h2>{{ protocol.title }}</h2>
+              <div class="protocol-identity">
+                <h2>{{ protocol.title }}</h2>
+                <p>{{ t(`purpose.${protocol.id}`) }}</p>
+              </div>
             </div>
             <div class="role-list">
               <template v-if="roles(protocol.id).length">
@@ -290,6 +316,7 @@ onMounted(refresh);
                   :key="role.id"
                   v-show="page !== 'favorites' || isFavorite(role.id)"
                   class="role-row"
+                  :class="{ 'is-busy': busy.has(role.id), 'is-unavailable': !role.ready }"
                 >
                   <button
                     class="launch-button"
@@ -301,19 +328,18 @@ onMounted(refresh);
                     "
                     :title="role.product"
                     :disabled="busy.has(role.id)"
+                    :aria-busy="busy.has(role.id)"
                     :class="{ unavailable: !role.ready }"
                     @click="launch(role)"
                   >
-                    <span class="role-identity"><strong>{{ roleLabel(role.name) }}</strong></span
+                    <span class="role-identity"><strong>{{ roleLabel(role.name) }}</strong><span class="role-status" :class="{ 'status-ready': role.ready && !busy.has(role.id) }">{{ roleStatus(role) }}</span></span
                     ><span class="launch-action"
-                      ><LoaderCircle
+                      ><span>{{ busy.has(role.id) ? t('role.launching') : role.ready ? t('role.open') : t('role.details') }}</span><LoaderCircle
                         v-if="busy.has(role.id)"
                         class="spin"
                         :size="15"
                         aria-hidden="true" /><template v-else
-                        >{{
-                          role.ready ? "" : t("role.repair")
-                        }}<ArrowUpRight
+                        ><ArrowUpRight
                           :size="15"
                           aria-hidden="true" /></template
                     ></span>
@@ -327,6 +353,8 @@ onMounted(refresh);
                       })
                     "
                     :aria-pressed="isFavorite(role.id)"
+                    :disabled="favoriteBusy.has(role.id)"
+                    :title="t(isFavorite(role.id) ? 'role.favAria.off' : 'role.favAria.on', { protocol: protocol.title, role: roleLabel(role.name) })"
                     @click="toggleFavorite(role)"
                   >
                     <Star

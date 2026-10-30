@@ -112,6 +112,46 @@ describe("complete suite launcher", () => {
     expect(app.get('[role="alertdialog"]').text()).toContain("系统拒绝启动");
     expect(button.attributes("disabled")).toBeUndefined();
   });
+  it("shows pending launch feedback, prevents duplicate requests and records recent use", async () => {
+    let complete!: (value: { id: string; pid: number; warning: string }) => void;
+    vi.mocked(api.Launch).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const app = render();
+    await flushPromises();
+    const button = app.get('[aria-label="打开 Modbus 主站"]');
+    await button.trigger("click");
+    expect(button.attributes("disabled")).toBeDefined();
+    expect(button.attributes("aria-busy")).toBe("true");
+    expect(button.text()).toContain("正在启动");
+    await button.trigger("click");
+    expect(api.Launch).toHaveBeenCalledTimes(1);
+    complete({ id: "modbus.master", pid: 123, warning: "" });
+    await flushPromises();
+    expect(button.attributes("disabled")).toBeUndefined();
+    expect(button.get(".role-status").text()).toBe("最近打开");
+    expect(app.get('[aria-label="打开 Modbus 从站"]').get(".role-status").text()).toBe("已就绪");
+  });
+  it("prevents overlapping favorite writes and returns to an actionable empty state", async () => {
+    let complete!: (value: Snapshot["preferences"]) => void;
+    vi.mocked(api.SetFavorite).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const app = render();
+    await flushPromises();
+    const star = app.get('[aria-label="收藏 OPC UA 服务端"]');
+    await star.trigger("click");
+    await star.trigger("click");
+    expect(api.SetFavorite).toHaveBeenCalledTimes(1);
+    expect(star.attributes("disabled")).toBeDefined();
+    complete({ ...state.preferences, favorites: ["opcua.server"] });
+    await flushPromises();
+    await app.findAll("nav button")[1].trigger("click");
+    expect(app.findAll(".protocol-card")).toHaveLength(1);
+    expect(app.findAll("nav button")[1].attributes("aria-current")).toBe("page");
+    await app.get('[aria-label="取消收藏 OPC UA 服务端"]').trigger("click");
+    await flushPromises();
+    expect(app.find(".protocol-grid").exists()).toBe(false);
+    expect(app.get(".empty-state").text()).toContain("浏览全部模拟器");
+    await app.get(".empty-state button").trigger("click");
+    expect(app.findAll(".launch-button")).toHaveLength(8);
+  });
   it("persists the selected theme", async () => {
     const app = render();
     await flushPromises();
