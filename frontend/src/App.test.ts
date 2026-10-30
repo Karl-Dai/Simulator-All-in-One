@@ -88,14 +88,14 @@ describe("complete suite launcher", () => {
     expect(
       app.findAll(".role-row").filter((row) => row.isVisible()),
     ).toHaveLength(1);
-    expect(app.text()).toContain("OPCUAServer");
+    expect(app.get('[title="OPCUAServer"]').attributes("aria-label")).toBe("打开 OPC UA 服务端");
   });
   it("does not launch a missing or corrupt component", async () => {
     state.roles[0].ready = false;
     state.roles[0].error = "内置程序校验不匹配";
     const app = render();
     await flushPromises();
-    await app.get('[aria-label="打开 IEC 104 主站"]').trigger("click");
+    await app.get('[aria-label="打开 IEC 60870-5-104 主站"]').trigger("click");
     await flushPromises();
     expect(api.Launch).not.toHaveBeenCalled();
     expect(app.get('[role="alertdialog"]').text()).toContain(
@@ -125,11 +125,14 @@ describe("complete suite launcher", () => {
   it("switches the interface language and persists it", async () => {
     const app = render();
     await flushPromises();
+    await app.get(".about-link").trigger("click");
     await app.get(".lang-button").trigger("click");
     await flushPromises();
     expect(api.SetLanguage).toHaveBeenCalledWith("en");
     expect(app.text()).toContain("All Simulators");
+    await app.findAll("nav button")[0].trigger("click");
     expect(app.get('[aria-label="Open Modbus Master"]')).toBeTruthy();
+    await app.get(".about-link").trigger("click");
     await app.get(".lang-button").trigger("click");
     await flushPromises();
     expect(api.SetLanguage).toHaveBeenCalledWith("auto");

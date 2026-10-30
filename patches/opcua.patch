@@ -52,18 +52,21 @@ index bcd189a..1aed653 100644
      Ok(())
  }
 diff --git a/crates/opcuamaster-app/src/lib.rs b/crates/opcuamaster-app/src/lib.rs
-index f387015..296eb6b 100644
+index f387015..d189d5a 100644
 --- a/crates/opcuamaster-app/src/lib.rs
 +++ b/crates/opcuamaster-app/src/lib.rs
-@@ -1,6 +1,7 @@
+@@ -1,6 +1,10 @@
  mod commands;
++
++#[path = "../../shared/simlab_preferences.rs"]
++mod simlab_preferences;
  mod project;
  mod state;
 +#[cfg(not(feature = "simlab-suite"))]
  pub mod update;
  
  use state::AppState;
-@@ -8,14 +9,17 @@ use tauri::Manager;
+@@ -8,15 +12,19 @@ use tauri::Manager;
  
  #[cfg_attr(mobile, tauri::mobile_entry_point)]
  pub fn run() {
@@ -83,9 +86,11 @@ index f387015..296eb6b 100644
 +        .manage(update::UpdateState::default());
 +    builder
          .invoke_handler(tauri::generate_handler![
++            simlab_preferences::simlab_theme,
              commands::ping,
              commands::create_connection,
-@@ -55,15 +59,25 @@ pub fn run() {
+             commands::rename_connection,
+@@ -55,15 +63,25 @@ pub fn run() {
              commands::get_communication_logs,
              commands::clear_communication_logs,
              commands::export_communication_logs,
@@ -112,7 +117,7 @@ index f387015..296eb6b 100644
                  Ok(dir) => {
                      if let Err(error) =
                          state.initialize_persistence(dir.join("last-session.opcuaproj"))
-@@ -80,12 +94,15 @@ pub fn run() {
+@@ -80,12 +98,15 @@ pub fn run() {
                          .build(),
                  )?;
              }
@@ -171,11 +176,14 @@ index f133a94..0573539 100644
  opcuasim-core = { path = "../opcuasim-core" }
  serde_json = "1.0"
 diff --git a/crates/opcuaserver-app/src/lib.rs b/crates/opcuaserver-app/src/lib.rs
-index 5d48587..0dd559e 100644
+index 5d48587..acbcd32 100644
 --- a/crates/opcuaserver-app/src/lib.rs
 +++ b/crates/opcuaserver-app/src/lib.rs
-@@ -1,19 +1,23 @@
+@@ -1,20 +1,28 @@
  mod commands;
++
++#[path = "../../shared/simlab_preferences.rs"]
++mod simlab_preferences;
  mod state;
 +#[cfg(not(feature = "simlab-suite"))]
  pub mod update;
@@ -200,9 +208,11 @@ index 5d48587..0dd559e 100644
 +        .manage(update::UpdateState::default());
 +    builder
          .invoke_handler(tauri::generate_handler![
++            simlab_preferences::simlab_theme,
              commands::ping,
              commands::start_server,
-@@ -29,9 +33,13 @@ pub fn run() {
+             commands::stop_server,
+@@ -29,9 +37,13 @@ pub fn run() {
              commands::save_project,
              commands::load_project,
              commands::get_simulation_values_since,
@@ -216,7 +226,7 @@ index 5d48587..0dd559e 100644
              update::schedule_update_on_next_launch,
          ])
          .setup(|app| {
-@@ -42,12 +50,15 @@ pub fn run() {
+@@ -42,12 +54,15 @@ pub fn run() {
                          .build(),
                  )?;
              }
@@ -431,11 +441,760 @@ index 0000000..35f30af
 +        assert!(resolve(None, None, "opcua-master").is_err());
 +    }
 +}
+diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
+new file mode 100644
+index 0000000..970489f
+--- /dev/null
++++ b/crates/shared/simlab_preferences.rs
+@@ -0,0 +1,24 @@
++/// Read only the suite appearance preference, never expose the full settings.
++#[tauri::command]
++pub(crate) fn simlab_theme() -> Result<String, String> {
++    if !cfg!(feature = "simlab-suite") {
++        return Err("Appearance is managed by the standalone application".into());
++    }
++    let root = std::env::var_os("SIMLAB_DATA_DIR")
++        .map(std::path::PathBuf::from)
++        .ok_or("SIMLAB_DATA_DIR is not configured")?;
++    if !root.is_absolute() {
++        return Err("SIMLAB_DATA_DIR must be absolute".into());
++    }
++    let data = match std::fs::read(root.join("launcher.json")) {
++        Ok(data) => data,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("system".into()),
++        Err(error) => return Err(error.to_string()),
++    };
++    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
++    match value["theme"].as_str() {
++        Some("light") => Ok("light".into()),
++        Some("dark") => Ok("dark".into()),
++        _ => Ok("system".into()),
++    }
++}
+diff --git a/frontend/src/components/AddressTree.vue b/frontend/src/components/AddressTree.vue
+index bb6573d..176c225 100644
+--- a/frontend/src/components/AddressTree.vue
++++ b/frontend/src/components/AddressTree.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, reactive } from 'vue'
+ import { useI18n } from '@shared/i18n'
+ import { showConfirm, showPrompt } from '@shared/composables/useDialog'
+@@ -100,7 +101,7 @@ function onRemove(child: AddressChild) {
+     <div class="tree-sep" />
+ 
+     <EmptyState v-if="isEmpty" compact :title="t('addressTree.emptyTitle')" :hint="t('addressTree.emptyHint')">
+-      <span>🗂</span>
++      <span><SuiteIcon name="folder" /></span>
+     </EmptyState>
+ 
+     <div v-else class="tree-scroll">
+@@ -110,7 +111,7 @@ function onRemove(child: AddressChild) {
+           :class="{ open: expanded.has(ROOT_ID) }"
+           @click="toggleFolder(ROOT_ID)"
+         >▸</button>
+-        <span class="label folder">📁 Objects</span>
++        <span class="label folder"><SuiteIcon name="folder" /> Objects</span>
+         <button class="action" title="+" @click="addSubfolder(ROOT_ID)">＋</button>
+       </div>
+ 
+@@ -135,7 +136,7 @@ function onRemove(child: AddressChild) {
+             :class="row.child.kind"
+             :title="row.child.node_id"
+             @click="onLabelClick(row.child)"
+-          >{{ row.child.kind === 'folder' ? '📁' : '📊' }} {{ row.child.display_name }}</span>
++          ><SuiteIcon :name="row.child.kind === 'folder' ? 'folder' : 'node'" /> {{ row.child.display_name }}</span>
+ 
+           <button
+             v-if="row.child.kind === 'folder'"
+@@ -147,7 +148,7 @@ function onRemove(child: AddressChild) {
+             class="action danger"
+             :title="row.child.kind === 'folder' ? t('addressTree.deleteFolder') : t('addressTree.deleteNode')"
+             @click="onRemove(row.child)"
+-          >🗑</button>
++          ><SuiteIcon name="trash" /></button>
+         </div>
+       </template>
+     </div>
+diff --git a/frontend/src/components/NodeTable.vue b/frontend/src/components/NodeTable.vue
+index 1677587..bc3cf7d 100644
+--- a/frontend/src/components/NodeTable.vue
++++ b/frontend/src/components/NodeTable.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { ref } from 'vue'
+ import { useI18n } from '@shared/i18n'
+ import { showConfirm } from '@shared/composables/useDialog'
+@@ -60,7 +61,7 @@ async function removeSelected() {
+       :title="t('nodeTable.emptyTitle')"
+       :hint="t('nodeTable.emptyHint')"
+     >
+-      <span>📊</span>
++      <span><SuiteIcon name="node" /></span>
+     </EmptyState>
+ 
+     <div v-else class="table-scroll">
+@@ -101,7 +102,7 @@ async function removeSelected() {
+             </td>
+             <td class="col-actions" @click.stop>
+               <button class="row-action" :title="t('nodeTable.remove')" @click="removeOne(node.node_id)">
+-                🗑
++                <SuiteIcon name="trash" />
+               </button>
+             </td>
+           </tr>
+diff --git a/frontend/src/components/PropertyEditor.vue b/frontend/src/components/PropertyEditor.vue
+index 94d6f1b..7fd7887 100644
+--- a/frontend/src/components/PropertyEditor.vue
++++ b/frontend/src/components/PropertyEditor.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref, watch } from 'vue'
+ import { useI18n } from '@shared/i18n'
+ import EmptyState from '@shared/components/EmptyState.vue'
+@@ -188,7 +189,7 @@ function onEuHigh(e: Event) {
+       :title="t('propertyEditor.emptyTitle')"
+       :hint="t('propertyEditor.emptyHint')"
+     >
+-      <span>👈</span>
++      <span><SuiteIcon name="pointer" /></span>
+     </EmptyState>
+ 
+     <div v-else class="panel-scroll">
+diff --git a/frontend/src/components/Toolbar.vue b/frontend/src/components/Toolbar.vue
+index 916d36c..2faeb81 100644
+--- a/frontend/src/components/Toolbar.vue
++++ b/frontend/src/components/Toolbar.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { open, save } from '@tauri-apps/plugin-dialog'
+@@ -133,9 +134,9 @@ async function onLoad() {
+           class="toolbar-btn btn-start"
+           :disabled="running || starting"
+           @click="onStart"
+-        >▶ {{ t('toolbar.start') }}</button>
++        ><SuiteIcon name="play" /> {{ t('toolbar.start') }}</button>
+         <button class="toolbar-btn btn-stop" :disabled="!running" @click="onStop">
+-          ■ {{ t('toolbar.stop') }}
++          <SuiteIcon name="stop" /> {{ t('toolbar.stop') }}
+         </button>
+         <span class="tb-divider" />
+         <span class="tb-label">{{ t('toolbar.endpoint') }}</span>
+diff --git a/frontend/src/main.ts b/frontend/src/main.ts
+index 975ab50..08e19c8 100644
+--- a/frontend/src/main.ts
++++ b/frontend/src/main.ts
+@@ -1,7 +1,11 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
+ import { createApp } from 'vue'
+ import '@shared/styles/tokens.css'
+ import '@shared/styles/transitions.css'
+ import '@shared/styles/toolbar.css'
+ import App from './App.vue'
+ 
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
+ createApp(App).mount('#app')
+diff --git a/frontend/src/simlab-ui/Icon.vue b/frontend/src/simlab-ui/Icon.vue
+new file mode 100644
+index 0000000..183ddc1
+--- /dev/null
++++ b/frontend/src/simlab-ui/Icon.vue
+@@ -0,0 +1,32 @@
++<script setup lang="ts">
++withDefaults(defineProps<{ name: string; size?: number }>(), { size: 16 })
++const paths: Record<string, string> = {
++  play: 'm8 5 11 7-11 7Z',
++  stop: 'M6 6h12v12H6Z',
++  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
++  refresh: 'M20 7a9 9 0 0 0-15-2L2 8m0-5v5h5M4 17a9 9 0 0 0 15 2l3-3m0 5v-5h-5',
++  search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
++  plus: 'M12 5v14M5 12h14',
++  lock: 'M5 10h14v11H5ZM8 10V7a4 4 0 0 1 8 0v3',
++  folder: 'M3 5h6l2 3h10v12H3Z',
++  chart: 'M3 3v18h18M7 14l4-5 4 3 5-7',
++  node: 'M4 4h16v16H4ZM4 10h16M10 4v16',
++  pointer: 'm5 3 15 9-7 2-3 7Z',
++  signal: 'M12 12h.01M8 8a6 6 0 0 0 0 8M16 8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14',
++  clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
++  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
++  file: 'M4 3h10l6 6v12H4ZM14 3v6h6M8 13h8M8 17h6',
++}
++</script>
++
++<template>
++  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none"
++    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
++    aria-hidden="true" focusable="false" class="simlab-icon">
++    <path :d="paths[name] || paths.node" />
++  </svg>
++</template>
++
++<style scoped>
++.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
++</style>
+diff --git a/frontend/src/simlab-ui/components.css b/frontend/src/simlab-ui/components.css
+new file mode 100644
+index 0000000..dbd4181
+--- /dev/null
++++ b/frontend/src/simlab-ui/components.css
+@@ -0,0 +1,140 @@
++/* Suite chrome and controls. Protocol layouts and semantic state classes remain
++   owned by each simulator. Root scoping also covers teleported dialogs. */
++:root[data-simlab][data-simlab-theme] body {
++  margin: 0;
++  background: var(--workspace);
++  color: var(--text);
++  font-family: var(--font-ui);
++  font-size: 13px;
++  -webkit-font-smoothing: antialiased;
++}
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea) {
++  font-family: var(--font-ui);
++  font-size: 13px;
++  border-radius: var(--radius-md);
++  accent-color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] button {
++  cursor: pointer;
++  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
++}
++:root[data-simlab][data-simlab-theme] button:disabled { cursor: not-allowed; opacity: .5; }
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea, [tabindex]):focus-visible {
++  outline: 2px solid var(--focus);
++  outline-offset: -2px;
++}
++:root[data-simlab][data-simlab-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
++  background-color: var(--surface);
++  color: var(--text);
++  border: 1px solid var(--c-surface1);
++  min-height: 30px;
++  padding: 4px 8px;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] :is(input, select, textarea):disabled {
++  background-color: var(--hover);
++  color: var(--muted);
++}
++:root[data-simlab][data-simlab-theme] input::placeholder,
++:root[data-simlab][data-simlab-theme] textarea::placeholder { color: var(--muted); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-btn, .btn, .btn-primary, .btn-secondary) {
++  min-height: 30px;
++  border-radius: var(--radius-md);
++  font-size: 12px;
++  text-shadow: none;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .toolbar-btn { padding: 5px 10px; }
++:root[data-simlab][data-simlab-theme] .toolbar-btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-menu-row, .toolbar-action-row) { gap: 8px; padding-inline: 12px; }
++:root[data-simlab][data-simlab-theme] .toolbar-title { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.dialog, .modal, .modal-content, .dialog-panel, .upd-modal) {
++  border-radius: var(--radius-lg);
++  box-shadow: var(--shadow-lg);
++}
++:root[data-simlab][data-simlab-theme] :is(th, td) { font-variant-numeric: tabular-nums; }
++:root[data-simlab][data-simlab-theme] th { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.theme-switch, .theme-toggle) { display: none; }
++:root[data-simlab][data-simlab-theme] * { scrollbar-color: var(--c-surface1) var(--sidebar); scrollbar-width: thin; }
++:root[data-simlab][data-simlab-theme] *::-webkit-scrollbar-thumb { background: var(--c-surface1); }
++
++/* PMU master: replace the metal enclosure with the suite's flat panels. */
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) {
++  min-height: 44px;
++  padding: 8px 16px;
++  background: var(--surface);
++  color: var(--text);
++  border-bottom: 1px solid var(--line);
++  text-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .title-bar .lang-toggle { border-color: var(--line); }
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button {
++  background: transparent; color: var(--secondary); min-height: 28px;
++}
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button.on {
++  background: var(--selected); color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] .title-bar .icon-btn {
++  background: var(--surface); color: var(--secondary); border-color: var(--line); width: 30px; height: 30px;
++}
++:root[data-simlab][data-simlab-theme] :is(.config-panel .panel, .data-table-wrap) {
++  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .panel-hd {
++  background: var(--surface); color: var(--secondary); text-shadow: none;
++  box-shadow: none; letter-spacing: 0; padding: 10px 12px; border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .panel-hd::before { background: none; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .panel-bd { padding: 12px; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn {
++  height: 34px; background: var(--surface); color: var(--text); border-color: var(--c-surface1);
++}
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:active:not(:disabled) { background: var(--selected); box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn > span { letter-spacing: 0; padding: 0; }
++:root[data-simlab][data-simlab-theme] .data-table thead th {
++  background: var(--sidebar); color: var(--secondary); border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected,
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected td {
++  background: var(--selected); color: var(--text);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-error, .toast.error) {
++  background: var(--danger-surface); color: var(--danger); border: 1px solid var(--danger);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-success, .toast.success) {
++  background: var(--green-surface); color: var(--green); border: 1px solid var(--green-line);
++}
++:root[data-simlab][data-simlab-theme] .toast-info {
++  background: var(--selected); color: var(--text); border: 1px solid var(--line);
++}
++
++/* PMU substation's panels were previously unstyled native controls. */
++:root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { background: var(--surface); padding: 0; }
++:root[data-simlab][data-simlab-theme] .layout .panel {
++  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
++  padding: 16px; margin-bottom: 0; gap: 12px;
++}
++:root[data-simlab][data-simlab-theme] .layout :is(h3, h4) { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
++:root[data-simlab][data-simlab-theme] .layout label { font-size: 13px; align-items: center; flex-wrap: wrap; }
++:root[data-simlab][data-simlab-theme] .layout :is(input, select) { min-width: 0; max-width: 100%; }
++:root[data-simlab][data-simlab-theme] .layout button {
++  background: var(--surface); color: var(--text); border: 1px solid var(--c-surface1); min-height: 32px; padding: 5px 10px;
++}
++:root[data-simlab][data-simlab-theme] .layout button:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .layout table { border-collapse: collapse; }
++:root[data-simlab][data-simlab-theme] .layout :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
++:root[data-simlab][data-simlab-theme] .layout th { background: var(--sidebar); }
++:root[data-simlab][data-simlab-theme] .layout :is(.preset-load, .preset-save, .phasor-row) { display: flex; flex-wrap: wrap; gap: 8px; }
++:root[data-simlab][data-simlab-theme] .layout .phasor-row input { width: 88px; }
++:root[data-simlab][data-simlab-theme] .layout hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
++:root[data-simlab][data-simlab-theme] .layout .error { color: var(--danger); }
++@media (max-width: 760px) {
++  :root[data-simlab][data-simlab-theme] .app > .layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
++  :root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { overflow: visible; }
++}
++@media (prefers-reduced-motion: reduce) {
++  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
++    animation: none !important; transition: none !important; scroll-behavior: auto !important;
++  }
++}
+diff --git a/frontend/src/simlab-ui/theme.ts b/frontend/src/simlab-ui/theme.ts
+new file mode 100644
+index 0000000..edd380b
+--- /dev/null
++++ b/frontend/src/simlab-ui/theme.ts
+@@ -0,0 +1,66 @@
++/** Shared by all eight suite webviews. No protocol or project data crosses IPC. */
++type Theme = 'light' | 'dark' | 'system'
++type NativeWindow = Window & {
++  go?: { suitehost?: { Appearance?: { Theme(): Promise<string> } } }
++  __TAURI_INTERNALS__?: { invoke<T>(command: string): Promise<T> }
++}
++
++export function startSuiteTheme() {
++  const root = document.documentElement
++  const native = window as NativeWindow
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let theme: Theme = 'system'
++  let stopped = false
++  let pending = false
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let warned = false
++  root.dataset.simlab = 'component'
++
++  function apply() {
++    const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme
++    // A separate attribute prevents a standalone theme composable from
++    // accidentally overriding the suite palette when the OS changes.
++    root.dataset.simlabTheme = resolved
++    root.dataset.theme = resolved
++    root.style.colorScheme = resolved
++  }
++
++  async function refresh() {
++    clearTimeout(timer)
++    if (stopped || pending || document.hidden) return
++    pending = true
++    try {
++      const value = native.go?.suitehost?.Appearance
++        ? await native.go.suitehost.Appearance.Theme()
++        : await native.__TAURI_INTERNALS__?.invoke<string>('simlab_theme')
++      if (value !== 'system' && value !== 'light' && value !== 'dark') {
++        throw new Error('Invalid SimLab theme response')
++      }
++      if (!stopped) { theme = value; apply() }
++      warned = false
++    } catch (error) {
++      if (!warned) console.warn('Cannot synchronize SimLab appearance; keeping current theme', error)
++      warned = true
++    } finally {
++      pending = false
++      if (!stopped && !document.hidden) timer = setTimeout(refresh, 1500)
++    }
++  }
++  function visibility() {
++    clearTimeout(timer)
++    if (!document.hidden) void refresh()
++  }
++  function stop() {
++    stopped = true
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('pagehide', stop)
++  }
++  apply()
++  void refresh()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('pagehide', stop)
++  return stop
++}
+diff --git a/frontend/src/simlab-ui/tokens.css b/frontend/src/simlab-ui/tokens.css
+new file mode 100644
+index 0000000..836c3f7
+--- /dev/null
++++ b/frontend/src/simlab-ui/tokens.css
+@@ -0,0 +1,133 @@
++/* Shared neutral appearance. Blue indicates selection; status colors carry meaning. */
++:root[data-simlab] {
++  color-scheme: light;
++  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
++  --font-display: var(--font-ui);
++  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
++  --workspace: #fafafa;
++  --sidebar: #f7f7f7;
++  --topbar: #ffffff;
++  --surface: #ffffff;
++  --role-surface: #ffffff;
++  --text: #202020;
++  --secondary: #525252;
++  --muted: #666666;
++  --line: #e5e5e5;
++  --brand: #2563eb;
++  --on-brand: #ffffff;
++  --copper: #525252;
++  --danger: #bd3038;
++  --warning: #8a5a10;
++  --on-accent: #ffffff;
++  --accent-hover: #1d4ed8;
++  --danger-surface: #fff1f2;
++  --hover: #f3f3f3;
++  --selected: #edf3ff;
++  --green: #237a46;
++  --green-line: #cbe3d3;
++  --green-surface: #f0f8f2;
++  --focus: #2563eb;
++  --shadow: #00000008;
++}
++:root[data-simlab][data-theme="dark"], :root[data-simlab][data-simlab-theme="dark"] {
++  color-scheme: dark;
++  --workspace: #181818;
++  --sidebar: #202020;
++  --topbar: #242424;
++  --surface: #242424;
++  --role-surface: #242424;
++  --text: #ededed;
++  --secondary: #b5b5b5;
++  --muted: #a3a3a3;
++  --line: #3b3b3b;
++  --brand: #90b0ff;
++  --on-brand: #181818;
++  --copper: #b5b5b5;
++  --danger: #f29ca3;
++  --warning: #edc884;
++  --on-accent: #181818;
++  --accent-hover: #b4c9ff;
++  --danger-surface: #3b2529;
++  --hover: #303030;
++  --selected: #28354d;
++  --green: #92d4a5;
++  --green-line: #385744;
++  --green-surface: #24382a;
++  --focus: #90b0ff;
++  --shadow: #00000022;
++}
++@media (prefers-color-scheme: dark) {
++  :root[data-simlab]:not([data-theme="light"]):not([data-theme="dark"]):not([data-simlab-theme="light"]) {
++    color-scheme: dark;
++    --workspace: #181818;
++    --sidebar: #202020;
++    --topbar: #242424;
++    --surface: #242424;
++    --role-surface: #242424;
++    --text: #ededed;
++    --secondary: #b5b5b5;
++    --muted: #a3a3a3;
++    --line: #3b3b3b;
++    --brand: #90b0ff;
++    --on-brand: #181818;
++    --copper: #b5b5b5;
++    --danger: #f29ca3;
++    --warning: #edc884;
++    --on-accent: #181818;
++    --accent-hover: #b4c9ff;
++    --danger-surface: #3b2529;
++    --hover: #303030;
++    --selected: #28354d;
++    --green: #92d4a5;
++    --green-line: #385744;
++    --green-surface: #24382a;
++    --focus: #90b0ff;
++    --shadow: #00000022;
++  }
++}
++:root[data-simlab] {
++  --iec: var(--secondary); --iec-surface: var(--hover);
++  --modbus: var(--secondary); --modbus-surface: var(--hover);
++  --pmu: var(--secondary); --pmu-surface: var(--hover);
++  --opcua: var(--secondary); --opcua-surface: var(--hover);
++}
++
++/* Compatibility aliases keep the protocol components on one semantic palette. */
++:root[data-simlab], :root[data-simlab][data-simlab-theme] {
++  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
++  --space-5: 20px; --space-6: 24px; --space-8: 32px;
++  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
++  --text-xs: 12px; --text-sm: 12px; --text-md: 13px; --text-lg: 15px;
++  --duration-fast: 120ms; --duration-normal: 180ms;
++  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
++  --font-sans: var(--font-ui);
++  --c-crust: var(--workspace); --c-mantle: var(--sidebar); --c-base: var(--surface);
++  --c-surface0: var(--line); --c-surface1: color-mix(in srgb, var(--text) 28%, var(--surface));
++  --c-surface2: color-mix(in srgb, var(--text) 42%, var(--surface));
++  --c-overlay0: var(--muted); --c-overlay1: var(--muted); --c-subtext0: var(--muted); --c-subtext1: var(--secondary);
++  --c-text: var(--text); --c-blue: var(--brand); --c-lavender: var(--accent-hover);
++  --c-sapphire: var(--iec); --c-sky: var(--iec); --c-teal: var(--pmu);
++  --c-green: var(--green); --c-yellow: var(--warning); --c-peach: var(--copper);
++  --c-red: var(--danger); --c-mauve: var(--opcua);
++  --c-on-accent: var(--on-accent); --c-accent-hover: var(--accent-hover);
++  --c-control-bg: var(--surface); --c-hover-bg: var(--hover);
++  --c-selection-bg: var(--selected); --c-selection-text: var(--text);
++  --c-row-border: var(--line); --c-row-danger-bg: var(--danger-surface);
++  --c-success-bg: var(--green-surface); --c-success-text: var(--green);
++  --c-neutral-bg: var(--hover); --c-neutral-text: var(--secondary);
++  --bg-app: var(--workspace); --bg-panel: var(--sidebar); --bg-raised: var(--surface);
++  --bg-hover: var(--hover); --bg-active: var(--selected); --bg-inset: var(--workspace);
++  --border-subtle: var(--line); --border-strong: var(--c-surface1);
++  --text-primary: var(--text); --text-secondary: var(--secondary);
++  --text-muted: var(--muted); --text-disabled: var(--muted);
++  --accent: var(--brand); --success: var(--green); --info: var(--iec);
++  --shadow-sm: 0 1px 3px var(--shadow); --shadow-md: 0 4px 16px var(--shadow);
++  --shadow-lg: 0 16px 48px #0003;
++  /* PMU's legacy names use the same surfaces and status semantics. */
++  --bg-chrome: var(--workspace); --bg-content: var(--surface); --bg-input: var(--surface);
++  --bg-disabled: var(--hover); --border: var(--line); --border-soft: var(--line);
++  --border-dash: var(--c-surface1); --accent-dark: var(--accent-hover);
++  --accent-tint: var(--selected); --accent-on-sel: var(--on-accent);
++  --text-dim: var(--secondary); --text-faint: var(--muted);
++  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
++}
+diff --git a/master-frontend/src/components/CertManagerDialog.vue b/master-frontend/src/components/CertManagerDialog.vue
+index 5c3df73..0425186 100644
+--- a/master-frontend/src/components/CertManagerDialog.vue
++++ b/master-frontend/src/components/CertManagerDialog.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { ref, watch } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { useI18n } from '@shared/i18n'
+@@ -98,7 +99,7 @@ const selectedDetail = (): CertSummaryDto | null =>
+                     :class="['cert-item', { selected: selectedPath === c.path }]"
+                     @click="selectedPath = c.path"
+                   >
+-                    <span class="cert-name">📄 {{ c.subject_cn }}</span>
++                    <span class="cert-name"><SuiteIcon name="file" /> {{ c.subject_cn }}</span>
+                   </div>
+                   <div v-if="trusted.length === 0" class="pane-empty">{{ t('common.loading') }}</div>
+                 </div>
+@@ -112,7 +113,7 @@ const selectedDetail = (): CertSummaryDto | null =>
+                     :class="['cert-item', { selected: selectedPath === c.path }]"
+                     @click="selectedPath = c.path"
+                   >
+-                    <span class="cert-name">📄 {{ c.subject_cn }}</span>
++                    <span class="cert-name"><SuiteIcon name="file" /> {{ c.subject_cn }}</span>
+                   </div>
+                   <div v-if="rejected.length === 0" class="pane-empty">{{ t('common.loading') }}</div>
+                 </div>
+diff --git a/master-frontend/src/components/ConnectionTree.vue b/master-frontend/src/components/ConnectionTree.vue
+index f5b911e..f05e3a9 100644
+--- a/master-frontend/src/components/ConnectionTree.vue
++++ b/master-frontend/src/components/ConnectionTree.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, reactive, ref, watch } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { useI18n } from '@shared/i18n'
+@@ -349,7 +350,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
+           <template v-if="conn.state === 'Connected'">
+             <div class="section-row" @click="toggleBrowseOpen(conn.id)">
+               <span class="toggle" :class="{ open: stateFor(conn.id).browseOpen }">▸</span>
+-              <span class="section-label">🌲 {{ t('tree.browse') }}</span>
++              <span class="section-label"><SuiteIcon name="folder" /> {{ t('tree.browse') }}</span>
+             </div>
+ 
+             <div v-if="stateFor(conn.id).browseOpen" class="browse-controls">
+@@ -420,7 +421,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
+                       class="row-action"
+                       :title="t('tree.viewHistory')"
+                       @click="openHistory(conn.id, row.nodeId, row.item.display_name)"
+-                    >📈</button>
++                    ><SuiteIcon name="chart" /></button>
+                     <button
+                       v-if="row.item.node_class === 'Method'"
+                       class="row-action"
+@@ -446,7 +447,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
+           <template v-if="selectedConnectionId === conn.id">
+             <div class="section-row">
+               <span class="section-spacer" />
+-              <span class="section-label">📡 {{ t('tree.monitored') }} ({{ subNodes.length }})</span>
++              <span class="section-label"><SuiteIcon name="signal" /> {{ t('tree.monitored') }} ({{ subNodes.length }})</span>
+             </div>
+             <div v-for="row in subNodes" :key="row.node_id" class="leaf-row" @click="selectNode(row.node_id)">
+               <span class="leaf-id mono">{{ row.node_id }}</span>
+@@ -454,7 +455,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
+ 
+             <div class="section-row">
+               <span class="section-spacer" />
+-              <span class="section-label">⏱ {{ t('tree.polling') }} ({{ pollNodes.length }})</span>
++              <span class="section-label"><SuiteIcon name="clock" /> {{ t('tree.polling') }} ({{ pollNodes.length }})</span>
+             </div>
+             <div v-for="row in pollNodes" :key="row.node_id" class="leaf-row" @click="selectNode(row.node_id)">
+               <span class="leaf-id mono">{{ row.node_id }}</span>
+@@ -477,7 +478,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
+         <div class="group-row">
+           <button class="toggle" :class="{ open: expandedGroups.has(group.id) }" @click="toggleGroup(group.id)">▸</button>
+           <span class="group-label" @click="toggleGroup(group.id)">· {{ group.name }} ({{ group.node_ids.length }})</span>
+-          <button class="group-del" :title="t('common.delete')" @click="onDeleteGroup(group.id)">🗑</button>
++          <button class="group-del" :title="t('common.delete')" @click="onDeleteGroup(group.id)"><SuiteIcon name="trash" /></button>
+         </div>
+         <div v-if="expandedGroups.has(group.id)" class="group-children">
+           <div v-for="nodeId in group.node_ids" :key="nodeId" class="leaf-row" @click="selectNode(nodeId)">
+diff --git a/master-frontend/src/components/DataTable.vue b/master-frontend/src/components/DataTable.vue
+index 6ab03ed..104331d 100644
+--- a/master-frontend/src/components/DataTable.vue
++++ b/master-frontend/src/components/DataTable.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref } from 'vue'
+ import { useI18n } from '@shared/i18n'
+ import { showConfirm } from '@shared/composables/useDialog'
+@@ -120,10 +121,10 @@ function onHistory(row: MonitoredRow) {
+       :title="t('valuePanel.emptyTitle')"
+       :hint="t('dataTable.emptyHint')"
+     >
+-      <span>📡</span>
++      <span><SuiteIcon name="signal" /></span>
+     </EmptyState>
+     <EmptyState v-else-if="rows.length === 0" :title="t('dataTable.emptyTitle')" :hint="t('dataTable.emptyHint')">
+-      <span>🌲</span>
++      <span><SuiteIcon name="folder" /></span>
+     </EmptyState>
+ 
+     <div v-else class="table-scroll">
+@@ -166,9 +167,9 @@ function onHistory(row: MonitoredRow) {
+             <td>{{ row.access_mode }} · {{ Math.round(row.interval_ms) }}ms</td>
+             <td class="col-actions" @click.stop>
+               <button class="row-action" :title="t('tree.viewHistory')" @click="onHistory(row)">
+-                📈
++                <SuiteIcon name="chart" />
+               </button>
+-              <button class="row-action" :title="t('dataTable.remove')" @click="removeOne(row.node_id)">🗑</button>
++              <button class="row-action" :title="t('dataTable.remove')" @click="removeOne(row.node_id)"><SuiteIcon name="trash" /></button>
+             </td>
+           </tr>
+         </tbody>
+diff --git a/master-frontend/src/components/EventsPanel.vue b/master-frontend/src/components/EventsPanel.vue
+index 80d25a2..a59de0a 100644
+--- a/master-frontend/src/components/EventsPanel.vue
++++ b/master-frontend/src/components/EventsPanel.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { onMounted, onUnmounted, ref, watch } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { useI18n } from '@shared/i18n'
+@@ -94,7 +95,7 @@ onUnmounted(() => {
+ <template>
+   <div class="events-panel">
+     <div class="head">
+-      <span class="head-title">🔔 {{ t('events.title') }}</span>
++      <span class="head-title"><SuiteIcon name="bell" /> {{ t('events.title') }}</span>
+       <span class="head-count">{{ t('events.count', { count: items.length }) }}</span>
+     </div>
+ 
+@@ -113,13 +114,13 @@ onUnmounted(() => {
+         class="action-btn"
+         :disabled="!eventsConnId || !sourceNodeId.trim() || subscribed || subscribeInFlight"
+         @click="onSubscribe"
+-      >{{ subscribed ? `✓ ${t('events.subscribed')}` : `📡 ${t('events.subscribe')}` }}</button>
++      ><SuiteIcon name="signal" />{{ subscribed ? t('events.subscribed') : t('events.subscribe') }}</button>
+       <button class="action-btn" :disabled="!subscribed" @click="onUnsubscribe">{{ t('events.unsubscribe') }}</button>
+       <button class="action-btn" :disabled="items.length === 0" @click="onClear">{{ t('events.clear') }}</button>
+     </div>
+ 
+     <EmptyState v-if="items.length === 0" :title="t('events.emptyTitle')" :hint="t('events.emptyHint')">
+-      <span>🔔</span>
++      <span><SuiteIcon name="bell" /></span>
+     </EmptyState>
+ 
+     <div v-else class="table-scroll">
+diff --git a/master-frontend/src/components/HistoryPanel.vue b/master-frontend/src/components/HistoryPanel.vue
+index 5842756..d4de09c 100644
+--- a/master-frontend/src/components/HistoryPanel.vue
++++ b/master-frontend/src/components/HistoryPanel.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref, watch } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { useI18n } from '@shared/i18n'
+@@ -114,12 +115,12 @@ watch([mode], () => {
+       :title="t('history.emptyTitle')"
+       :hint="t('history.emptyHint')"
+     >
+-      <span>📈</span>
++      <span><SuiteIcon name="chart" /></span>
+     </EmptyState>
+ 
+     <div v-else class="history-body">
+       <div class="head">
+-        <span class="head-title">📈 {{ historyTarget.display_name }}</span>
++        <span class="head-title"><SuiteIcon name="chart" /> {{ historyTarget.display_name }}</span>
+         <span class="head-node mono">{{ historyTarget.node_id }}</span>
+       </div>
+ 
+@@ -158,7 +159,7 @@ watch([mode], () => {
+           <span class="ctl-label">{{ t('history.maxValues') }}</span>
+           <input v-model.number="maxValues" class="ctl-input num" type="number" min="10" max="50000" />
+           <button class="refresh-btn" :disabled="loading || !isRangeValid()" @click="load">
+-            {{ loading ? t('history.loading') : `🔄 ${t('history.refresh')}` }}
++            <SuiteIcon name="refresh" />{{ loading ? t('history.loading') : t('history.refresh') }}
+           </button>
+         </div>
+       </div>
 diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
-index 34e6947..9e72d86 100644
+index 34e6947..5cc294c 100644
 --- a/master-frontend/src/components/Toolbar.vue
 +++ b/master-frontend/src/components/Toolbar.vue
-@@ -13,6 +13,7 @@ import { useMasterContext } from '../inject'
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { open, save } from '@tauri-apps/plugin-dialog'
+@@ -13,6 +14,7 @@ import { useMasterContext } from '../inject'
  import { useConnectionRename } from '../useConnectionRename'
  import type { ConnectionInfo, DiscoveredEndpointDto } from '../types'
  
@@ -443,8 +1202,36 @@ index 34e6947..9e72d86 100644
  const { t } = useI18n()
  const { requestRename, renaming } = useConnectionRename()
  const {
-@@ -204,7 +205,7 @@ function onCreated(conn: ConnectionInfo) {
-         <button class="toolbar-btn" @click="certVisible = true">🔐 {{ t('toolbar.certManager') }}</button>
+@@ -183,28 +185,28 @@ function onCreated(conn: ConnectionInfo) {
+           class="toolbar-btn btn-start"
+           :disabled="!hasSelection || isConnected || isConnecting"
+           @click="onConnect"
+-        >▶ {{ t('toolbar.connect') }}</button>
++        ><SuiteIcon name="play" /> {{ t('toolbar.connect') }}</button>
+         <button class="toolbar-btn btn-stop" :disabled="!isConnected" @click="onDisconnect">
+-          ■ {{ t('toolbar.disconnect') }}
++          <SuiteIcon name="stop" /> {{ t('toolbar.disconnect') }}
+         </button>
+         <button class="toolbar-btn btn-close" :disabled="!hasSelection" @click="onDelete">
+-          🗑 {{ t('toolbar.deleteConnection') }}
++          <SuiteIcon name="trash" /> {{ t('toolbar.deleteConnection') }}
+         </button>
+ 
+         <span class="toolbar-divider" />
+ 
+-        <button class="toolbar-btn" @click="onRefresh">⟳ {{ t('toolbar.refresh') }}</button>
++        <button class="toolbar-btn" @click="onRefresh"><SuiteIcon name="refresh" /> {{ t('toolbar.refresh') }}</button>
+         <button class="toolbar-btn" @click="onLoad">{{ t('toolbar.openProject') }}</button>
+         <button class="toolbar-btn" @click="onSave">{{ t('toolbar.saveProject') }}</button>
+ 
+         <span class="toolbar-divider" />
+ 
+-        <button class="toolbar-btn" @click="onDiscover">🔍 {{ t('toolbar.discover') }}</button>
+-        <button class="toolbar-btn" @click="onNewGroup">➕ {{ t('toolbar.newGroup') }}</button>
+-        <button class="toolbar-btn" @click="certVisible = true">🔐 {{ t('toolbar.certManager') }}</button>
++        <button class="toolbar-btn" @click="onDiscover"><SuiteIcon name="search" /> {{ t('toolbar.discover') }}</button>
++        <button class="toolbar-btn" @click="onNewGroup"><SuiteIcon name="plus" /> {{ t('toolbar.newGroup') }}</button>
++        <button class="toolbar-btn" @click="certVisible = true"><SuiteIcon name="lock" /> {{ t('toolbar.certManager') }}</button>
        </div>
        <div class="toolbar-aside">
 -        <UpdateControl />
@@ -452,3 +1239,442 @@ index 34e6947..9e72d86 100644
          <span
            class="persistence-status"
            :class="{ 'persistence-error': persistenceStatus.error }"
+diff --git a/master-frontend/src/components/ValuePanel.vue b/master-frontend/src/components/ValuePanel.vue
+index e70b401..e682a86 100644
+--- a/master-frontend/src/components/ValuePanel.vue
++++ b/master-frontend/src/components/ValuePanel.vue
+@@ -1,4 +1,5 @@
+ <script setup lang="ts">
++import SuiteIcon from '../simlab-ui/Icon.vue'
+ import { computed, ref, watch } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import { useI18n } from '@shared/i18n'
+@@ -118,7 +119,7 @@ async function onWrite() {
+       :title="t('valuePanel.emptyTitle')"
+       :hint="t('valuePanel.emptyHint')"
+     >
+-      <span>👈</span>
++      <span><SuiteIcon name="pointer" /></span>
+     </EmptyState>
+ 
+     <div v-else class="panel-scroll">
+@@ -145,7 +146,7 @@ async function onWrite() {
+       <div class="section">
+         <div class="section-label">{{ t('valuePanel.actions') }}</div>
+         <button class="action-btn" :disabled="reading" @click="onRead">
+-          {{ reading ? t('common.loading') : `⟳ ${t('valuePanel.read')}` }}
++          <SuiteIcon name="refresh" />{{ reading ? t('common.loading') : t('valuePanel.read') }}
+         </button>
+       </div>
+ 
+diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
+index 975ab50..08e19c8 100644
+--- a/master-frontend/src/main.ts
++++ b/master-frontend/src/main.ts
+@@ -1,7 +1,11 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
+ import { createApp } from 'vue'
+ import '@shared/styles/tokens.css'
+ import '@shared/styles/transitions.css'
+ import '@shared/styles/toolbar.css'
+ import App from './App.vue'
+ 
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
+ createApp(App).mount('#app')
+diff --git a/master-frontend/src/simlab-ui/Icon.vue b/master-frontend/src/simlab-ui/Icon.vue
+new file mode 100644
+index 0000000..183ddc1
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/Icon.vue
+@@ -0,0 +1,32 @@
++<script setup lang="ts">
++withDefaults(defineProps<{ name: string; size?: number }>(), { size: 16 })
++const paths: Record<string, string> = {
++  play: 'm8 5 11 7-11 7Z',
++  stop: 'M6 6h12v12H6Z',
++  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
++  refresh: 'M20 7a9 9 0 0 0-15-2L2 8m0-5v5h5M4 17a9 9 0 0 0 15 2l3-3m0 5v-5h-5',
++  search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
++  plus: 'M12 5v14M5 12h14',
++  lock: 'M5 10h14v11H5ZM8 10V7a4 4 0 0 1 8 0v3',
++  folder: 'M3 5h6l2 3h10v12H3Z',
++  chart: 'M3 3v18h18M7 14l4-5 4 3 5-7',
++  node: 'M4 4h16v16H4ZM4 10h16M10 4v16',
++  pointer: 'm5 3 15 9-7 2-3 7Z',
++  signal: 'M12 12h.01M8 8a6 6 0 0 0 0 8M16 8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14',
++  clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
++  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
++  file: 'M4 3h10l6 6v12H4ZM14 3v6h6M8 13h8M8 17h6',
++}
++</script>
++
++<template>
++  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none"
++    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
++    aria-hidden="true" focusable="false" class="simlab-icon">
++    <path :d="paths[name] || paths.node" />
++  </svg>
++</template>
++
++<style scoped>
++.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
++</style>
+diff --git a/master-frontend/src/simlab-ui/components.css b/master-frontend/src/simlab-ui/components.css
+new file mode 100644
+index 0000000..dbd4181
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/components.css
+@@ -0,0 +1,140 @@
++/* Suite chrome and controls. Protocol layouts and semantic state classes remain
++   owned by each simulator. Root scoping also covers teleported dialogs. */
++:root[data-simlab][data-simlab-theme] body {
++  margin: 0;
++  background: var(--workspace);
++  color: var(--text);
++  font-family: var(--font-ui);
++  font-size: 13px;
++  -webkit-font-smoothing: antialiased;
++}
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea) {
++  font-family: var(--font-ui);
++  font-size: 13px;
++  border-radius: var(--radius-md);
++  accent-color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] button {
++  cursor: pointer;
++  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
++}
++:root[data-simlab][data-simlab-theme] button:disabled { cursor: not-allowed; opacity: .5; }
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea, [tabindex]):focus-visible {
++  outline: 2px solid var(--focus);
++  outline-offset: -2px;
++}
++:root[data-simlab][data-simlab-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
++  background-color: var(--surface);
++  color: var(--text);
++  border: 1px solid var(--c-surface1);
++  min-height: 30px;
++  padding: 4px 8px;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] :is(input, select, textarea):disabled {
++  background-color: var(--hover);
++  color: var(--muted);
++}
++:root[data-simlab][data-simlab-theme] input::placeholder,
++:root[data-simlab][data-simlab-theme] textarea::placeholder { color: var(--muted); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-btn, .btn, .btn-primary, .btn-secondary) {
++  min-height: 30px;
++  border-radius: var(--radius-md);
++  font-size: 12px;
++  text-shadow: none;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .toolbar-btn { padding: 5px 10px; }
++:root[data-simlab][data-simlab-theme] .toolbar-btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-menu-row, .toolbar-action-row) { gap: 8px; padding-inline: 12px; }
++:root[data-simlab][data-simlab-theme] .toolbar-title { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.dialog, .modal, .modal-content, .dialog-panel, .upd-modal) {
++  border-radius: var(--radius-lg);
++  box-shadow: var(--shadow-lg);
++}
++:root[data-simlab][data-simlab-theme] :is(th, td) { font-variant-numeric: tabular-nums; }
++:root[data-simlab][data-simlab-theme] th { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.theme-switch, .theme-toggle) { display: none; }
++:root[data-simlab][data-simlab-theme] * { scrollbar-color: var(--c-surface1) var(--sidebar); scrollbar-width: thin; }
++:root[data-simlab][data-simlab-theme] *::-webkit-scrollbar-thumb { background: var(--c-surface1); }
++
++/* PMU master: replace the metal enclosure with the suite's flat panels. */
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) {
++  min-height: 44px;
++  padding: 8px 16px;
++  background: var(--surface);
++  color: var(--text);
++  border-bottom: 1px solid var(--line);
++  text-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .title-bar .lang-toggle { border-color: var(--line); }
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button {
++  background: transparent; color: var(--secondary); min-height: 28px;
++}
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button.on {
++  background: var(--selected); color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] .title-bar .icon-btn {
++  background: var(--surface); color: var(--secondary); border-color: var(--line); width: 30px; height: 30px;
++}
++:root[data-simlab][data-simlab-theme] :is(.config-panel .panel, .data-table-wrap) {
++  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .panel-hd {
++  background: var(--surface); color: var(--secondary); text-shadow: none;
++  box-shadow: none; letter-spacing: 0; padding: 10px 12px; border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .panel-hd::before { background: none; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .panel-bd { padding: 12px; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn {
++  height: 34px; background: var(--surface); color: var(--text); border-color: var(--c-surface1);
++}
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:active:not(:disabled) { background: var(--selected); box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn > span { letter-spacing: 0; padding: 0; }
++:root[data-simlab][data-simlab-theme] .data-table thead th {
++  background: var(--sidebar); color: var(--secondary); border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected,
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected td {
++  background: var(--selected); color: var(--text);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-error, .toast.error) {
++  background: var(--danger-surface); color: var(--danger); border: 1px solid var(--danger);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-success, .toast.success) {
++  background: var(--green-surface); color: var(--green); border: 1px solid var(--green-line);
++}
++:root[data-simlab][data-simlab-theme] .toast-info {
++  background: var(--selected); color: var(--text); border: 1px solid var(--line);
++}
++
++/* PMU substation's panels were previously unstyled native controls. */
++:root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { background: var(--surface); padding: 0; }
++:root[data-simlab][data-simlab-theme] .layout .panel {
++  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
++  padding: 16px; margin-bottom: 0; gap: 12px;
++}
++:root[data-simlab][data-simlab-theme] .layout :is(h3, h4) { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
++:root[data-simlab][data-simlab-theme] .layout label { font-size: 13px; align-items: center; flex-wrap: wrap; }
++:root[data-simlab][data-simlab-theme] .layout :is(input, select) { min-width: 0; max-width: 100%; }
++:root[data-simlab][data-simlab-theme] .layout button {
++  background: var(--surface); color: var(--text); border: 1px solid var(--c-surface1); min-height: 32px; padding: 5px 10px;
++}
++:root[data-simlab][data-simlab-theme] .layout button:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .layout table { border-collapse: collapse; }
++:root[data-simlab][data-simlab-theme] .layout :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
++:root[data-simlab][data-simlab-theme] .layout th { background: var(--sidebar); }
++:root[data-simlab][data-simlab-theme] .layout :is(.preset-load, .preset-save, .phasor-row) { display: flex; flex-wrap: wrap; gap: 8px; }
++:root[data-simlab][data-simlab-theme] .layout .phasor-row input { width: 88px; }
++:root[data-simlab][data-simlab-theme] .layout hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
++:root[data-simlab][data-simlab-theme] .layout .error { color: var(--danger); }
++@media (max-width: 760px) {
++  :root[data-simlab][data-simlab-theme] .app > .layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
++  :root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { overflow: visible; }
++}
++@media (prefers-reduced-motion: reduce) {
++  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
++    animation: none !important; transition: none !important; scroll-behavior: auto !important;
++  }
++}
+diff --git a/master-frontend/src/simlab-ui/theme.ts b/master-frontend/src/simlab-ui/theme.ts
+new file mode 100644
+index 0000000..edd380b
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/theme.ts
+@@ -0,0 +1,66 @@
++/** Shared by all eight suite webviews. No protocol or project data crosses IPC. */
++type Theme = 'light' | 'dark' | 'system'
++type NativeWindow = Window & {
++  go?: { suitehost?: { Appearance?: { Theme(): Promise<string> } } }
++  __TAURI_INTERNALS__?: { invoke<T>(command: string): Promise<T> }
++}
++
++export function startSuiteTheme() {
++  const root = document.documentElement
++  const native = window as NativeWindow
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let theme: Theme = 'system'
++  let stopped = false
++  let pending = false
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let warned = false
++  root.dataset.simlab = 'component'
++
++  function apply() {
++    const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme
++    // A separate attribute prevents a standalone theme composable from
++    // accidentally overriding the suite palette when the OS changes.
++    root.dataset.simlabTheme = resolved
++    root.dataset.theme = resolved
++    root.style.colorScheme = resolved
++  }
++
++  async function refresh() {
++    clearTimeout(timer)
++    if (stopped || pending || document.hidden) return
++    pending = true
++    try {
++      const value = native.go?.suitehost?.Appearance
++        ? await native.go.suitehost.Appearance.Theme()
++        : await native.__TAURI_INTERNALS__?.invoke<string>('simlab_theme')
++      if (value !== 'system' && value !== 'light' && value !== 'dark') {
++        throw new Error('Invalid SimLab theme response')
++      }
++      if (!stopped) { theme = value; apply() }
++      warned = false
++    } catch (error) {
++      if (!warned) console.warn('Cannot synchronize SimLab appearance; keeping current theme', error)
++      warned = true
++    } finally {
++      pending = false
++      if (!stopped && !document.hidden) timer = setTimeout(refresh, 1500)
++    }
++  }
++  function visibility() {
++    clearTimeout(timer)
++    if (!document.hidden) void refresh()
++  }
++  function stop() {
++    stopped = true
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('pagehide', stop)
++  }
++  apply()
++  void refresh()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('pagehide', stop)
++  return stop
++}
+diff --git a/master-frontend/src/simlab-ui/tokens.css b/master-frontend/src/simlab-ui/tokens.css
+new file mode 100644
+index 0000000..836c3f7
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/tokens.css
+@@ -0,0 +1,133 @@
++/* Shared neutral appearance. Blue indicates selection; status colors carry meaning. */
++:root[data-simlab] {
++  color-scheme: light;
++  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
++  --font-display: var(--font-ui);
++  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
++  --workspace: #fafafa;
++  --sidebar: #f7f7f7;
++  --topbar: #ffffff;
++  --surface: #ffffff;
++  --role-surface: #ffffff;
++  --text: #202020;
++  --secondary: #525252;
++  --muted: #666666;
++  --line: #e5e5e5;
++  --brand: #2563eb;
++  --on-brand: #ffffff;
++  --copper: #525252;
++  --danger: #bd3038;
++  --warning: #8a5a10;
++  --on-accent: #ffffff;
++  --accent-hover: #1d4ed8;
++  --danger-surface: #fff1f2;
++  --hover: #f3f3f3;
++  --selected: #edf3ff;
++  --green: #237a46;
++  --green-line: #cbe3d3;
++  --green-surface: #f0f8f2;
++  --focus: #2563eb;
++  --shadow: #00000008;
++}
++:root[data-simlab][data-theme="dark"], :root[data-simlab][data-simlab-theme="dark"] {
++  color-scheme: dark;
++  --workspace: #181818;
++  --sidebar: #202020;
++  --topbar: #242424;
++  --surface: #242424;
++  --role-surface: #242424;
++  --text: #ededed;
++  --secondary: #b5b5b5;
++  --muted: #a3a3a3;
++  --line: #3b3b3b;
++  --brand: #90b0ff;
++  --on-brand: #181818;
++  --copper: #b5b5b5;
++  --danger: #f29ca3;
++  --warning: #edc884;
++  --on-accent: #181818;
++  --accent-hover: #b4c9ff;
++  --danger-surface: #3b2529;
++  --hover: #303030;
++  --selected: #28354d;
++  --green: #92d4a5;
++  --green-line: #385744;
++  --green-surface: #24382a;
++  --focus: #90b0ff;
++  --shadow: #00000022;
++}
++@media (prefers-color-scheme: dark) {
++  :root[data-simlab]:not([data-theme="light"]):not([data-theme="dark"]):not([data-simlab-theme="light"]) {
++    color-scheme: dark;
++    --workspace: #181818;
++    --sidebar: #202020;
++    --topbar: #242424;
++    --surface: #242424;
++    --role-surface: #242424;
++    --text: #ededed;
++    --secondary: #b5b5b5;
++    --muted: #a3a3a3;
++    --line: #3b3b3b;
++    --brand: #90b0ff;
++    --on-brand: #181818;
++    --copper: #b5b5b5;
++    --danger: #f29ca3;
++    --warning: #edc884;
++    --on-accent: #181818;
++    --accent-hover: #b4c9ff;
++    --danger-surface: #3b2529;
++    --hover: #303030;
++    --selected: #28354d;
++    --green: #92d4a5;
++    --green-line: #385744;
++    --green-surface: #24382a;
++    --focus: #90b0ff;
++    --shadow: #00000022;
++  }
++}
++:root[data-simlab] {
++  --iec: var(--secondary); --iec-surface: var(--hover);
++  --modbus: var(--secondary); --modbus-surface: var(--hover);
++  --pmu: var(--secondary); --pmu-surface: var(--hover);
++  --opcua: var(--secondary); --opcua-surface: var(--hover);
++}
++
++/* Compatibility aliases keep the protocol components on one semantic palette. */
++:root[data-simlab], :root[data-simlab][data-simlab-theme] {
++  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
++  --space-5: 20px; --space-6: 24px; --space-8: 32px;
++  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
++  --text-xs: 12px; --text-sm: 12px; --text-md: 13px; --text-lg: 15px;
++  --duration-fast: 120ms; --duration-normal: 180ms;
++  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
++  --font-sans: var(--font-ui);
++  --c-crust: var(--workspace); --c-mantle: var(--sidebar); --c-base: var(--surface);
++  --c-surface0: var(--line); --c-surface1: color-mix(in srgb, var(--text) 28%, var(--surface));
++  --c-surface2: color-mix(in srgb, var(--text) 42%, var(--surface));
++  --c-overlay0: var(--muted); --c-overlay1: var(--muted); --c-subtext0: var(--muted); --c-subtext1: var(--secondary);
++  --c-text: var(--text); --c-blue: var(--brand); --c-lavender: var(--accent-hover);
++  --c-sapphire: var(--iec); --c-sky: var(--iec); --c-teal: var(--pmu);
++  --c-green: var(--green); --c-yellow: var(--warning); --c-peach: var(--copper);
++  --c-red: var(--danger); --c-mauve: var(--opcua);
++  --c-on-accent: var(--on-accent); --c-accent-hover: var(--accent-hover);
++  --c-control-bg: var(--surface); --c-hover-bg: var(--hover);
++  --c-selection-bg: var(--selected); --c-selection-text: var(--text);
++  --c-row-border: var(--line); --c-row-danger-bg: var(--danger-surface);
++  --c-success-bg: var(--green-surface); --c-success-text: var(--green);
++  --c-neutral-bg: var(--hover); --c-neutral-text: var(--secondary);
++  --bg-app: var(--workspace); --bg-panel: var(--sidebar); --bg-raised: var(--surface);
++  --bg-hover: var(--hover); --bg-active: var(--selected); --bg-inset: var(--workspace);
++  --border-subtle: var(--line); --border-strong: var(--c-surface1);
++  --text-primary: var(--text); --text-secondary: var(--secondary);
++  --text-muted: var(--muted); --text-disabled: var(--muted);
++  --accent: var(--brand); --success: var(--green); --info: var(--iec);
++  --shadow-sm: 0 1px 3px var(--shadow); --shadow-md: 0 4px 16px var(--shadow);
++  --shadow-lg: 0 16px 48px #0003;
++  /* PMU's legacy names use the same surfaces and status semantics. */
++  --bg-chrome: var(--workspace); --bg-content: var(--surface); --bg-input: var(--surface);
++  --bg-disabled: var(--hover); --border: var(--line); --border-soft: var(--line);
++  --border-dash: var(--c-surface1); --accent-dark: var(--accent-hover);
++  --accent-tint: var(--selected); --accent-on-sel: var(--on-accent);
++  --text-dim: var(--secondary); --text-faint: var(--muted);
++  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
++}

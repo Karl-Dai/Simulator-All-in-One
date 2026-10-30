@@ -1,0 +1,140 @@
+/* Suite chrome and controls. Protocol layouts and semantic state classes remain
+   owned by each simulator. Root scoping also covers teleported dialogs. */
+:root[data-simlab][data-simlab-theme] body {
+  margin: 0;
+  background: var(--workspace);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea) {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  border-radius: var(--radius-md);
+  accent-color: var(--brand);
+}
+:root[data-simlab][data-simlab-theme] button {
+  cursor: pointer;
+  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+}
+:root[data-simlab][data-simlab-theme] button:disabled { cursor: not-allowed; opacity: .5; }
+:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+:root[data-simlab][data-simlab-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--c-surface1);
+  min-height: 30px;
+  padding: 4px 8px;
+  box-shadow: none;
+}
+:root[data-simlab][data-simlab-theme] :is(input, select, textarea):disabled {
+  background-color: var(--hover);
+  color: var(--muted);
+}
+:root[data-simlab][data-simlab-theme] input::placeholder,
+:root[data-simlab][data-simlab-theme] textarea::placeholder { color: var(--muted); }
+:root[data-simlab][data-simlab-theme] :is(.toolbar-btn, .btn, .btn-primary, .btn-secondary) {
+  min-height: 30px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  text-shadow: none;
+  box-shadow: none;
+}
+:root[data-simlab][data-simlab-theme] .toolbar-btn { padding: 5px 10px; }
+:root[data-simlab][data-simlab-theme] .toolbar-btn:hover:not(:disabled) { background: var(--hover); }
+:root[data-simlab][data-simlab-theme] :is(.toolbar-menu-row, .toolbar-action-row) { gap: 8px; padding-inline: 12px; }
+:root[data-simlab][data-simlab-theme] .toolbar-title { color: var(--secondary); }
+:root[data-simlab][data-simlab-theme] :is(.dialog, .modal, .modal-content, .dialog-panel, .upd-modal) {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+:root[data-simlab][data-simlab-theme] :is(th, td) { font-variant-numeric: tabular-nums; }
+:root[data-simlab][data-simlab-theme] th { color: var(--secondary); }
+:root[data-simlab][data-simlab-theme] :is(.theme-switch, .theme-toggle) { display: none; }
+:root[data-simlab][data-simlab-theme] * { scrollbar-color: var(--c-surface1) var(--sidebar); scrollbar-width: thin; }
+:root[data-simlab][data-simlab-theme] *::-webkit-scrollbar-thumb { background: var(--c-surface1); }
+
+/* PMU master: replace the metal enclosure with the suite's flat panels. */
+:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) {
+  min-height: 44px;
+  padding: 8px 16px;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  text-shadow: none;
+}
+:root[data-simlab][data-simlab-theme] .title-bar .lang-toggle { border-color: var(--line); }
+:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button {
+  background: transparent; color: var(--secondary); min-height: 28px;
+}
+:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button.on {
+  background: var(--selected); color: var(--brand);
+}
+:root[data-simlab][data-simlab-theme] .title-bar .icon-btn {
+  background: var(--surface); color: var(--secondary); border-color: var(--line); width: 30px; height: 30px;
+}
+:root[data-simlab][data-simlab-theme] :is(.config-panel .panel, .data-table-wrap) {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: none;
+}
+:root[data-simlab][data-simlab-theme] .panel-hd {
+  background: var(--surface); color: var(--secondary); text-shadow: none;
+  box-shadow: none; letter-spacing: 0; padding: 10px 12px; border-color: var(--line);
+}
+:root[data-simlab][data-simlab-theme] .panel-hd::before { background: none; box-shadow: none; }
+:root[data-simlab][data-simlab-theme] .panel-bd { padding: 12px; box-shadow: none; }
+:root[data-simlab][data-simlab-theme] .btn-grid .btn {
+  height: 34px; background: var(--surface); color: var(--text); border-color: var(--c-surface1);
+}
+:root[data-simlab][data-simlab-theme] .btn-grid .btn:hover:not(:disabled) { background: var(--hover); }
+:root[data-simlab][data-simlab-theme] .btn-grid .btn:active:not(:disabled) { background: var(--selected); box-shadow: none; }
+:root[data-simlab][data-simlab-theme] .btn-grid .btn > span { letter-spacing: 0; padding: 0; }
+:root[data-simlab][data-simlab-theme] .data-table thead th {
+  background: var(--sidebar); color: var(--secondary); border-color: var(--line);
+}
+:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected,
+:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected td {
+  background: var(--selected); color: var(--text);
+}
+:root[data-simlab][data-simlab-theme] :is(.toast-error, .toast.error) {
+  background: var(--danger-surface); color: var(--danger); border: 1px solid var(--danger);
+}
+:root[data-simlab][data-simlab-theme] :is(.toast-success, .toast.success) {
+  background: var(--green-surface); color: var(--green); border: 1px solid var(--green-line);
+}
+:root[data-simlab][data-simlab-theme] .toast-info {
+  background: var(--selected); color: var(--text); border: 1px solid var(--line);
+}
+
+/* PMU substation's panels were previously unstyled native controls. */
+:root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { background: var(--surface); padding: 0; }
+:root[data-simlab][data-simlab-theme] .layout .panel {
+  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  padding: 16px; margin-bottom: 0; gap: 12px;
+}
+:root[data-simlab][data-simlab-theme] .layout :is(h3, h4) { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+:root[data-simlab][data-simlab-theme] .layout label { font-size: 13px; align-items: center; flex-wrap: wrap; }
+:root[data-simlab][data-simlab-theme] .layout :is(input, select) { min-width: 0; max-width: 100%; }
+:root[data-simlab][data-simlab-theme] .layout button {
+  background: var(--surface); color: var(--text); border: 1px solid var(--c-surface1); min-height: 32px; padding: 5px 10px;
+}
+:root[data-simlab][data-simlab-theme] .layout button:hover:not(:disabled) { background: var(--hover); }
+:root[data-simlab][data-simlab-theme] .layout table { border-collapse: collapse; }
+:root[data-simlab][data-simlab-theme] .layout :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+:root[data-simlab][data-simlab-theme] .layout th { background: var(--sidebar); }
+:root[data-simlab][data-simlab-theme] .layout :is(.preset-load, .preset-save, .phasor-row) { display: flex; flex-wrap: wrap; gap: 8px; }
+:root[data-simlab][data-simlab-theme] .layout .phasor-row input { width: 88px; }
+:root[data-simlab][data-simlab-theme] .layout hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
+:root[data-simlab][data-simlab-theme] .layout .error { color: var(--danger); }
+@media (max-width: 760px) {
+  :root[data-simlab][data-simlab-theme] .app > .layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  :root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
+    animation: none !important; transition: none !important; scroll-behavior: auto !important;
+  }
+}

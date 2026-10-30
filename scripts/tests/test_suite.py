@@ -57,6 +57,28 @@ class SuiteTests(unittest.TestCase):
         with self.assertRaisesRegex(suite.SuiteError, "WSL"):
             suite.git_bash(git)
 
+    def test_all_roles_reject_stale_shared_ui_before_native_build(self):
+        spec = importlib.util.spec_from_file_location("sync_ui", suite.ROOT / "scripts/sync_ui.py")
+        sync_ui = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sync_ui)
+        (self.root / "ui").mkdir()
+        for source in (suite.ROOT / "ui").iterdir():
+            if source.is_file():
+                shutil.copyfile(source, self.root / "ui" / source.name)
+        targets = []
+        for source, target in sync_ui.assets(self.workspace, self.root):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            targets.append(target)
+        suite.verify_shared_ui(self.workspace, self.root)
+        for target in targets:
+            original = target.read_bytes()
+            target.write_bytes(original + b"stale")
+            with self.subTest(target=target):
+                with self.assertRaisesRegex(suite.SuiteError, "Stale shared UI"):
+                    suite.verify_shared_ui(self.workspace, self.root)
+            target.write_bytes(original)
+
     def mac_fixture(self):
         self.make_app(self.root / "build/bin/Simulator All-in-One.app", "cloud.carldai.simlab", "0.1.0")
         repos = {item["id"]: item for item in self.lock["repositories"]}

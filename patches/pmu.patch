@@ -23,13 +23,16 @@ index 8f72797..1a7d3da 100644
 +#[cfg(not(feature = "simlab-suite"))]
  pub mod update;
 diff --git a/crates/pmusim-app/src/main.rs b/crates/pmusim-app/src/main.rs
-index 75a60ae..84adc71 100644
+index 75a60ae..de0ad5a 100644
 --- a/crates/pmusim-app/src/main.rs
 +++ b/crates/pmusim-app/src/main.rs
-@@ -1,16 +1,21 @@
+@@ -1,17 +1,26 @@
  #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
  
 -use pmusim_app::{commands, state::AppState, update};
++#[path = "../../shared/simlab_preferences.rs"]
++mod simlab_preferences;
++
 +#[cfg(not(feature = "simlab-suite"))]
 +use pmusim_app::update;
 +use pmusim_app::{commands, state::AppState};
@@ -51,9 +54,11 @@ index 75a60ae..84adc71 100644
 +        .manage(update::UpdateState::default());
 +    builder
          .invoke_handler(tauri::generate_handler![
++            simlab_preferences::simlab_theme,
              commands::start_server,
              commands::stop_server,
-@@ -22,18 +27,25 @@ fn main() {
+             commands::connect_substation,
+@@ -22,18 +31,25 @@ fn main() {
              commands::set_heartbeat_interval,
              commands::poll_events,
              commands::open_url,
@@ -144,21 +149,25 @@ index 23014cd..07945d7 100644
 +#[cfg(feature = "simlab-suite")]
 +pub mod suite;
 diff --git a/crates/pmusim-sub/src/main.rs b/crates/pmusim-sub/src/main.rs
-index 7280bec..fcfe28f 100644
+index 7280bec..19e48bc 100644
 --- a/crates/pmusim-sub/src/main.rs
 +++ b/crates/pmusim-sub/src/main.rs
-@@ -1,5 +1,7 @@
+@@ -1,5 +1,10 @@
  #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
  
++#[path = "../../shared/simlab_preferences.rs"]
++mod simlab_preferences;
++
 +#[cfg(feature = "simlab-suite")]
 +use pmusim_sub::suite;
  use pmusim_sub::{commands, state::AppState};
  
  fn main() {
-@@ -8,6 +10,8 @@ fn main() {
+@@ -8,6 +13,9 @@ fn main() {
          .plugin(tauri_plugin_store::Builder::new().build())
          .manage(AppState::default())
          .invoke_handler(tauri::generate_handler![
++            simlab_preferences::simlab_theme,
 +            #[cfg(feature = "simlab-suite")]
 +            suite::preset_store_path,
              commands::start_substation,
@@ -226,8 +235,38 @@ index 0000000..06c6b65
 +    "updater": null
 +  }
 +}
+diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
+new file mode 100644
+index 0000000..970489f
+--- /dev/null
++++ b/crates/shared/simlab_preferences.rs
+@@ -0,0 +1,24 @@
++/// Read only the suite appearance preference, never expose the full settings.
++#[tauri::command]
++pub(crate) fn simlab_theme() -> Result<String, String> {
++    if !cfg!(feature = "simlab-suite") {
++        return Err("Appearance is managed by the standalone application".into());
++    }
++    let root = std::env::var_os("SIMLAB_DATA_DIR")
++        .map(std::path::PathBuf::from)
++        .ok_or("SIMLAB_DATA_DIR is not configured")?;
++    if !root.is_absolute() {
++        return Err("SIMLAB_DATA_DIR must be absolute".into());
++    }
++    let data = match std::fs::read(root.join("launcher.json")) {
++        Ok(data) => data,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("system".into()),
++        Err(error) => return Err(error.to_string()),
++    };
++    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
++    match value["theme"].as_str() {
++        Some("light") => Ok("light".into()),
++        Some("dark") => Ok("dark".into()),
++        _ => Ok("system".into()),
++    }
++}
 diff --git a/frontend-sub/src/components/ConfigFormPanel.vue b/frontend-sub/src/components/ConfigFormPanel.vue
-index 8e99780..5796f81 100644
+index 8e99780..ff19a8f 100644
 --- a/frontend-sub/src/components/ConfigFormPanel.vue
 +++ b/frontend-sub/src/components/ConfigFormPanel.vue
 @@ -32,18 +32,20 @@ async function stop() { await invoke("stop_substation"); running.value = false;
@@ -270,8 +309,432 @@ index 8e99780..5796f81 100644
    await store.delete(selectedPreset.value);
    await store.save();
    selectedPreset.value = "";
+@@ -96,11 +98,11 @@ onMounted(refreshPresetNames);
+     <hr />
+     <h4>{{ t("preset.title") }}</h4>
+     <div class="preset-save">
+-      <input v-model="presetName" :placeholder="t('preset.namePlaceholder')" />
++      <input v-model="presetName" :placeholder="t('preset.namePlaceholder')" :aria-label="t('preset.namePlaceholder')" />
+       <button @click="savePreset" :disabled="!presetName.trim()">{{ t("preset.save") }}</button>
+     </div>
+     <div class="preset-load">
+-      <select v-model="selectedPreset">
++      <select v-model="selectedPreset" :aria-label="t('preset.select')">
+         <option value="" disabled>{{ t("preset.select") }}</option>
+         <option v-for="name in presetNames" :key="name" :value="name">{{ name }}</option>
+       </select>
+diff --git a/frontend-sub/src/main.ts b/frontend-sub/src/main.ts
+index 687b931..085c2d9 100644
+--- a/frontend-sub/src/main.ts
++++ b/frontend-sub/src/main.ts
+@@ -1,6 +1,10 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
+ import { createApp } from "vue";
+ import App from "./App.vue";
+ import { useSubEvents } from "./composables/useSubEvents";
+ 
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
+ createApp(App).mount("#app");
+ useSubEvents().startListening();
+diff --git a/frontend-sub/src/simlab-ui/Icon.vue b/frontend-sub/src/simlab-ui/Icon.vue
+new file mode 100644
+index 0000000..183ddc1
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/Icon.vue
+@@ -0,0 +1,32 @@
++<script setup lang="ts">
++withDefaults(defineProps<{ name: string; size?: number }>(), { size: 16 })
++const paths: Record<string, string> = {
++  play: 'm8 5 11 7-11 7Z',
++  stop: 'M6 6h12v12H6Z',
++  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
++  refresh: 'M20 7a9 9 0 0 0-15-2L2 8m0-5v5h5M4 17a9 9 0 0 0 15 2l3-3m0 5v-5h-5',
++  search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
++  plus: 'M12 5v14M5 12h14',
++  lock: 'M5 10h14v11H5ZM8 10V7a4 4 0 0 1 8 0v3',
++  folder: 'M3 5h6l2 3h10v12H3Z',
++  chart: 'M3 3v18h18M7 14l4-5 4 3 5-7',
++  node: 'M4 4h16v16H4ZM4 10h16M10 4v16',
++  pointer: 'm5 3 15 9-7 2-3 7Z',
++  signal: 'M12 12h.01M8 8a6 6 0 0 0 0 8M16 8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14',
++  clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
++  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
++  file: 'M4 3h10l6 6v12H4ZM14 3v6h6M8 13h8M8 17h6',
++}
++</script>
++
++<template>
++  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none"
++    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
++    aria-hidden="true" focusable="false" class="simlab-icon">
++    <path :d="paths[name] || paths.node" />
++  </svg>
++</template>
++
++<style scoped>
++.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
++</style>
+diff --git a/frontend-sub/src/simlab-ui/components.css b/frontend-sub/src/simlab-ui/components.css
+new file mode 100644
+index 0000000..dbd4181
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/components.css
+@@ -0,0 +1,140 @@
++/* Suite chrome and controls. Protocol layouts and semantic state classes remain
++   owned by each simulator. Root scoping also covers teleported dialogs. */
++:root[data-simlab][data-simlab-theme] body {
++  margin: 0;
++  background: var(--workspace);
++  color: var(--text);
++  font-family: var(--font-ui);
++  font-size: 13px;
++  -webkit-font-smoothing: antialiased;
++}
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea) {
++  font-family: var(--font-ui);
++  font-size: 13px;
++  border-radius: var(--radius-md);
++  accent-color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] button {
++  cursor: pointer;
++  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
++}
++:root[data-simlab][data-simlab-theme] button:disabled { cursor: not-allowed; opacity: .5; }
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea, [tabindex]):focus-visible {
++  outline: 2px solid var(--focus);
++  outline-offset: -2px;
++}
++:root[data-simlab][data-simlab-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
++  background-color: var(--surface);
++  color: var(--text);
++  border: 1px solid var(--c-surface1);
++  min-height: 30px;
++  padding: 4px 8px;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] :is(input, select, textarea):disabled {
++  background-color: var(--hover);
++  color: var(--muted);
++}
++:root[data-simlab][data-simlab-theme] input::placeholder,
++:root[data-simlab][data-simlab-theme] textarea::placeholder { color: var(--muted); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-btn, .btn, .btn-primary, .btn-secondary) {
++  min-height: 30px;
++  border-radius: var(--radius-md);
++  font-size: 12px;
++  text-shadow: none;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .toolbar-btn { padding: 5px 10px; }
++:root[data-simlab][data-simlab-theme] .toolbar-btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-menu-row, .toolbar-action-row) { gap: 8px; padding-inline: 12px; }
++:root[data-simlab][data-simlab-theme] .toolbar-title { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.dialog, .modal, .modal-content, .dialog-panel, .upd-modal) {
++  border-radius: var(--radius-lg);
++  box-shadow: var(--shadow-lg);
++}
++:root[data-simlab][data-simlab-theme] :is(th, td) { font-variant-numeric: tabular-nums; }
++:root[data-simlab][data-simlab-theme] th { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.theme-switch, .theme-toggle) { display: none; }
++:root[data-simlab][data-simlab-theme] * { scrollbar-color: var(--c-surface1) var(--sidebar); scrollbar-width: thin; }
++:root[data-simlab][data-simlab-theme] *::-webkit-scrollbar-thumb { background: var(--c-surface1); }
++
++/* PMU master: replace the metal enclosure with the suite's flat panels. */
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) {
++  min-height: 44px;
++  padding: 8px 16px;
++  background: var(--surface);
++  color: var(--text);
++  border-bottom: 1px solid var(--line);
++  text-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .title-bar .lang-toggle { border-color: var(--line); }
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button {
++  background: transparent; color: var(--secondary); min-height: 28px;
++}
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button.on {
++  background: var(--selected); color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] .title-bar .icon-btn {
++  background: var(--surface); color: var(--secondary); border-color: var(--line); width: 30px; height: 30px;
++}
++:root[data-simlab][data-simlab-theme] :is(.config-panel .panel, .data-table-wrap) {
++  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .panel-hd {
++  background: var(--surface); color: var(--secondary); text-shadow: none;
++  box-shadow: none; letter-spacing: 0; padding: 10px 12px; border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .panel-hd::before { background: none; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .panel-bd { padding: 12px; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn {
++  height: 34px; background: var(--surface); color: var(--text); border-color: var(--c-surface1);
++}
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:active:not(:disabled) { background: var(--selected); box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn > span { letter-spacing: 0; padding: 0; }
++:root[data-simlab][data-simlab-theme] .data-table thead th {
++  background: var(--sidebar); color: var(--secondary); border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected,
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected td {
++  background: var(--selected); color: var(--text);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-error, .toast.error) {
++  background: var(--danger-surface); color: var(--danger); border: 1px solid var(--danger);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-success, .toast.success) {
++  background: var(--green-surface); color: var(--green); border: 1px solid var(--green-line);
++}
++:root[data-simlab][data-simlab-theme] .toast-info {
++  background: var(--selected); color: var(--text); border: 1px solid var(--line);
++}
++
++/* PMU substation's panels were previously unstyled native controls. */
++:root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { background: var(--surface); padding: 0; }
++:root[data-simlab][data-simlab-theme] .layout .panel {
++  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
++  padding: 16px; margin-bottom: 0; gap: 12px;
++}
++:root[data-simlab][data-simlab-theme] .layout :is(h3, h4) { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
++:root[data-simlab][data-simlab-theme] .layout label { font-size: 13px; align-items: center; flex-wrap: wrap; }
++:root[data-simlab][data-simlab-theme] .layout :is(input, select) { min-width: 0; max-width: 100%; }
++:root[data-simlab][data-simlab-theme] .layout button {
++  background: var(--surface); color: var(--text); border: 1px solid var(--c-surface1); min-height: 32px; padding: 5px 10px;
++}
++:root[data-simlab][data-simlab-theme] .layout button:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .layout table { border-collapse: collapse; }
++:root[data-simlab][data-simlab-theme] .layout :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
++:root[data-simlab][data-simlab-theme] .layout th { background: var(--sidebar); }
++:root[data-simlab][data-simlab-theme] .layout :is(.preset-load, .preset-save, .phasor-row) { display: flex; flex-wrap: wrap; gap: 8px; }
++:root[data-simlab][data-simlab-theme] .layout .phasor-row input { width: 88px; }
++:root[data-simlab][data-simlab-theme] .layout hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
++:root[data-simlab][data-simlab-theme] .layout .error { color: var(--danger); }
++@media (max-width: 760px) {
++  :root[data-simlab][data-simlab-theme] .app > .layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
++  :root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { overflow: visible; }
++}
++@media (prefers-reduced-motion: reduce) {
++  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
++    animation: none !important; transition: none !important; scroll-behavior: auto !important;
++  }
++}
+diff --git a/frontend-sub/src/simlab-ui/theme.ts b/frontend-sub/src/simlab-ui/theme.ts
+new file mode 100644
+index 0000000..edd380b
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/theme.ts
+@@ -0,0 +1,66 @@
++/** Shared by all eight suite webviews. No protocol or project data crosses IPC. */
++type Theme = 'light' | 'dark' | 'system'
++type NativeWindow = Window & {
++  go?: { suitehost?: { Appearance?: { Theme(): Promise<string> } } }
++  __TAURI_INTERNALS__?: { invoke<T>(command: string): Promise<T> }
++}
++
++export function startSuiteTheme() {
++  const root = document.documentElement
++  const native = window as NativeWindow
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let theme: Theme = 'system'
++  let stopped = false
++  let pending = false
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let warned = false
++  root.dataset.simlab = 'component'
++
++  function apply() {
++    const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme
++    // A separate attribute prevents a standalone theme composable from
++    // accidentally overriding the suite palette when the OS changes.
++    root.dataset.simlabTheme = resolved
++    root.dataset.theme = resolved
++    root.style.colorScheme = resolved
++  }
++
++  async function refresh() {
++    clearTimeout(timer)
++    if (stopped || pending || document.hidden) return
++    pending = true
++    try {
++      const value = native.go?.suitehost?.Appearance
++        ? await native.go.suitehost.Appearance.Theme()
++        : await native.__TAURI_INTERNALS__?.invoke<string>('simlab_theme')
++      if (value !== 'system' && value !== 'light' && value !== 'dark') {
++        throw new Error('Invalid SimLab theme response')
++      }
++      if (!stopped) { theme = value; apply() }
++      warned = false
++    } catch (error) {
++      if (!warned) console.warn('Cannot synchronize SimLab appearance; keeping current theme', error)
++      warned = true
++    } finally {
++      pending = false
++      if (!stopped && !document.hidden) timer = setTimeout(refresh, 1500)
++    }
++  }
++  function visibility() {
++    clearTimeout(timer)
++    if (!document.hidden) void refresh()
++  }
++  function stop() {
++    stopped = true
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('pagehide', stop)
++  }
++  apply()
++  void refresh()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('pagehide', stop)
++  return stop
++}
+diff --git a/frontend-sub/src/simlab-ui/tokens.css b/frontend-sub/src/simlab-ui/tokens.css
+new file mode 100644
+index 0000000..836c3f7
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/tokens.css
+@@ -0,0 +1,133 @@
++/* Shared neutral appearance. Blue indicates selection; status colors carry meaning. */
++:root[data-simlab] {
++  color-scheme: light;
++  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
++  --font-display: var(--font-ui);
++  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
++  --workspace: #fafafa;
++  --sidebar: #f7f7f7;
++  --topbar: #ffffff;
++  --surface: #ffffff;
++  --role-surface: #ffffff;
++  --text: #202020;
++  --secondary: #525252;
++  --muted: #666666;
++  --line: #e5e5e5;
++  --brand: #2563eb;
++  --on-brand: #ffffff;
++  --copper: #525252;
++  --danger: #bd3038;
++  --warning: #8a5a10;
++  --on-accent: #ffffff;
++  --accent-hover: #1d4ed8;
++  --danger-surface: #fff1f2;
++  --hover: #f3f3f3;
++  --selected: #edf3ff;
++  --green: #237a46;
++  --green-line: #cbe3d3;
++  --green-surface: #f0f8f2;
++  --focus: #2563eb;
++  --shadow: #00000008;
++}
++:root[data-simlab][data-theme="dark"], :root[data-simlab][data-simlab-theme="dark"] {
++  color-scheme: dark;
++  --workspace: #181818;
++  --sidebar: #202020;
++  --topbar: #242424;
++  --surface: #242424;
++  --role-surface: #242424;
++  --text: #ededed;
++  --secondary: #b5b5b5;
++  --muted: #a3a3a3;
++  --line: #3b3b3b;
++  --brand: #90b0ff;
++  --on-brand: #181818;
++  --copper: #b5b5b5;
++  --danger: #f29ca3;
++  --warning: #edc884;
++  --on-accent: #181818;
++  --accent-hover: #b4c9ff;
++  --danger-surface: #3b2529;
++  --hover: #303030;
++  --selected: #28354d;
++  --green: #92d4a5;
++  --green-line: #385744;
++  --green-surface: #24382a;
++  --focus: #90b0ff;
++  --shadow: #00000022;
++}
++@media (prefers-color-scheme: dark) {
++  :root[data-simlab]:not([data-theme="light"]):not([data-theme="dark"]):not([data-simlab-theme="light"]) {
++    color-scheme: dark;
++    --workspace: #181818;
++    --sidebar: #202020;
++    --topbar: #242424;
++    --surface: #242424;
++    --role-surface: #242424;
++    --text: #ededed;
++    --secondary: #b5b5b5;
++    --muted: #a3a3a3;
++    --line: #3b3b3b;
++    --brand: #90b0ff;
++    --on-brand: #181818;
++    --copper: #b5b5b5;
++    --danger: #f29ca3;
++    --warning: #edc884;
++    --on-accent: #181818;
++    --accent-hover: #b4c9ff;
++    --danger-surface: #3b2529;
++    --hover: #303030;
++    --selected: #28354d;
++    --green: #92d4a5;
++    --green-line: #385744;
++    --green-surface: #24382a;
++    --focus: #90b0ff;
++    --shadow: #00000022;
++  }
++}
++:root[data-simlab] {
++  --iec: var(--secondary); --iec-surface: var(--hover);
++  --modbus: var(--secondary); --modbus-surface: var(--hover);
++  --pmu: var(--secondary); --pmu-surface: var(--hover);
++  --opcua: var(--secondary); --opcua-surface: var(--hover);
++}
++
++/* Compatibility aliases keep the protocol components on one semantic palette. */
++:root[data-simlab], :root[data-simlab][data-simlab-theme] {
++  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
++  --space-5: 20px; --space-6: 24px; --space-8: 32px;
++  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
++  --text-xs: 12px; --text-sm: 12px; --text-md: 13px; --text-lg: 15px;
++  --duration-fast: 120ms; --duration-normal: 180ms;
++  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
++  --font-sans: var(--font-ui);
++  --c-crust: var(--workspace); --c-mantle: var(--sidebar); --c-base: var(--surface);
++  --c-surface0: var(--line); --c-surface1: color-mix(in srgb, var(--text) 28%, var(--surface));
++  --c-surface2: color-mix(in srgb, var(--text) 42%, var(--surface));
++  --c-overlay0: var(--muted); --c-overlay1: var(--muted); --c-subtext0: var(--muted); --c-subtext1: var(--secondary);
++  --c-text: var(--text); --c-blue: var(--brand); --c-lavender: var(--accent-hover);
++  --c-sapphire: var(--iec); --c-sky: var(--iec); --c-teal: var(--pmu);
++  --c-green: var(--green); --c-yellow: var(--warning); --c-peach: var(--copper);
++  --c-red: var(--danger); --c-mauve: var(--opcua);
++  --c-on-accent: var(--on-accent); --c-accent-hover: var(--accent-hover);
++  --c-control-bg: var(--surface); --c-hover-bg: var(--hover);
++  --c-selection-bg: var(--selected); --c-selection-text: var(--text);
++  --c-row-border: var(--line); --c-row-danger-bg: var(--danger-surface);
++  --c-success-bg: var(--green-surface); --c-success-text: var(--green);
++  --c-neutral-bg: var(--hover); --c-neutral-text: var(--secondary);
++  --bg-app: var(--workspace); --bg-panel: var(--sidebar); --bg-raised: var(--surface);
++  --bg-hover: var(--hover); --bg-active: var(--selected); --bg-inset: var(--workspace);
++  --border-subtle: var(--line); --border-strong: var(--c-surface1);
++  --text-primary: var(--text); --text-secondary: var(--secondary);
++  --text-muted: var(--muted); --text-disabled: var(--muted);
++  --accent: var(--brand); --success: var(--green); --info: var(--iec);
++  --shadow-sm: 0 1px 3px var(--shadow); --shadow-md: 0 4px 16px var(--shadow);
++  --shadow-lg: 0 16px 48px #0003;
++  /* PMU's legacy names use the same surfaces and status semantics. */
++  --bg-chrome: var(--workspace); --bg-content: var(--surface); --bg-input: var(--surface);
++  --bg-disabled: var(--hover); --border: var(--line); --border-soft: var(--line);
++  --border-dash: var(--c-surface1); --accent-dark: var(--accent-hover);
++  --accent-tint: var(--selected); --accent-on-sel: var(--on-accent);
++  --text-dim: var(--secondary); --text-faint: var(--muted);
++  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
++}
 diff --git a/frontend/src/App.vue b/frontend/src/App.vue
-index 67e47ba..ddcb29a 100644
+index 67e47ba..a1abbd2 100644
 --- a/frontend/src/App.vue
 +++ b/frontend/src/App.vue
 @@ -13,6 +13,8 @@ import { useI18n } from "./i18n";
@@ -309,6 +772,571 @@ index 67e47ba..ddcb29a 100644
        :visible="updateVisible"
        :version="updateMeta?.version ?? ''"
        :notes="updateMeta?.notes ?? ''"
+@@ -118,8 +121,8 @@ onMounted(async () => {
+   --accent-on-sel: #cfe0f5;      /* 选中行内的次要文字 */
+   /* 文字 */
+   --text: #1a1a1a;
+-  --text-dim: #555;
+-  --text-faint: #888;
++  --text-dim: var(--secondary);
++  --text-faint: var(--muted);
+   /* 状态语义色 */
+   --ok: #1d7a3e;
+   --warn: #b06a00;
+diff --git a/frontend/src/components/ConfigInfoPanel.vue b/frontend/src/components/ConfigInfoPanel.vue
+index f9b71af..9387c35 100644
+--- a/frontend/src/components/ConfigInfoPanel.vue
++++ b/frontend/src/components/ConfigInfoPanel.vue
+@@ -488,8 +488,9 @@ watch(rateHz, async (v, old) => {
+   flex-direction: column;
+   gap: 8px;
+   padding: 8px;
+-  overflow: hidden;
++  overflow-y: auto;
+ }
++.config-panel > .panel { flex-shrink: 0; }
+ /* Panel = framed group with a label-plate header band. Replaces the old
+    fieldset/legend (whose notched border + double top edge read as an
+    un-styled browser default). Frame is now continuous; the title lives in
+@@ -508,7 +509,7 @@ watch(rateHz, async (v, old) => {
+   font-size: 12px;
+   font-weight: 600;
+   letter-spacing: 1.5px;
+-  color: #44443d;
++  color: var(--secondary);
+   /* 顶层极细竖向拉丝纹理(2px 周期，低对比) 叠在压暗半档的阳极氧化
+      深灰镜面渐变上 —— 两者不同轴，纹理不被宏观高光糊掉。 */
+   background:
+@@ -610,7 +611,7 @@ watch(rateHz, async (v, old) => {
+   border-color: var(--accent);
+   box-shadow: inset 0 0 0 1px rgba(37,99,168,0.35);
+ }
+-.row input::placeholder { color: #aaa; font-style: italic; }
++.row input::placeholder { color: var(--muted); font-style: italic; }
+ 
+ /* Custom chevron — single SVG so disabled / enabled selects render
+    identically across platforms. */
+@@ -638,7 +639,7 @@ watch(rateHz, async (v, old) => {
+ 
+ .readback {
+   font-size: 11px;
+-  color: #7a7a72;
++  color: var(--muted);
+   font-family: ui-monospace, "SF Mono", Menlo, monospace;
+   min-width: 56px;
+   text-align: right;
+@@ -656,11 +657,11 @@ watch(rateHz, async (v, old) => {
+ .btn-wide { grid-column: 1 / -1; }
+ .btn {
+   height: 30px;
+-  border: 1px solid #7a7a72;
++  border: 1px solid var(--muted);
+   background: linear-gradient(#f6f5ee, #d6d4c5);
+   font-size: 14px;
+   font-weight: 600;
+-  color: #2a2a2a;
++  color: var(--text);
+   cursor: pointer;
+   border-radius: 0;
+   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7),
+@@ -686,7 +687,7 @@ watch(rateHz, async (v, old) => {
+ .btn:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+-  color: #888;
++  color: var(--muted);
+ }
+ 
+ /* Readout — same label grid as form rows so columns line up ---------- */
+@@ -762,12 +763,12 @@ watch(rateHz, async (v, old) => {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+-  color: #333;
++  color: var(--text);
+ }
+ .log-line.error { color: var(--err); }
+ .log-time { color: var(--text-faint); margin-right: 8px; font-variant-numeric: tabular-nums; }
+ .log-empty {
+-  color: #aaa;
++  color: var(--muted);
+   text-align: center;
+   padding: 12px;
+   font-style: italic;
+diff --git a/frontend/src/components/DataTablePanel.vue b/frontend/src/components/DataTablePanel.vue
+index 081edfb..77d02ba 100644
+--- a/frontend/src/components/DataTablePanel.vue
++++ b/frontend/src/components/DataTablePanel.vue
+@@ -142,7 +142,7 @@ const displayRows = computed<DisplayRow[]>(() => {
+   top: 0;
+   background: linear-gradient(#eceadf, #dcdacc);
+   font-weight: 600;
+-  color: #2a2a2a;
++  color: var(--text);
+   padding: 7px 10px;
+   text-align: left;
+   border-right: 1px solid #b6b5a8;
+diff --git a/frontend/src/components/UpdateDialog.vue b/frontend/src/components/UpdateDialog.vue
+index 8106aa1..847d93c 100644
+--- a/frontend/src/components/UpdateDialog.vue
++++ b/frontend/src/components/UpdateDialog.vue
+@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
+   background: linear-gradient(#eaeae0, #dcdcd0);
+ }
+ .upd-title { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+-.upd-subtitle { font-size: 12px; color: #555; margin-top: 3px; }
++.upd-subtitle { font-size: 12px; color: var(--secondary); margin-top: 3px; }
+ .upd-badge {
+   flex-shrink: 0;
+   font-size: 12px;
+@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
+   overflow-y: auto;
+   font-size: 12px;
+   line-height: 1.6;
+-  color: #333;
++  color: var(--text);
+ }
+ .upd-notes:focus-visible { outline: 2px solid #5a8ccc; outline-offset: -1px; }
+ .upd-h {
+@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
+   margin: 6px 0;
+   padding: 4px 10px;
+   border-left: 2px solid #b8b8b0;
+-  color: #555;
++  color: var(--secondary);
+ }
+ .upd-hr { border: none; border-top: 1px solid #d0d0c8; margin: 10px 0; }
+ .upd-error {
+@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
+   border-top: 1px solid #d0d0c8;
+   background: linear-gradient(#e0e0d4, #d4d4c8);
+ }
+-.upd-footer-hint { font-size: 12px; color: #555; }
++.upd-footer-hint { font-size: 12px; color: var(--secondary); }
+ .btn {
+   padding: 6px 16px;
+   border: 1px solid transparent;
+@@ -327,6 +327,6 @@ onBeforeUnmount(() => {
+ .btn-primary:hover { background: linear-gradient(#6a9cdc, #3c6aa9); }
+ .btn-secondary { background: #d9e5f4; color: #1d4377; border-color: #8aa8cc; }
+ .btn-secondary:hover { background: #e8f0f9; }
+-.btn-ghost { background: #ebebe2; color: #333; border-color: #b8b8b0; }
++.btn-ghost { background: #ebebe2; color: var(--text); border-color: #b8b8b0; }
+ .btn-ghost:hover { background: #f5f5ec; }
+ </style>
+diff --git a/frontend/src/main.ts b/frontend/src/main.ts
+index 0236bbe..8d64743 100644
+--- a/frontend/src/main.ts
++++ b/frontend/src/main.ts
+@@ -1,3 +1,6 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
+ import { createApp } from "vue";
+ import App from "./App.vue";
+ import { usePmuEvents } from "./composables/usePmuEvents";
+@@ -9,5 +12,6 @@ import { usePmuEvents } from "./composables/usePmuEvents";
+ // fire startListening(). Components that issue commands await
+ // `listenerReady` from usePmuEvents to ensure the listener is attached
+ // before the first invoke (otherwise handshake events drop on the floor).
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
+ createApp(App).mount("#app");
+ usePmuEvents().startListening();
+diff --git a/frontend/src/simlab-ui/Icon.vue b/frontend/src/simlab-ui/Icon.vue
+new file mode 100644
+index 0000000..183ddc1
+--- /dev/null
++++ b/frontend/src/simlab-ui/Icon.vue
+@@ -0,0 +1,32 @@
++<script setup lang="ts">
++withDefaults(defineProps<{ name: string; size?: number }>(), { size: 16 })
++const paths: Record<string, string> = {
++  play: 'm8 5 11 7-11 7Z',
++  stop: 'M6 6h12v12H6Z',
++  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
++  refresh: 'M20 7a9 9 0 0 0-15-2L2 8m0-5v5h5M4 17a9 9 0 0 0 15 2l3-3m0 5v-5h-5',
++  search: 'M21 21l-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
++  plus: 'M12 5v14M5 12h14',
++  lock: 'M5 10h14v11H5ZM8 10V7a4 4 0 0 1 8 0v3',
++  folder: 'M3 5h6l2 3h10v12H3Z',
++  chart: 'M3 3v18h18M7 14l4-5 4 3 5-7',
++  node: 'M4 4h16v16H4ZM4 10h16M10 4v16',
++  pointer: 'm5 3 15 9-7 2-3 7Z',
++  signal: 'M12 12h.01M8 8a6 6 0 0 0 0 8M16 8a6 6 0 0 1 0 8M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14',
++  clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
++  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
++  file: 'M4 3h10l6 6v12H4ZM14 3v6h6M8 13h8M8 17h6',
++}
++</script>
++
++<template>
++  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none"
++    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
++    aria-hidden="true" focusable="false" class="simlab-icon">
++    <path :d="paths[name] || paths.node" />
++  </svg>
++</template>
++
++<style scoped>
++.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
++</style>
+diff --git a/frontend/src/simlab-ui/components.css b/frontend/src/simlab-ui/components.css
+new file mode 100644
+index 0000000..dbd4181
+--- /dev/null
++++ b/frontend/src/simlab-ui/components.css
+@@ -0,0 +1,140 @@
++/* Suite chrome and controls. Protocol layouts and semantic state classes remain
++   owned by each simulator. Root scoping also covers teleported dialogs. */
++:root[data-simlab][data-simlab-theme] body {
++  margin: 0;
++  background: var(--workspace);
++  color: var(--text);
++  font-family: var(--font-ui);
++  font-size: 13px;
++  -webkit-font-smoothing: antialiased;
++}
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea) {
++  font-family: var(--font-ui);
++  font-size: 13px;
++  border-radius: var(--radius-md);
++  accent-color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] button {
++  cursor: pointer;
++  transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
++}
++:root[data-simlab][data-simlab-theme] button:disabled { cursor: not-allowed; opacity: .5; }
++:root[data-simlab][data-simlab-theme] :is(button, input, select, textarea, [tabindex]):focus-visible {
++  outline: 2px solid var(--focus);
++  outline-offset: -2px;
++}
++:root[data-simlab][data-simlab-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
++  background-color: var(--surface);
++  color: var(--text);
++  border: 1px solid var(--c-surface1);
++  min-height: 30px;
++  padding: 4px 8px;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] :is(input, select, textarea):disabled {
++  background-color: var(--hover);
++  color: var(--muted);
++}
++:root[data-simlab][data-simlab-theme] input::placeholder,
++:root[data-simlab][data-simlab-theme] textarea::placeholder { color: var(--muted); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-btn, .btn, .btn-primary, .btn-secondary) {
++  min-height: 30px;
++  border-radius: var(--radius-md);
++  font-size: 12px;
++  text-shadow: none;
++  box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .toolbar-btn { padding: 5px 10px; }
++:root[data-simlab][data-simlab-theme] .toolbar-btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] :is(.toolbar-menu-row, .toolbar-action-row) { gap: 8px; padding-inline: 12px; }
++:root[data-simlab][data-simlab-theme] .toolbar-title { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.dialog, .modal, .modal-content, .dialog-panel, .upd-modal) {
++  border-radius: var(--radius-lg);
++  box-shadow: var(--shadow-lg);
++}
++:root[data-simlab][data-simlab-theme] :is(th, td) { font-variant-numeric: tabular-nums; }
++:root[data-simlab][data-simlab-theme] th { color: var(--secondary); }
++:root[data-simlab][data-simlab-theme] :is(.theme-switch, .theme-toggle) { display: none; }
++:root[data-simlab][data-simlab-theme] * { scrollbar-color: var(--c-surface1) var(--sidebar); scrollbar-width: thin; }
++:root[data-simlab][data-simlab-theme] *::-webkit-scrollbar-thumb { background: var(--c-surface1); }
++
++/* PMU master: replace the metal enclosure with the suite's flat panels. */
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) {
++  min-height: 44px;
++  padding: 8px 16px;
++  background: var(--surface);
++  color: var(--text);
++  border-bottom: 1px solid var(--line);
++  text-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .title-bar .lang-toggle { border-color: var(--line); }
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button {
++  background: transparent; color: var(--secondary); min-height: 28px;
++}
++:root[data-simlab][data-simlab-theme] :is(.title-bar, .app > header) .lang-toggle button.on {
++  background: var(--selected); color: var(--brand);
++}
++:root[data-simlab][data-simlab-theme] .title-bar .icon-btn {
++  background: var(--surface); color: var(--secondary); border-color: var(--line); width: 30px; height: 30px;
++}
++:root[data-simlab][data-simlab-theme] :is(.config-panel .panel, .data-table-wrap) {
++  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: none;
++}
++:root[data-simlab][data-simlab-theme] .panel-hd {
++  background: var(--surface); color: var(--secondary); text-shadow: none;
++  box-shadow: none; letter-spacing: 0; padding: 10px 12px; border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .panel-hd::before { background: none; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .panel-bd { padding: 12px; box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn {
++  height: 34px; background: var(--surface); color: var(--text); border-color: var(--c-surface1);
++}
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn:active:not(:disabled) { background: var(--selected); box-shadow: none; }
++:root[data-simlab][data-simlab-theme] .btn-grid .btn > span { letter-spacing: 0; padding: 0; }
++:root[data-simlab][data-simlab-theme] .data-table thead th {
++  background: var(--sidebar); color: var(--secondary); border-color: var(--line);
++}
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected,
++:root[data-simlab][data-simlab-theme] .data-table tbody tr.selected td {
++  background: var(--selected); color: var(--text);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-error, .toast.error) {
++  background: var(--danger-surface); color: var(--danger); border: 1px solid var(--danger);
++}
++:root[data-simlab][data-simlab-theme] :is(.toast-success, .toast.success) {
++  background: var(--green-surface); color: var(--green); border: 1px solid var(--green-line);
++}
++:root[data-simlab][data-simlab-theme] .toast-info {
++  background: var(--selected); color: var(--text); border: 1px solid var(--line);
++}
++
++/* PMU substation's panels were previously unstyled native controls. */
++:root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { background: var(--surface); padding: 0; }
++:root[data-simlab][data-simlab-theme] .layout .panel {
++  background: var(--surface); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
++  padding: 16px; margin-bottom: 0; gap: 12px;
++}
++:root[data-simlab][data-simlab-theme] .layout :is(h3, h4) { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
++:root[data-simlab][data-simlab-theme] .layout label { font-size: 13px; align-items: center; flex-wrap: wrap; }
++:root[data-simlab][data-simlab-theme] .layout :is(input, select) { min-width: 0; max-width: 100%; }
++:root[data-simlab][data-simlab-theme] .layout button {
++  background: var(--surface); color: var(--text); border: 1px solid var(--c-surface1); min-height: 32px; padding: 5px 10px;
++}
++:root[data-simlab][data-simlab-theme] .layout button:hover:not(:disabled) { background: var(--hover); }
++:root[data-simlab][data-simlab-theme] .layout table { border-collapse: collapse; }
++:root[data-simlab][data-simlab-theme] .layout :is(th, td) { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; }
++:root[data-simlab][data-simlab-theme] .layout th { background: var(--sidebar); }
++:root[data-simlab][data-simlab-theme] .layout :is(.preset-load, .preset-save, .phasor-row) { display: flex; flex-wrap: wrap; gap: 8px; }
++:root[data-simlab][data-simlab-theme] .layout .phasor-row input { width: 88px; }
++:root[data-simlab][data-simlab-theme] .layout hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
++:root[data-simlab][data-simlab-theme] .layout .error { color: var(--danger); }
++@media (max-width: 760px) {
++  :root[data-simlab][data-simlab-theme] .app > .layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
++  :root[data-simlab][data-simlab-theme] .layout > :is(.left, .right) { overflow: visible; }
++}
++@media (prefers-reduced-motion: reduce) {
++  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
++    animation: none !important; transition: none !important; scroll-behavior: auto !important;
++  }
++}
+diff --git a/frontend/src/simlab-ui/theme.ts b/frontend/src/simlab-ui/theme.ts
+new file mode 100644
+index 0000000..edd380b
+--- /dev/null
++++ b/frontend/src/simlab-ui/theme.ts
+@@ -0,0 +1,66 @@
++/** Shared by all eight suite webviews. No protocol or project data crosses IPC. */
++type Theme = 'light' | 'dark' | 'system'
++type NativeWindow = Window & {
++  go?: { suitehost?: { Appearance?: { Theme(): Promise<string> } } }
++  __TAURI_INTERNALS__?: { invoke<T>(command: string): Promise<T> }
++}
++
++export function startSuiteTheme() {
++  const root = document.documentElement
++  const native = window as NativeWindow
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let theme: Theme = 'system'
++  let stopped = false
++  let pending = false
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let warned = false
++  root.dataset.simlab = 'component'
++
++  function apply() {
++    const resolved = theme === 'system' ? (media.matches ? 'dark' : 'light') : theme
++    // A separate attribute prevents a standalone theme composable from
++    // accidentally overriding the suite palette when the OS changes.
++    root.dataset.simlabTheme = resolved
++    root.dataset.theme = resolved
++    root.style.colorScheme = resolved
++  }
++
++  async function refresh() {
++    clearTimeout(timer)
++    if (stopped || pending || document.hidden) return
++    pending = true
++    try {
++      const value = native.go?.suitehost?.Appearance
++        ? await native.go.suitehost.Appearance.Theme()
++        : await native.__TAURI_INTERNALS__?.invoke<string>('simlab_theme')
++      if (value !== 'system' && value !== 'light' && value !== 'dark') {
++        throw new Error('Invalid SimLab theme response')
++      }
++      if (!stopped) { theme = value; apply() }
++      warned = false
++    } catch (error) {
++      if (!warned) console.warn('Cannot synchronize SimLab appearance; keeping current theme', error)
++      warned = true
++    } finally {
++      pending = false
++      if (!stopped && !document.hidden) timer = setTimeout(refresh, 1500)
++    }
++  }
++  function visibility() {
++    clearTimeout(timer)
++    if (!document.hidden) void refresh()
++  }
++  function stop() {
++    stopped = true
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('pagehide', stop)
++  }
++  apply()
++  void refresh()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('pagehide', stop)
++  return stop
++}
+diff --git a/frontend/src/simlab-ui/tokens.css b/frontend/src/simlab-ui/tokens.css
+new file mode 100644
+index 0000000..836c3f7
+--- /dev/null
++++ b/frontend/src/simlab-ui/tokens.css
+@@ -0,0 +1,133 @@
++/* Shared neutral appearance. Blue indicates selection; status colors carry meaning. */
++:root[data-simlab] {
++  color-scheme: light;
++  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
++  --font-display: var(--font-ui);
++  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
++  --workspace: #fafafa;
++  --sidebar: #f7f7f7;
++  --topbar: #ffffff;
++  --surface: #ffffff;
++  --role-surface: #ffffff;
++  --text: #202020;
++  --secondary: #525252;
++  --muted: #666666;
++  --line: #e5e5e5;
++  --brand: #2563eb;
++  --on-brand: #ffffff;
++  --copper: #525252;
++  --danger: #bd3038;
++  --warning: #8a5a10;
++  --on-accent: #ffffff;
++  --accent-hover: #1d4ed8;
++  --danger-surface: #fff1f2;
++  --hover: #f3f3f3;
++  --selected: #edf3ff;
++  --green: #237a46;
++  --green-line: #cbe3d3;
++  --green-surface: #f0f8f2;
++  --focus: #2563eb;
++  --shadow: #00000008;
++}
++:root[data-simlab][data-theme="dark"], :root[data-simlab][data-simlab-theme="dark"] {
++  color-scheme: dark;
++  --workspace: #181818;
++  --sidebar: #202020;
++  --topbar: #242424;
++  --surface: #242424;
++  --role-surface: #242424;
++  --text: #ededed;
++  --secondary: #b5b5b5;
++  --muted: #a3a3a3;
++  --line: #3b3b3b;
++  --brand: #90b0ff;
++  --on-brand: #181818;
++  --copper: #b5b5b5;
++  --danger: #f29ca3;
++  --warning: #edc884;
++  --on-accent: #181818;
++  --accent-hover: #b4c9ff;
++  --danger-surface: #3b2529;
++  --hover: #303030;
++  --selected: #28354d;
++  --green: #92d4a5;
++  --green-line: #385744;
++  --green-surface: #24382a;
++  --focus: #90b0ff;
++  --shadow: #00000022;
++}
++@media (prefers-color-scheme: dark) {
++  :root[data-simlab]:not([data-theme="light"]):not([data-theme="dark"]):not([data-simlab-theme="light"]) {
++    color-scheme: dark;
++    --workspace: #181818;
++    --sidebar: #202020;
++    --topbar: #242424;
++    --surface: #242424;
++    --role-surface: #242424;
++    --text: #ededed;
++    --secondary: #b5b5b5;
++    --muted: #a3a3a3;
++    --line: #3b3b3b;
++    --brand: #90b0ff;
++    --on-brand: #181818;
++    --copper: #b5b5b5;
++    --danger: #f29ca3;
++    --warning: #edc884;
++    --on-accent: #181818;
++    --accent-hover: #b4c9ff;
++    --danger-surface: #3b2529;
++    --hover: #303030;
++    --selected: #28354d;
++    --green: #92d4a5;
++    --green-line: #385744;
++    --green-surface: #24382a;
++    --focus: #90b0ff;
++    --shadow: #00000022;
++  }
++}
++:root[data-simlab] {
++  --iec: var(--secondary); --iec-surface: var(--hover);
++  --modbus: var(--secondary); --modbus-surface: var(--hover);
++  --pmu: var(--secondary); --pmu-surface: var(--hover);
++  --opcua: var(--secondary); --opcua-surface: var(--hover);
++}
++
++/* Compatibility aliases keep the protocol components on one semantic palette. */
++:root[data-simlab], :root[data-simlab][data-simlab-theme] {
++  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
++  --space-5: 20px; --space-6: 24px; --space-8: 32px;
++  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
++  --text-xs: 12px; --text-sm: 12px; --text-md: 13px; --text-lg: 15px;
++  --duration-fast: 120ms; --duration-normal: 180ms;
++  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
++  --font-sans: var(--font-ui);
++  --c-crust: var(--workspace); --c-mantle: var(--sidebar); --c-base: var(--surface);
++  --c-surface0: var(--line); --c-surface1: color-mix(in srgb, var(--text) 28%, var(--surface));
++  --c-surface2: color-mix(in srgb, var(--text) 42%, var(--surface));
++  --c-overlay0: var(--muted); --c-overlay1: var(--muted); --c-subtext0: var(--muted); --c-subtext1: var(--secondary);
++  --c-text: var(--text); --c-blue: var(--brand); --c-lavender: var(--accent-hover);
++  --c-sapphire: var(--iec); --c-sky: var(--iec); --c-teal: var(--pmu);
++  --c-green: var(--green); --c-yellow: var(--warning); --c-peach: var(--copper);
++  --c-red: var(--danger); --c-mauve: var(--opcua);
++  --c-on-accent: var(--on-accent); --c-accent-hover: var(--accent-hover);
++  --c-control-bg: var(--surface); --c-hover-bg: var(--hover);
++  --c-selection-bg: var(--selected); --c-selection-text: var(--text);
++  --c-row-border: var(--line); --c-row-danger-bg: var(--danger-surface);
++  --c-success-bg: var(--green-surface); --c-success-text: var(--green);
++  --c-neutral-bg: var(--hover); --c-neutral-text: var(--secondary);
++  --bg-app: var(--workspace); --bg-panel: var(--sidebar); --bg-raised: var(--surface);
++  --bg-hover: var(--hover); --bg-active: var(--selected); --bg-inset: var(--workspace);
++  --border-subtle: var(--line); --border-strong: var(--c-surface1);
++  --text-primary: var(--text); --text-secondary: var(--secondary);
++  --text-muted: var(--muted); --text-disabled: var(--muted);
++  --accent: var(--brand); --success: var(--green); --info: var(--iec);
++  --shadow-sm: 0 1px 3px var(--shadow); --shadow-md: 0 4px 16px var(--shadow);
++  --shadow-lg: 0 16px 48px #0003;
++  /* PMU's legacy names use the same surfaces and status semantics. */
++  --bg-chrome: var(--workspace); --bg-content: var(--surface); --bg-input: var(--surface);
++  --bg-disabled: var(--hover); --border: var(--line); --border-soft: var(--line);
++  --border-dash: var(--c-surface1); --accent-dark: var(--accent-hover);
++  --accent-tint: var(--selected); --accent-on-sel: var(--on-accent);
++  --text-dim: var(--secondary); --text-faint: var(--muted);
++  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
++}
 diff --git a/frontend/tests/app-suite.test.ts b/frontend/tests/app-suite.test.ts
 new file mode 100644
 index 0000000..373fa82

@@ -96,7 +96,7 @@ def tree_digest(snapshot):
 
 def launcher_source_fingerprint(root):
     files = [root / name for name in ("main.go", "app.go", "go.mod", "go.sum", "wails.json")]
-    for directory in (root / "internal", root / "assets", root / "frontend/src", root / "build/darwin"):
+    for directory in (root / "internal", root / "assets", root / "frontend/src", root / "ui", root / "build/darwin"):
         if directory.is_dir():
             files += [path for path in directory.rglob("*") if path.is_file()]
     files += [path for path in (root / "frontend").glob("*") if path.is_file() and path.suffix in (".json", ".ts", ".html")]
@@ -219,8 +219,24 @@ def wails():
     return binary
 
 
+def verify_shared_ui(workspace, root=ROOT):
+    lock = read_lock(root)
+    repos = {r["id"]: workspace / r["directory"] for r in lock["repositories"]}
+    paths = []
+    for component in lock["components"]:
+        for name in ("tokens.css", "components.css", "theme.ts", "Icon.vue"):
+            paths.append((root / "ui" / name, repos[component["repository"]] / component["frontend"] / "src/simlab-ui" / name))
+    for identity, repo in repos.items():
+        name, target = ("preferences.go", "go/internal/suitehost/appearance.go") if identity == "modbus" else ("preferences.rs", "crates/shared/simlab_preferences.rs")
+        paths.append((root / "ui" / name, repo / target))
+    for source, target in paths:
+        if not source.is_file() or not target.is_file() or source.read_bytes() != target.read_bytes():
+            raise SuiteError(f"Stale shared UI asset: {target}; refresh suite patches with scripts/sync_ui.py --write")
+
+
 def build(workspace, target, arch, root=ROOT):
     native_target(target, arch)
+    verify_shared_ui(workspace, root)
     lock = read_lock(root)
     for tool in ("git", "npm", "go", "cargo", "rustc"):
         require(tool)

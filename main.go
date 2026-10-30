@@ -64,11 +64,11 @@ func main() {
 	appMenu.Append(menu.AppMenu())
 	appMenu.Append(menu.EditMenu())
 	err = wails.Run(&options.App{
-		Title: "Simulator All-in-One", Width: 1160, Height: 900, MinWidth: 820, MinHeight: 650,
-		BackgroundColour: options.NewRGB(239, 243, 246),
+		Title: "Simulator All-in-One", Width: 960, Height: 680, MinWidth: 760, MinHeight: 560,
+		BackgroundColour: options.NewRGB(250, 250, 250),
 		AssetServer:      &assetserver.Options{Assets: assets},
 		Bind:             []interface{}{app}, Menu: appMenu,
-		Mac:     &mac.Options{TitleBar: &mac.TitleBar{TitlebarAppearsTransparent: true, FullSizeContent: false}, About: &mac.AboutInfo{Title: "Simulator All-in-One", Message: "Industrial protocol simulator suite / 工业协议模拟器套件 · Karl-Dai"}},
+		Mac:     &mac.Options{TitleBar: mac.TitleBarDefault(), About: &mac.AboutInfo{Title: "Simulator All-in-One", Message: "Industrial protocol simulator suite / 工业协议模拟器套件 · Karl-Dai"}},
 		Windows: &windows.Options{WebviewUserDataPath: filepath.Join(data, "launcher-webview")},
 	})
 	if err != nil {

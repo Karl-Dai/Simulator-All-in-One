@@ -13,9 +13,8 @@ import {
   Boxes,
   Cable,
   Check,
-  Clock3,
   Info,
-  Languages,
+  Settings2,
   LoaderCircle,
   Monitor,
   Moon,
@@ -33,30 +32,22 @@ import type { Language, Preferences, RoleState, Snapshot } from "./types";
 const protocols = [
   {
     id: "iec104",
-    title: "IEC 104",
-    standard: "IEC 60870-5-104",
-    purposeKey: "purpose.iec104",
+    title: "IEC 60870-5-104",
     icon: Network,
   },
   {
     id: "modbus",
     title: "Modbus",
-    standard: "",
-    purposeKey: "purpose.modbus",
     icon: Cable,
   },
   {
     id: "pmu",
     title: "PMU",
-    standard: "IEEE C37.118",
-    purposeKey: "purpose.pmu",
     icon: Activity,
   },
   {
     id: "opcua",
     title: "OPC UA",
-    standard: "OPC Unified Architecture",
-    purposeKey: "purpose.opcua",
     icon: Boxes,
   },
 ];
@@ -86,10 +77,6 @@ const platformName = computed(
     })[snapshot.value?.platform ?? ""] ?? t("platform.fallback"),
 );
 const theme = computed(() => snapshot.value?.preferences.theme ?? "system");
-const themeIcon = computed(() =>
-  theme.value === "dark" ? Moon : theme.value === "light" ? Sun : Monitor,
-);
-const themeLabel = computed(() => t(`theme.${theme.value}`));
 const language = computed(
   () => snapshot.value?.preferences.language ?? "en",
 );
@@ -109,16 +96,6 @@ const visibleProtocols = computed(() =>
       page.value !== "favorites" ||
       roles(protocol.id).some((role) => isFavorite(role.id)),
   ),
-);
-const recent = computed(() =>
-  (snapshot.value?.roles ?? [])
-    .filter((role) => snapshot.value?.preferences.recent[role.id])
-    .sort((a, b) =>
-      (snapshot.value?.preferences.recent[b.id] ?? "").localeCompare(
-        snapshot.value?.preferences.recent[a.id] ?? "",
-      ),
-    )
-    .slice(0, 4),
 );
 function roles(protocol: string): RoleState[] {
   return (
@@ -195,11 +172,6 @@ async function changeTheme(value: Preferences["theme"]) {
     error.value = message(cause);
   }
 }
-function cycleTheme() {
-  const order: Preferences["theme"][] = ["system", "light", "dark"];
-  const next = order[(order.indexOf(theme.value) + 1) % order.length];
-  changeTheme(next);
-}
 async function cycleLanguage() {
   const order: Language[] = ["auto", "zh-CN", "en"];
   const next = order[(order.indexOf(language.value) + 1) % order.length];
@@ -248,10 +220,7 @@ onMounted(refresh);
 <template>
   <div class="shell">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
-        <strong :title="`${PRODUCT_NAME} (${PRODUCT_SHORT_NAME})`">{{ PRODUCT_SHORT_NAME }}</strong>
-      </div>
+      <div class="brand" :title="`${PRODUCT_NAME} (${PRODUCT_SHORT_NAME})`"><Boxes :size="20" aria-hidden="true" /><strong>{{ PRODUCT_SHORT_NAME }}</strong></div>
       <nav :aria-label="t('nav.main')">
         <button :class="{ selected: page === 'all' }" @click="page = 'all'">
           {{ t("nav.all") }}<span class="nav-count">{{ roleTotal }}</span>
@@ -271,79 +240,19 @@ onMounted(refresh);
       </nav>
       <div class="topbar-right">
         <button
-          class="icon-button lang-button"
-          :title="t('lang.aria', { label: languageLabel })"
-          :aria-label="t('lang.aria', { label: languageLabel })"
-          @click="cycleLanguage"
-        >
-          <Languages :size="15" aria-hidden="true" /><span>{{
-            languageBadge
-          }}</span>
-        </button>
-        <button
-          class="icon-button"
-          :title="t('theme.toggle', { label: themeLabel })"
-          :aria-label="t('theme.aria', { label: themeLabel })"
-          @click="cycleTheme"
-        >
-          <component :is="themeIcon" :size="16" aria-hidden="true" />
-        </button>
-        <button
-          class="readiness"
-          :class="{ incomplete: !loading && readyCount < roleTotal }"
-          :disabled="loading"
-          :title="t('readiness.title')"
-          @click="refresh"
-        >
-          <LoaderCircle
-            v-if="loading"
-            class="spin"
-            :size="14"
-            aria-hidden="true"
-          /><Check
-            v-else-if="readyCount === roleTotal"
-            :size="14"
-            aria-hidden="true"
-          /><RefreshCw v-else :size="13" aria-hidden="true" /><span>{{
-            loading
-              ? t("readiness.checking")
-              : t("readiness.ready", { ready: readyCount, total: roleTotal })
-          }}</span>
-        </button>
-        <button
           class="icon-button about-link"
           :class="{ selected: page === 'about' }"
           :aria-label="t('about.entry')"
           :title="t('about.entry')"
           @click="page = 'about'"
         >
-          <Info :size="16" aria-hidden="true" />
+          <Settings2 :size="18" aria-hidden="true" />
         </button>
       </div>
     </header>
 
     <main>
       <div class="workspace" v-if="page !== 'about'">
-        <section
-          v-if="recent.length && page === 'all'"
-          class="recent-row"
-          :aria-label="t('recent.section')"
-        >
-          <span class="recent-label"
-            ><Clock3 :size="14" aria-hidden="true" />{{ t("recent.label")
-            }}</span
-          ><button
-            v-for="role in recent"
-            :key="role.id"
-            class="chip"
-            :disabled="busy.has(role.id)"
-            @click="launch(role)"
-          >
-            {{ protocolTitle(role.protocol) }} · {{ roleLabel(role.name)
-            }}<ArrowUpRight :size="12" aria-hidden="true" />
-          </button>
-        </section>
-
         <div
           v-if="page === 'favorites' && !favoriteCount && !loading"
           class="empty-state"
@@ -372,14 +281,7 @@ onMounted(refresh);
                   aria-hidden="true"
                 />
               </span>
-              <div>
-                <h2>{{ protocol.title }}</h2>
-                <p class="purpose">
-                  <span v-if="protocol.standard" class="standard">{{
-                    protocol.standard
-                  }}</span>{{ t(protocol.purposeKey) }}
-                </p>
-              </div>
+              <h2>{{ protocol.title }}</h2>
             </div>
             <div class="role-list">
               <template v-if="roles(protocol.id).length">
@@ -397,13 +299,12 @@ onMounted(refresh);
                         role: roleLabel(role.name),
                       })
                     "
+                    :title="role.product"
                     :disabled="busy.has(role.id)"
                     :class="{ unavailable: !role.ready }"
                     @click="launch(role)"
                   >
-                    <span class="role-identity"
-                      ><strong>{{ roleLabel(role.name) }}</strong
-                      ><small>{{ role.product }}</small></span
+                    <span class="role-identity"><strong>{{ roleLabel(role.name) }}</strong></span
                     ><span class="launch-action"
                       ><LoaderCircle
                         v-if="busy.has(role.id)"
@@ -411,7 +312,7 @@ onMounted(refresh);
                         :size="15"
                         aria-hidden="true" /><template v-else
                         >{{
-                          role.ready ? t("role.open") : t("role.repair")
+                          role.ready ? "" : t("role.repair")
                         }}<ArrowUpRight
                           :size="15"
                           aria-hidden="true" /></template
@@ -469,6 +370,10 @@ onMounted(refresh);
           </div>
         </div>
         <div class="theme-setting">
+          <div><strong>{{ t('settings.language') }}</strong></div>
+          <button class="lang-button ghost-button" :aria-label="t('lang.aria', { label: languageLabel })" @click="cycleLanguage">{{ languageLabel }}<span>{{ languageBadge }}</span></button>
+        </div>
+        <div class="theme-setting">
           <div>
             <strong>{{ t("about.themeTitle") }}</strong>
             <p>{{ t("about.themeHint") }}</p>
@@ -494,6 +399,14 @@ onMounted(refresh);
         <p class="about-copyright">{{ t("about.copyright") }} <a :href="PRODUCT_REPOSITORY" target="_blank" rel="noopener noreferrer">{{ PRODUCT_SHORT_NAME }} · GitHub</a></p>
       </div>
     </main>
+    <footer class="workspace-footer">
+      <span>{{ t('workspace.independent') }}</span>
+      <button class="readiness" :class="{ incomplete: !loading && readyCount < roleTotal }" :disabled="loading" :title="t('readiness.title')" @click="refresh">
+        <LoaderCircle v-if="loading" class="spin" :size="13" aria-hidden="true" />
+        <RefreshCw v-else :size="13" aria-hidden="true" />
+        {{ loading ? t('readiness.checking') : t('readiness.ready', {ready: readyCount, total: roleTotal}) }}
+      </button>
+    </footer>
     <div v-if="notice" class="toast" role="status">
       <Check :size="16" aria-hidden="true" />{{ notice
       }}<button :aria-label="t('toast.close')" @click="notice = ''">
