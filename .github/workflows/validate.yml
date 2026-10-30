@@ -30,3 +30,35 @@ jobs:
           npm ci
           npm test
           npm run build
+  modbus-points:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+      - name: Prepare the locked Modbus source and suite patch
+        run: |
+          python - <<'PY'
+          import json, pathlib, subprocess
+          repo = next(r for r in json.loads(pathlib.Path('components.lock.json').read_text())['repositories'] if r['id'] == 'modbus')
+          source = pathlib.Path('.components') / repo['directory']
+          subprocess.run(['git', 'init', str(source)], check=True)
+          subprocess.run(['git', '-C', str(source), 'fetch', '--depth=1', repo['url'], repo['commit']], check=True)
+          subprocess.run(['git', '-C', str(source), 'checkout', '--detach', 'FETCH_HEAD'], check=True)
+          subprocess.run(['git', '-C', str(source), 'apply', '--index', str(pathlib.Path(repo['patch']).resolve())], check=True)
+          PY
+      - name: Point range UI and real TCP regression tests
+        working-directory: .components/ModbusSim
+        run: |
+          npm ci --ignore-scripts
+          node --experimental-strip-types --test scripts/register-ranges.test.mjs
+          npm run build --workspace frontend
+          cd go
+          go test -race ./internal/appstate
