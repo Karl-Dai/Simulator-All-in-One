@@ -1,6 +1,6 @@
 # 实施与验收记录
 
-日期：2026-10-22。套件版本：0.1.0。本文记录初版实施、本地验收及已获授权的私有仓库交付和三平台 CI。正式发布不属于本轮范围。
+初版记录日期：2026-10-22。套件版本：0.1.0。本文记录初版实施、本地验收及已获授权的私有仓库交付和三平台 CI；2026-10-30 的界面更新与重打包记录见文末。正式发布不属于本轮范围。
 
 ## 已实现
 
@@ -60,3 +60,27 @@ Linux 离线复验使用同一个 `bca65d6` 原包，SHA256 为 `b21d26a101639f0
 安装包与 stage 内容的 37 个文件路径、哈希和权限一致。通过本机 CLI `open` 的一次启动出现黑屏及 WebKit/XPC 异常；停止该验证进程后，原生应用接口首次启动正常，主窗口显示 8/8 就绪。具体系统机制未确认，未通过修改资源或关闭保护规避。
 
 本轮已验证安装包集中在本机 `dist/ci-packages/`，包含 macOS ARM/Intel DMG、Windows NSIS、Linux `.run`、校验值和 Windows/Linux 来源记录。私有仓库已交付，未创建 release 或 tag。
+
+## 2026-10-30 界面更新与完整重建
+
+入口布局调整 `7093ce4` 与双语界面 `b5371b8` 已推送到私有仓库 `main`。本次保持套件版本 0.1.0，组件版本及锁定上游提交不变；四个原生目标从同一源码提交 `b5371b80a0a59a7c8caac68bef5a8b3160621ef8` 完整构建。
+
+- 入口改为顶栏导航；可选择中文、English 或跟随系统，语言偏好经 Wails API 保存。
+- 本地入口后端 `go test -race ./internal/suite` / `go vet ./internal/suite`、7 项前端交互测试、16 项打包测试及前端生产构建通过。[源码 CI 40989673008](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989673008) 通过。
+- 真实无头 Chromium 检查通过：中英切换、刷新恢复选项、收藏过滤、启动提示、主题与八组件关于页；1160×900 默认窗口八入口一屏可见，820×650 窗口无横向溢出，八入口均可滚动访问。此层使用明确的 Wails fixture，不代表原生进程或协议验收。
+- 新 macOS ARM 包的实际原生窗口显示 8/8 就绪；切换英文后，`launcher.json` 写入 `language=en`，退出并重新打开后保持英文。从英文入口点击打开内置 ModbusMaster，真实子窗口完整渲染；关闭入口后子窗口继续运行。验收结束已关闭相关进程并恢复原入口偏好。本次未重做协议互联测试。
+
+完整构建与验收任务：[40989672953](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989672953)，四个原生目标均通过。
+
+| 目标 | 本轮 CI 与本机复核 | 完整产物 |
+| --- | --- | --- |
+| macOS ARM | 完整构建、后端 race 测试和打包通过；本机复核包哈希、八角色资源树、九个 arm64 程序、嵌套签名和 DMG，并完成上述真实入口 UI 验收 | [DMG / ZIP](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989672953/artifacts/12949515047) |
+| macOS Intel | 完整构建、后端 race 测试和打包通过；本机复核包哈希、八角色资源树、九个 x86_64 程序、嵌套签名和 DMG，未在本机执行 Intel 程序 | [DMG / ZIP](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989672953/artifacts/12950596037) |
+| Windows x64 | 完整构建、后端测试、NSIS 打包、安装、缺组件修复、未知文件保护、活动实例保护、九进程启动及卸载通过；本机仅静态解包，复核九个 x64 程序、八角色资源树和离线 WebView2 哈希 | [NSIS](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989672953/artifacts/12950140603) |
+| Linux x64 | 完整构建、后端 race 测试、运行时闭包、打包和无宿主 GTK/WebKit 的断网容器 9/9 进程启动检查通过；本机静态解包复核 3,219 个索引文件、九个 x64 程序及八角色资源树 | [自解压 `.run`](https://github.com/Karl-Dai/SimLab-Desktop/actions/runs/40989672953/artifacts/12949610605) |
+
+本机最新产物位于 `dist/ci-packages/b5371b8/`：四个目标的完整安装包、两个 macOS ZIP、各包 `.sha256.json`、总校验表 `SHA256SUMS`、四份 manifest 和 `provenance.json`。四个入口二进制均已确认嵌入新版双语界面及 `SetLanguage`；两个 macOS DMG 与各自 ZIP 的 37 项文件路径、哈希和权限一致。旧包保留，未覆盖本机 `/Applications/SimLab.app`。
+
+原始构建状态、各目标解包检查、原生日志、浏览器截图和本机 UI 验收摘要保存在忽略跟踪的 `.validation/refresh-20261030/`。本次两笔已提交的入口改动与安装包已对齐；本条记录之后的文档提交不改变编译输入。工作区中另有并行的 UI 统一改动，未纳入本轮构建。
+
+尚未完成项仍为 Windows/Linux/macOS Intel 的完整窗口与协议互联、无 WebView2 的干净 Windows 断网首装、macOS 13 实机、Developer ID 签名及 Apple 公证。本轮没有创建 tag 或 GitHub Release。
