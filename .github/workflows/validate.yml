@@ -74,6 +74,8 @@ jobs:
         run: |
           npm ci --ignore-scripts
           node --experimental-strip-types --test scripts/register-ranges.test.mjs
+          npm test --workspace shared-frontend
           npm run build --workspace frontend
+          npm run build --workspace master-frontend
           cd go
-          go test -race ./internal/appstate
+          go test -race ./internal/appstate ./internal/master ./internal/masterstate

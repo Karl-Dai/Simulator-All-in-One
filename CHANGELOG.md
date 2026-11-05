@@ -2,6 +2,31 @@
 
 Notable changes are documented in English and Chinese, following Keep a Changelog.
 
+## [0.1.4] - 2026-11-05
+
+### Highlights / 亮点
+
+- Reliable Modbus discovery finds responding slave IDs and valid registers inside sparse address ranges. / 修复 Modbus 在线从站漏扫和不连续寄存器地址漏扫。
+- Scan a chosen slave, review results, and add verified ranges as polling groups without duplicates. / 可指定从站扫描、查看结果，再将有效范围添加为轮询组，重复添加会跳过已有组。
+- Protocol icons now carry `104`, `UA`, and `P` badges; Windows title bars follow the selected appearance. / 协议图标增加 `104`、`UA`、`P` 标注，Windows 标题栏跟随所选主题。
+
+### Fixed / 修复
+
+- Slave discovery sends numeric ID arrays to the WebView and recognizes device exception replies while excluding gateway delivery failures. / 从站扫描向界面传递数字 ID 数组，识别设备异常响应，并排除网关转发失败。
+- Register discovery uses the chosen slave ID and splits rejected blocks to recover valid addresses; connection failures are shown explicitly. / 寄存器扫描使用指定从站 ID，将读取失败的地址块拆分以找出有效地址，并明确显示连接错误。
+- Cancellation interrupts pending network reads; progress uses completed counts, and large result sets are paginated. / 中止扫描会打断等待中的网络读取，进度按已扫描数量计算，大量结果分页显示。
+- Connection and polling settings can be edited from the context menu; menus close outside the tree or on Escape, and project reload preserves default-slave inheritance. / 右键可编辑连接和轮询设置，在树外点击或按 Escape 会关闭菜单，重新打开项目仍保留默认从站继承关系。
+- Modbus dialogs retain edits while dragging and support explicit TLS 1.2/1.3 selection alongside certificate and server-name verification settings. / 修复 Modbus 弹窗拖动时意外关闭的问题，支持明确选择 TLS 1.2/1.3，并保留证书与服务器名称验证设置。
+
+### Tests / 测试
+
+- Add discovery, cancellation, task-event ordering, sparse-address, target-ID, pagination and duplicate-group regressions to the Modbus checks. / 新增扫描、中止、任务事件顺序、不连续地址、目标从站、分页和重复组回归测试，并接入发布前检查。
+- Local verification passed 137 shared frontend tests, Go race tests, and real TCP discovery-to-polling browser flows. / 本地通过 137 项共享前端测试、Go 竞态测试，以及真实 TCP 从发现、扫描到轮询的浏览器流程。
+
+### Validation limits / 验收边界
+
+- Local cross-builds do not replace native Windows or physical serial-device acceptance. The release workflow builds and validates all four native targets before publishing. / 本地交叉构建不代替 Windows 原生界面和真实串口设备验收；发布流程在公开产物前构建并检查四个原生目标。
+
 ## [0.1.3] - 2026-11-05
 
 ### Highlights / 亮点

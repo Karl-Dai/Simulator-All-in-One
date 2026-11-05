@@ -82,7 +82,7 @@ index 0000000..d4d7ce5
 +  <g fill="none" stroke="#9B5727" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M97 94H84a5 5 0 0 0 0 10h8a5 5 0 0 1 0 10H79"/></g>
 +</svg>
 diff --git a/frontend/src/components/NewConnectionDialog.vue b/frontend/src/components/NewConnectionDialog.vue
-index ba2495b..09bc021 100644
+index ba2495b..9aabfad 100644
 --- a/frontend/src/components/NewConnectionDialog.vue
 +++ b/frontend/src/components/NewConnectionDialog.vue
 @@ -1,10 +1,13 @@
@@ -149,7 +149,7 @@ index ba2495b..09bc021 100644
 -    <div v-if="show" v-modal="() => emit('close')" class="modal-overlay" @click.self="emit('close')">
 -      <div class="modal-box">
 -        <div class="modal-title">{{ t('toolbar.newConnection') }}</div>
-+    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-connection-title" @click.self="!isSaving && emit('close')">
++    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-connection-title" @pointerdown.self.left="!isSaving && emit('close')">
 +      <div class="modal-box" :aria-busy="isSaving">
 +        <fieldset class="creation-fields" :disabled="isSaving">
 +        <div id="new-connection-title" class="modal-title">{{ t('toolbar.newConnection') }}</div>
@@ -210,7 +210,7 @@ index ba2495b..09bc021 100644
  .modal-field { margin-bottom: 14px; }
  .modal-field label { display: block; font-size: 12px; color: var(--c-subtext0); margin-bottom: 6px; }
 diff --git a/frontend/src/components/NewSlaveDialog.vue b/frontend/src/components/NewSlaveDialog.vue
-index 154b6eb..960cdec 100644
+index 154b6eb..bd82ddc 100644
 --- a/frontend/src/components/NewSlaveDialog.vue
 +++ b/frontend/src/components/NewSlaveDialog.vue
 @@ -1,9 +1,12 @@
@@ -271,7 +271,7 @@ index 154b6eb..960cdec 100644
 -    <div v-if="show" v-modal="() => emit('close')" class="modal-overlay" @click.self="emit('close')">
 -      <div class="modal-box">
 -        <div class="modal-title">{{ t('toolbar.newSlave') }}</div>
-+    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-slave-title" @click.self="!isSaving && emit('close')">
++    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-slave-title" @pointerdown.self.left="!isSaving && emit('close')">
 +      <div class="modal-box" :aria-busy="isSaving">
 +        <fieldset class="creation-fields" :disabled="isSaving">
 +        <div id="new-slave-title" class="modal-title">{{ t('toolbar.newSlave') }}</div>
@@ -407,22 +407,25 @@ index 0000000..29bfa41
 +@media (max-width: 650px) { .range-fields { grid-template-columns: 1fr 1fr; } .range-remove { justify-self: start; } }
 +</style>
 diff --git a/frontend/src/main.ts b/frontend/src/main.ts
-index 0d42ea4..11bcf62 100644
+index 0d42ea4..a105177 100644
 --- a/frontend/src/main.ts
 +++ b/frontend/src/main.ts
-@@ -1,3 +1,6 @@
+@@ -1,3 +1,7 @@
++import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
 +import './simlab-ui/tokens.css'
 +import './simlab-ui/components.css'
 +import { startSuiteTheme } from './simlab-ui/theme'
  import 'shared-frontend/src/styles/tokens.css'
  import { createApp } from 'vue'
  import './style.css'
-@@ -10,4 +13,5 @@ import { GetVersion } from '../wailsjs/go/main/App'
+@@ -10,4 +14,7 @@ import { GetVersion } from '../wailsjs/go/main/App'
  import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
  
  initTheme()
 +if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
  createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
++
++void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
 diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
 new file mode 100644
 index 0000000..3640d0d
@@ -1368,13 +1371,23 @@ index 0000000..e30d3f6
 +  return window['go']['suitehost']['Appearance']['Theme']();
 +}
 diff --git a/go/cmd/mastergui/main.go b/go/cmd/mastergui/main.go
-index b01a3de..35592e2 100644
+index b01a3de..65b33a2 100644
 --- a/go/cmd/mastergui/main.go
 +++ b/go/cmd/mastergui/main.go
-@@ -26,12 +26,16 @@ func main() {
- 		appMenu.Append(menu.AppMenu())
+@@ -21,17 +21,24 @@ func main() {
+ 		log.Fatal(err)
  	}
- 	appMenu.Append(menu.EditMenu())
+ 	app := newApp()
+-	appMenu := menu.NewMenu()
++	// Native application/edit roles are only supported on macOS.
++	// Passing them to Windows produces an empty menu bar.
++	var appMenu *menu.Menu
+ 	if runtime.GOOS == "darwin" {
++		appMenu = menu.NewMenu()
+ 		appMenu.Append(menu.AppMenu())
++		appMenu.Append(menu.EditMenu())
+ 	}
+-	appMenu.Append(menu.EditMenu())
 -	if err := wails.Run(&options.App{
 +	appOptions := &options.App{
  		Title: "ModbusMaster — Go", Width: 1280, Height: 800,
@@ -3113,13 +3126,23 @@ index 0000000..ca5bbba
 +  }
 +}
 diff --git a/go/cmd/slavegui/main.go b/go/cmd/slavegui/main.go
-index 693cce8..385cdf8 100644
+index 693cce8..fd45d30 100644
 --- a/go/cmd/slavegui/main.go
 +++ b/go/cmd/slavegui/main.go
-@@ -26,12 +26,16 @@ func main() {
- 		appMenu.Append(menu.AppMenu())
+@@ -21,17 +21,24 @@ func main() {
+ 		log.Fatal(err)
  	}
- 	appMenu.Append(menu.EditMenu())
+ 	app := newApp()
+-	appMenu := menu.NewMenu()
++	// Native application/edit roles are only supported on macOS.
++	// Passing them to Windows produces an empty menu bar.
++	var appMenu *menu.Menu
+ 	if runtime.GOOS == "darwin" {
++		appMenu = menu.NewMenu()
+ 		appMenu.Append(menu.AppMenu())
++		appMenu.Append(menu.EditMenu())
+ 	}
+-	appMenu.Append(menu.EditMenu())
 -	if err := wails.Run(&options.App{
 +	appOptions := &options.App{
  		Title: "ModbusSlave — Go", Width: 1280, Height: 800,
@@ -5197,19 +5220,21 @@ index 0000000..a23df8b
 +	}
 +}
 diff --git a/go/internal/master/master.go b/go/internal/master/master.go
-index 22e0e13..dfdcff6 100644
+index 22e0e13..7ae285c 100644
 --- a/go/internal/master/master.go
 +++ b/go/internal/master/master.go
-@@ -36,7 +36,7 @@ type Transport struct {
+@@ -36,8 +36,9 @@ type Transport struct {
  	Serial *serial.Config `json:"-"`
  }
  
 -// TLSConfig mirrors Rust's TlsConfig (master side, transport.rs).
 +// TLSConfig selects the master TLS identity and certificate verification policy.
  type TLSConfig struct {
++	Version            string `json:"version,omitempty"`
  	Enabled            bool   `json:"enabled"`
  	CAFile             string `json:"ca_file"`
-@@ -45,6 +45,9 @@ type TLSConfig struct {
+ 	CertFile           string `json:"cert_file"`
+@@ -45,6 +46,9 @@ type TLSConfig struct {
  	PKCS12File         string `json:"pkcs12_file"`
  	PKCS12Password     string `json:"pkcs12_password"`
  	AcceptInvalidCerts bool   `json:"accept_invalid_certs"`
@@ -5219,6 +5244,25 @@ index 22e0e13..dfdcff6 100644
  }
  
  // Config is the master connection configuration (MasterConfig).
+@@ -357,7 +361,17 @@ func (c *Connection) exchange(ctx context.Context, slaveID uint8, reqPDU []byte,
+ 	if c.log != nil {
+ 		c.log.AddRequest("tx", fc, txDetail)
+ 	}
+-	resp, err := tr.exchange(slaveID, reqPDU, timeout)
++	var resp []byte
++	if contextual, ok := tr.(interface {
++		exchangeContext(context.Context, uint8, []byte, time.Duration) ([]byte, error)
++	}); ok {
++		resp, err = contextual.exchangeContext(ctx, slaveID, reqPDU, timeout)
++	} else {
++		resp, err = tr.exchange(slaveID, reqPDU, timeout)
++	}
++	if ctx.Err() != nil {
++		return nil, errCancelled()
++	}
+ 	if err != nil {
+ 		if c.log != nil {
+ 			c.log.AddRequest("rx", fc, fmt.Sprintf("ERR: %v", err))
 diff --git a/go/internal/master/tls_test.go b/go/internal/master/tls_test.go
 new file mode 100644
 index 0000000..3943e04
@@ -5476,11 +5520,138 @@ index 0000000..3943e04
 +		t.Fatal("missing peer certificate must not be accepted")
 +	}
 +}
+diff --git a/go/internal/master/tls_version_test.go b/go/internal/master/tls_version_test.go
+new file mode 100644
+index 0000000..eaf3053
+--- /dev/null
++++ b/go/internal/master/tls_version_test.go
+@@ -0,0 +1,47 @@
++package master
++
++import (
++	"context"
++	"crypto/tls"
++	"github.com/Karl-Dai/ModbusSim/go/internal/socks5"
++	"io"
++	"log"
++	"net"
++	"net/http/httptest"
++	"testing"
++	"time"
++)
++
++func TestTLSVersionNegotiation(t *testing.T) {
++	for _, serverVersion := range []uint16{tls.VersionTLS12, tls.VersionTLS13} {
++		for _, selected := range []string{"", "auto", "1.2", "1.3"} {
++			t.Run(tls.VersionName(serverVersion)+"/"+selected, func(t *testing.T) {
++				srv := httptest.NewUnstartedServer(nil)
++				srv.Config.ErrorLog = log.New(io.Discard, "", 0)
++				srv.TLS = &tls.Config{MinVersion: serverVersion, MaxVersion: serverVersion}
++				srv.StartTLS()
++				defer srv.Close()
++				addr := srv.Listener.Addr().(*net.TCPAddr)
++				tr, err := newTLSTransport(context.Background(), "127.0.0.1", uint16(addr.Port), TLSConfig{Version: selected, AcceptInvalidCerts: true}, socks5.Config{}, time.Second)
++				mismatch := (selected == "1.2" && serverVersion == tls.VersionTLS13) || (selected == "1.3" && serverVersion == tls.VersionTLS12)
++				if mismatch {
++					if err == nil {
++						tr.close()
++						t.Fatal("fixed version silently negotiated another version")
++					}
++					return
++				}
++				if err != nil {
++					t.Fatal(err)
++				}
++				defer tr.close()
++				if got := tr.conn.ConnectionState().Version; got != serverVersion {
++					t.Fatalf("negotiated %x, want %x", got, serverVersion)
++				}
++			})
++		}
++	}
++	if _, err := BuildClientTLSConfig(TLSConfig{Version: "1.1"}, "localhost"); err == nil {
++		t.Fatal("unsupported version accepted")
++	}
++}
 diff --git a/go/internal/master/transports.go b/go/internal/master/transports.go
-index 7ec9018..1895dc1 100644
+index 7ec9018..d93960f 100644
 --- a/go/internal/master/transports.go
 +++ b/go/internal/master/transports.go
-@@ -79,9 +79,10 @@ type tlsTransport struct {
+@@ -52,20 +52,63 @@ func mapConnectError(err error) *Error {
+ 	return errTransport(err.Error())
+ }
+ 
+-func (t *tcpTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+-	tid := uint16(t.tid.Add(1) & 0xFFFF)
+-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
+-	if err := mbap.WriteFrame(t.conn, tid, slaveID, reqPDU); err != nil {
+-		return nil, errTransport(fmt.Sprintf("TCP write: %v", err))
++func beginExchange(ctx context.Context, conn net.Conn, timeout time.Duration) (func(), error) {
++	if ctx.Err() != nil {
++		return nil, errCancelled()
+ 	}
+-	header, resp, err := mbap.ReadFrame(t.conn)
++	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
++		return nil, errTransport(err.Error())
++	}
++	finished := make(chan struct{})
++	stop := context.AfterFunc(ctx, func() { _ = conn.SetDeadline(time.Now()); close(finished) })
++	return func() {
++		if !stop() {
++			<-finished
++		}
++		_ = conn.SetDeadline(time.Time{})
++	}, nil
++}
++
++func exchangeMBAP(ctx context.Context, conn net.Conn, tid uint16, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
++	cleanup, err := beginExchange(ctx, conn, timeout)
+ 	if err != nil {
+-		return nil, errTransport(fmt.Sprintf("TCP read: %v", err))
++		return nil, err
+ 	}
+-	if header.TransactionID != tid || header.UnitID != slaveID || header.ProtocolID != 0 {
+-		return nil, errTransport("MBAP response identity mismatch")
++	defer cleanup()
++	if err := mbap.WriteFrame(conn, tid, slaveID, request); err != nil {
++		return nil, streamError(ctx, err)
+ 	}
+-	return resp, nil
++	for {
++		header, response, err := mbap.ReadFrame(conn)
++		if err != nil {
++			return nil, streamError(ctx, err)
++		}
++		// A response to an earlier timed-out/cancelled request may arrive late.
++		if header.TransactionID != tid {
++			continue
++		}
++		if header.UnitID != slaveID || header.ProtocolID != 0 {
++			return nil, errTransport("MBAP response identity mismatch")
++		}
++		return response, nil
++	}
++}
++
++func streamError(ctx context.Context, err error) error {
++	if ctx.Err() != nil {
++		return errCancelled()
++	}
++	if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
++		return errTimeout(err.Error())
++	}
++	return errTransport(err.Error())
++}
++
++func (t *tcpTransport) exchange(slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
++	return t.exchangeContext(context.Background(), slaveID, request, timeout)
++}
++func (t *tcpTransport) exchangeContext(ctx context.Context, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
++	return exchangeMBAP(ctx, t.conn, uint16(t.tid.Add(1)), slaveID, request, timeout)
+ }
+ 
+ func (t *tcpTransport) close() error { return t.conn.Close() }
+@@ -79,11 +122,22 @@ type tlsTransport struct {
  	tid  atomic.Uint32
  }
  
@@ -5493,8 +5664,20 @@ index 7ec9018..1895dc1 100644
 +// serverName is also used for SNI when certificate verification is enabled.
  func BuildClientTLSConfig(cfg TLSConfig, serverName string) (*tls.Config, error) {
  	out := &tls.Config{MinVersion: tls.VersionTLS12}
++	switch cfg.Version {
++	case "", "auto":
++	case "1.2":
++		out.MaxVersion = tls.VersionTLS12
++	case "1.3":
++		out.MinVersion = tls.VersionTLS13
++		out.MaxVersion = tls.VersionTLS13
++	default:
++		return nil, errTransport(fmt.Sprintf("Unsupported TLS version: %q", cfg.Version))
++	}
  	if cfg.AcceptInvalidCerts {
-@@ -100,6 +101,31 @@ func BuildClientTLSConfig(cfg TLSConfig, serverName string) (*tls.Config, error)
+ 		out.InsecureSkipVerify = true
+ 	} else {
+@@ -100,6 +154,31 @@ func BuildClientTLSConfig(cfg TLSConfig, serverName string) (*tls.Config, error)
  		}
  		out.RootCAs = pool
  	}
@@ -5526,6 +5709,637 @@ index 7ec9018..1895dc1 100644
  	if cfg.PKCS12File != "" {
  		p12Bytes, err := os.ReadFile(cfg.PKCS12File)
  		if err != nil {
+@@ -143,20 +222,11 @@ func newTLSTransport(ctx context.Context, host string, port uint16, cfg TLSConfi
+ 	return &tlsTransport{conn: conn}, nil
+ }
+ 
+-func (t *tlsTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+-	tid := uint16(t.tid.Add(1) & 0xFFFF)
+-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
+-	if err := mbap.WriteFrame(t.conn, tid, slaveID, reqPDU); err != nil {
+-		return nil, errTransport(fmt.Sprintf("TLS write: %v", err))
+-	}
+-	header, resp, err := mbap.ReadFrame(t.conn)
+-	if err != nil {
+-		return nil, errTransport(fmt.Sprintf("TLS read: %v", err))
+-	}
+-	if header.TransactionID != tid || header.UnitID != slaveID || header.ProtocolID != 0 {
+-		return nil, errTransport("MBAP response identity mismatch")
+-	}
+-	return resp, nil
++func (t *tlsTransport) exchange(slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
++	return t.exchangeContext(context.Background(), slaveID, request, timeout)
++}
++func (t *tlsTransport) exchangeContext(ctx context.Context, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
++	return exchangeMBAP(ctx, t.conn, uint16(t.tid.Add(1)), slaveID, request, timeout)
+ }
+ 
+ func (t *tlsTransport) close() error { return t.conn.Close() }
+@@ -232,11 +302,17 @@ func (t *serialTransport) writeFrame(slaveID uint8, pduBytes []byte) error {
+ // readFrame reads one response frame with an overall deadline, mirroring
+ // rtu_master.rs / ascii_master.rs: accumulate until the frame validates.
+ func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byte, error) {
++	return t.readFrameContext(context.Background(), slaveID, timeout)
++}
++func (t *serialTransport) readFrameContext(ctx context.Context, slaveID uint8, timeout time.Duration) ([]byte, error) {
+ 	deadline := time.Now().Add(timeout)
+ 	var acc []byte
+ 	buf := make([]byte, 512)
+ 
+ 	for {
++		if ctx.Err() != nil {
++			return nil, errCancelled()
++		}
+ 		remain := time.Until(deadline)
+ 		if remain <= 0 {
+ 			if len(acc) == 0 {
+@@ -244,7 +320,7 @@ func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byt
+ 			}
+ 			break
+ 		}
+-		_ = t.port.SetReadTimeout(remain)
++		_ = t.port.SetReadTimeout(min(remain, 50*time.Millisecond))
+ 		n, err := t.port.Read(buf)
+ 		if err != nil {
+ 			return nil, errTransport(fmt.Sprintf("read error: %v", err))
+@@ -295,6 +371,9 @@ func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byt
+ }
+ 
+ func (t *serialTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
++	return t.exchangeContext(context.Background(), slaveID, reqPDU, timeout)
++}
++func (t *serialTransport) exchangeContext(ctx context.Context, slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+ 	if err := t.writeFrame(slaveID, reqPDU); err != nil {
+ 		return nil, errTransport(fmt.Sprintf("write error: %v", err))
+ 	}
+@@ -302,7 +381,7 @@ func (t *serialTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Du
+ 		// Wait interframe delay before listening for a response (rtu_master.rs).
+ 		time.Sleep(t.interframe)
+ 	}
+-	return t.readFrame(slaveID, timeout)
++	return t.readFrameContext(ctx, slaveID, timeout)
+ }
+ 
+ func (t *serialTransport) close() error { return t.port.Close() }
+@@ -327,8 +406,15 @@ func newRTUTCPTransportContext(ctx context.Context, host string, port uint16, pr
+ }
+ 
+ func (t *rtuTCPTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
++	return t.exchangeContext(context.Background(), slaveID, reqPDU, timeout)
++}
++func (t *rtuTCPTransport) exchangeContext(ctx context.Context, slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
++	cleanup, err := beginExchange(ctx, t.conn, timeout)
++	if err != nil {
++		return nil, err
++	}
++	defer cleanup()
+ 	req := encodeRTUFrame(slaveID, reqPDU)
+-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
+ 	if _, err := t.conn.Write(req); err != nil {
+ 		return nil, errTransport(fmt.Sprintf("write error: %v", err))
+ 	}
+@@ -350,7 +436,7 @@ func (t *rtuTCPTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Du
+ 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() && len(acc) > 0 {
+ 				break
+ 			}
+-			return nil, errTransport(fmt.Sprintf("read error: %v", err))
++			return nil, streamError(ctx, err)
+ 		}
+ 		if n == 0 {
+ 			break
+diff --git a/go/internal/masterstate/discovery.go b/go/internal/masterstate/discovery.go
+index ac600aa..09c6061 100644
+--- a/go/internal/masterstate/discovery.go
++++ b/go/internal/masterstate/discovery.go
+@@ -2,6 +2,7 @@ package masterstate
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"fmt"
+ 	"github.com/Karl-Dai/ModbusSim/go/internal/master"
+ 	"strconv"
+@@ -52,6 +53,24 @@ func (c *connection) finishDiscovery(kind string, t *task) {
+ 	c.mu.Unlock()
+ 	close(t.done)
+ }
++
++// A device exception is still a response from the addressed device. Gateway
++// exceptions 0x0a/0x0b do not establish that the downstream device is present.
++func deviceResponded(err error) bool {
++	if err == nil {
++		return true
++	}
++	var protocol *master.Error
++	if !errors.As(err, &protocol) || protocol.Kind != "exception" {
++		return false
++	}
++	switch protocol.Exception {
++	case 1, 2, 3, 4, 5, 6, 8:
++		return true
++	}
++	return false
++}
++
+ func (m *Manager) StartSlaveIDScan(id string, req SlaveScanRequest) (string, error) {
+ 	if req.StartID < 1 || req.EndID > 247 || req.EndID < req.StartID || req.TimeoutMS < 1 || req.TimeoutMS > 600000 {
+ 		return "", fmt.Errorf("invalid station scan range or timeout")
+@@ -68,10 +87,11 @@ func (m *Manager) StartSlaveIDScan(id string, req SlaveScanRequest) (string, err
+ 	}
+ 	go func() {
+ 		defer c.finishDiscovery("slave_scan", t)
+-		found := []uint8{}
+-		current := req.StartID
++		found := []uint16{}
++		current, completed := req.StartID, uint16(0)
++		failure := ""
+ 		send := func(done, cancelled bool) {
+-			p := SlaveScanEvent{c.id, t.id, current, uint16(req.EndID) - uint16(req.StartID) + 1, append([]uint8{}, found...), done, cancelled}
++			p := SlaveScanEvent{ConnectionID: c.id, TaskID: t.id, CurrentID: current, Completed: completed, Total: uint16(req.EndID) - uint16(req.StartID) + 1, FoundIDs: append([]uint16{}, found...), Done: done, Cancelled: cancelled, Error: failure}
+ 			c.publish("scan-slave-progress", p, func() bool { return c.scans["slave_scan"] == t })
+ 		}
+ 		for n := uint16(req.StartID); n <= uint16(req.EndID); n++ {
+@@ -83,8 +103,14 @@ func (m *Manager) StartSlaveIDScan(id string, req SlaveScanRequest) (string, err
+ 			if t.ctx.Err() != nil {
+ 				break
+ 			}
+-			if err == nil {
+-				found = append(found, current)
++			completed++
++			if deviceResponded(err) {
++				found = append(found, n)
++			}
++			var protocol *master.Error
++			if errors.As(err, &protocol) && (protocol.Kind == "transport" || protocol.Kind == "not_connected") {
++				failure = err.Error()
++				break
+ 			}
+ 			if n != uint16(req.EndID) {
+ 				send(false, false)
+@@ -94,14 +120,18 @@ func (m *Manager) StartSlaveIDScan(id string, req SlaveScanRequest) (string, err
+ 	}()
+ 	return t.id, nil
+ }
++
+ func (m *Manager) StartRegisterScan(id string, req RegisterScanRequest) (string, error) {
+ 	f, err := readFunction(req.Function)
+ 	if err != nil {
+ 		return "", err
+ 	}
+-	if req.EndAddress < req.StartAddress || req.ChunkSize == 0 || req.TimeoutMS < 1 || req.TimeoutMS > 600000 {
++	if req.EndAddress < req.StartAddress || req.ChunkSize == 0 || req.ChunkSize > 2000 || req.TimeoutMS < 1 || req.TimeoutMS > 600000 {
+ 		return "", fmt.Errorf("invalid register scan range, chunk size or timeout")
+ 	}
++	if req.SlaveID != nil && (*req.SlaveID < 1 || *req.SlaveID > 247) {
++		return "", fmt.Errorf("slave ID must be between 1 and 247")
++	}
+ 	c, err := m.get(id)
+ 	if err != nil {
+ 		return "", err
+@@ -112,6 +142,10 @@ func (m *Manager) StartRegisterScan(id string, req RegisterScanRequest) (string,
+ 	if err != nil {
+ 		return "", err
+ 	}
++	target := engine.Config.SlaveID
++	if req.SlaveID != nil {
++		target = *req.SlaveID
++	}
+ 	limit := engine.Config.Requests.MaxReadRegisters
+ 	if f == master.ReadCoils || f == master.ReadDiscreteInputs {
+ 		limit = engine.Config.Requests.MaxReadBits
+@@ -120,31 +154,56 @@ func (m *Manager) StartRegisterScan(id string, req RegisterScanRequest) (string,
+ 	go func() {
+ 		defer c.finishDiscovery("register_scan", t)
+ 		found := []FoundRegister{}
+-		current := req.StartAddress
++		current, completed := req.StartAddress, uint32(0)
++		failure := ""
++		lastProgress := time.Time{}
+ 		send := func(done, cancelled bool) {
+-			p := RegisterScanEvent{c.id, t.id, current, req.EndAddress, len(found), append([]FoundRegister{}, found...), done, cancelled}
++			if !done && !cancelled && time.Since(lastProgress) < 50*time.Millisecond {
++				return
++			}
++			lastProgress = time.Now()
++			p := RegisterScanEvent{ConnectionID: c.id, TaskID: t.id, CurrentAddress: current, EndAddress: req.EndAddress, Completed: completed, Total: uint32(req.EndAddress) - uint32(req.StartAddress) + 1, FoundCount: len(found), FoundRegisters: append([]FoundRegister{}, found...), Done: done, Cancelled: cancelled, Error: failure}
+ 			c.publish("scan-register-progress", p, func() bool { return c.scans["register_scan"] == t })
+ 		}
+-		for addr := uint32(req.StartAddress); addr <= uint32(req.EndAddress); {
++		var readRange func(uint32, uint16) bool
++		readRange = func(address uint32, count uint16) bool {
+ 			if t.ctx.Err() != nil {
+-				break
++				return false
+ 			}
+-			count := uint16(min(uint32(chunk), uint32(req.EndAddress)-addr+1))
+-			r, err := engine.ReadSlave(t.ctx, engine.Config.SlaveID, f, uint16(addr), count, time.Duration(req.TimeoutMS)*time.Millisecond)
++			result, err := engine.ReadSlave(t.ctx, target, f, uint16(address), count, time.Duration(req.TimeoutMS)*time.Millisecond)
+ 			if t.ctx.Err() != nil {
+-				break
++				return false
+ 			}
+ 			if err == nil {
+-				dto := resultDTO(ScanGroup{Function: req.Function, StartAddress: uint16(addr)}, r)
+-				for _, v := range dto.Values {
+-					found = append(found, FoundRegister{v.Address, v.RawValue})
++				dto := resultDTO(ScanGroup{Function: req.Function, StartAddress: uint16(address)}, result)
++				for _, value := range dto.Values {
++					found = append(found, FoundRegister{value.Address, value.RawValue})
++				}
++			} else {
++				var protocol *master.Error
++				if errors.As(err, &protocol) && protocol.Kind == "exception" && (protocol.Exception == 2 || protocol.Exception == 3) {
++					// A single invalid address makes a whole read fail. Split rejected blocks
++					// until valid islands and their exact boundaries have been recovered.
++					if count > 1 {
++						left := count / 2
++						return readRange(address, left) && readRange(address+uint32(left), count-left)
++					}
++				} else {
++					failure = err.Error()
++					return false
+ 				}
+ 			}
+-			current = uint16(addr + uint32(count) - 1)
+-			addr += uint32(count)
+-			if addr <= uint32(req.EndAddress) {
+-				send(false, false)
++			completed += uint32(count)
++			current = uint16(address + uint32(count) - 1)
++			send(false, false)
++			return true
++		}
++		for address := uint32(req.StartAddress); address <= uint32(req.EndAddress); {
++			count := uint16(min(uint32(chunk), uint32(req.EndAddress)-address+1))
++			if !readRange(address, count) {
++				break
+ 			}
++			address += uint32(count)
+ 		}
+ 		send(t.ctx.Err() == nil, t.ctx.Err() != nil)
+ 	}()
+diff --git a/go/internal/masterstate/discovery_regression_test.go b/go/internal/masterstate/discovery_regression_test.go
+new file mode 100644
+index 0000000..e0dd4a4
+--- /dev/null
++++ b/go/internal/masterstate/discovery_regression_test.go
+@@ -0,0 +1,182 @@
++package masterstate
++
++import (
++	"encoding/binary"
++	"encoding/json"
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/mbap"
++	"net"
++	"reflect"
++	"sync"
++	"testing"
++	"time"
++)
++
++func scanServer(t *testing.T, reply func(uint8, []byte) []byte) (*harness, func()) {
++	t.Helper()
++	listener, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	var mu sync.Mutex
++	var clients []net.Conn
++	stop := func() {
++		listener.Close()
++		mu.Lock()
++		defer mu.Unlock()
++		for _, conn := range clients {
++			conn.Close()
++		}
++	}
++	t.Cleanup(stop)
++	go func() {
++		for {
++			conn, err := listener.Accept()
++			if err != nil {
++				return
++			}
++			mu.Lock()
++			clients = append(clients, conn)
++			mu.Unlock()
++			go func() {
++				defer conn.Close()
++				for {
++					header, pdu, err := mbap.ReadFrame(conn)
++					if err != nil {
++						return
++					}
++					response := reply(header.UnitID, pdu)
++					if response != nil {
++						if mbap.WriteFrame(conn, header.TransactionID, header.UnitID, response) != nil {
++							return
++						}
++					}
++				}
++			}()
++		}
++	}()
++	return &harness{port: uint16(listener.Addr().(*net.TCPAddr).Port)}, stop
++}
++func sparseReply(id uint8, request []byte) []byte {
++	fc := request[0]
++	if id != 1 && id != 2 && id != 7 {
++		return []byte{fc | 0x80, 0x0b}
++	}
++	if id == 2 {
++		return []byte{fc | 0x80, 0x01}
++	}
++	start, count := binary.BigEndian.Uint16(request[1:3]), binary.BigEndian.Uint16(request[3:5])
++	valid := map[uint16]bool{2: true, 3: true, 10: true, 11: true}
++	for n := uint32(start); n < uint32(start)+uint32(count); n++ {
++		if !valid[uint16(n)] {
++			return []byte{fc | 0x80, 0x02}
++		}
++	}
++	response := []byte{fc, byte(count * 2)}
++	for n := uint16(0); n < count; n++ {
++		value := uint16(id)*1000 + start + n
++		response = append(response, byte(value>>8), byte(value))
++	}
++	return response
++}
++func TestSlaveDiscoveryCountsDeviceExceptionsAndSendsNumericJSON(t *testing.T) {
++	h, _ := scanServer(t, sparseReply)
++	events := make(chan SlaveScanEvent, 64)
++	manager, id := newTestManager(t, h, Events{Emit: func(name string, payload any) {
++		if name == "scan-slave-progress" {
++			events <- payload.(SlaveScanEvent)
++		}
++	}})
++	task, err := manager.StartSlaveIDScan(id, SlaveScanRequest{StartID: 1, EndID: 8, TimeoutMS: 20})
++	if err != nil {
++		t.Fatal(err)
++	}
++	var terminal SlaveScanEvent
++	eventually(t, func() bool {
++		for len(events) > 0 {
++			event := <-events
++			if event.TaskID == task && event.Done {
++				terminal = event
++				return true
++			}
++		}
++		return false
++	})
++	if fmt.Sprint(terminal.FoundIDs) != "[1 2 7]" {
++		t.Errorf("responsive devices missed (exclude gateway failures): %v", terminal.FoundIDs)
++	}
++	data, err := json.Marshal(terminal)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var wire struct{ FoundIDs []int }
++	if err = json.Unmarshal(data, &wire); err != nil {
++		t.Fatalf("scan IDs must be a JSON numeric array: %s (%v)", data, err)
++	}
++}
++func TestRegisterDiscoveryRecoversValidAddressesInsideRejectedBlocks(t *testing.T) {
++	h, _ := scanServer(t, sparseReply)
++	events := make(chan RegisterScanEvent, 128)
++	manager, id := newTestManager(t, h, Events{Emit: func(name string, payload any) {
++		if name == "scan-register-progress" {
++			events <- payload.(RegisterScanEvent)
++		}
++	}})
++	var request RegisterScanRequest
++	json.Unmarshal([]byte(`{"Function":"read_holding_registers","StartAddress":0,"EndAddress":19,"ChunkSize":10,"TimeoutMS":20,"SlaveID":7}`), &request)
++	task, err := manager.StartRegisterScan(id, request)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var terminal RegisterScanEvent
++	eventually(t, func() bool {
++		for len(events) > 0 {
++			event := <-events
++			if event.TaskID == task && event.Done {
++				terminal = event
++				return true
++			}
++		}
++		return false
++	})
++	expected := []FoundRegister{{2, 7002}, {3, 7003}, {10, 7010}, {11, 7011}}
++	if !reflect.DeepEqual(terminal.FoundRegisters, expected) {
++		t.Fatalf("sparse scan wrong target or skipped addresses: got %+v want %+v", terminal.FoundRegisters, expected)
++	}
++	settings, err := manager.GetSettings(id)
++	if err != nil || settings.SlaveID != 1 {
++		t.Fatalf("scan changed default: %+v %v", settings, err)
++	}
++}
++func TestDiscoveryCancelInterruptsAWaitingResponse(t *testing.T) {
++	received := make(chan struct{}, 1)
++	h, stop := scanServer(t, func(_ uint8, _ []byte) []byte {
++		select {
++		case received <- struct{}{}:
++		default:
++		}
++		return nil
++	})
++	manager, id := newTestManager(t, h, Events{})
++	_, err := manager.StartSlaveIDScan(id, SlaveScanRequest{StartID: 1, EndID: 2, TimeoutMS: 60000})
++	if err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-received:
++	case <-time.After(time.Second):
++		t.Fatal("no scan request")
++	}
++	cancelled := make(chan error, 1)
++	go func() { cancelled <- manager.CancelScan(id, "slave_scan") }()
++	select {
++	case err := <-cancelled:
++		if err != nil {
++			t.Fatal(err)
++		}
++	case <-time.After(500 * time.Millisecond):
++		stop()
++		<-cancelled
++		t.Fatal("cancel waits for full timeout")
++	}
++}
+diff --git a/go/internal/masterstate/manager_test.go b/go/internal/masterstate/manager_test.go
+index 5ff93b8..c4dc3b2 100644
+--- a/go/internal/masterstate/manager_test.go
++++ b/go/internal/masterstate/manager_test.go
+@@ -164,7 +164,7 @@ func TestDiscoveryTerminalAndCancel(t *testing.T) {
+ 	if fmt.Sprint(terminal.FoundIDs) != "[1 7]" {
+ 		t.Fatalf("found: %v", terminal.FoundIDs)
+ 	}
+-	regID, err := m.StartRegisterScan(id, RegisterScanRequest{"read_holding_registers", 65533, 65535, 2, 20})
++	regID, err := m.StartRegisterScan(id, RegisterScanRequest{Function: "read_holding_registers", StartAddress: 65533, EndAddress: 65535, ChunkSize: 2, TimeoutMS: 20})
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+@@ -227,8 +227,8 @@ func TestProjectTransactionalLoadAndEffectiveStation(t *testing.T) {
+ 		t.Fatal("load auto-connected")
+ 	}
+ 	gs, _ := m.ListScanGroups(id)
+-	if gs[0].SlaveID == nil || *gs[0].SlaveID != 1 {
+-		t.Fatal("effective station not persisted")
++	if gs[0].SlaveID != nil {
++		t.Fatal("default-station inheritance not preserved")
+ 	}
+ 	s := DefaultSettings()
+ 	info, err := m.CreateConnection(s)
+diff --git a/go/internal/masterstate/multislave_test.go b/go/internal/masterstate/multislave_test.go
+new file mode 100644
+index 0000000..b912707
+--- /dev/null
++++ b/go/internal/masterstate/multislave_test.go
+@@ -0,0 +1,67 @@
++package masterstate
++
++import (
++	"path/filepath"
++	"testing"
++)
++
++func TestMultipleSlavePollingAndProjectTargets(t *testing.T) {
++	h := serve(t, 0)
++	m, id := newTestManager(t, h, Events{})
++	seven := uint8(7)
++	for _, v := range []struct {
++		sid   *uint8
++		value uint16
++	}{{nil, 101}, {&seven, 707}} {
++		if err := m.WriteSingleRegisterSlave(id, v.sid, 0, v.value); err != nil {
++			t.Fatal(err)
++		}
++	}
++	g1, err := m.AddScanGroup(id, ScanGroup{Name: "default", Function: "read_holding_registers", Quantity: 1, IntervalMS: 20, Enabled: true})
++	if err != nil {
++		t.Fatal(err)
++	}
++	g7, err := m.AddScanGroup(id, ScanGroup{Name: "seven", Function: "read_holding_registers", Quantity: 1, IntervalMS: 20, Enabled: true, SlaveID: &seven})
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, g := range []ScanGroup{g1, g7} {
++		if err = m.StartPolling(id, g.ID); err != nil {
++			t.Fatal(err)
++		}
++	}
++	eventually(t, func() bool {
++		a, _ := m.GetPollData(id, g1.ID)
++		b, _ := m.GetPollData(id, g7.ID)
++		return a != nil && b != nil && len(a.Values) == 1 && len(b.Values) == 1 && a.Values[0].RawValue == 101 && b.Values[0].RawValue == 707
++	})
++	path := filepath.Join(t.TempDir(), "multi.modbusproj")
++	if err = m.SaveProject(path); err != nil {
++		t.Fatal(err)
++	}
++	if _, err = m.LoadProject(path); err != nil {
++		t.Fatal(err)
++	}
++	gs, err := m.ListScanGroups(id)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(gs) != 2 || gs[0].SlaveID != nil || gs[1].SlaveID == nil || *gs[1].SlaveID != 7 {
++		t.Fatalf("targets changed after reload: %+v", gs)
++	}
++	settings, err := m.GetSettings(id)
++	if err != nil {
++		t.Fatal(err)
++	}
++	settings.SlaveID = 7
++	if err = m.UpdateConnection(id, settings); err != nil {
++		t.Fatal(err)
++	}
++	if err = m.Connect(id); err != nil {
++		t.Fatal(err)
++	}
++	result, err := m.RefreshScanGroup(id, g1.ID)
++	if err != nil || len(result.Values) != 1 || result.Values[0].RawValue != 707 {
++		t.Fatalf("group no longer follows connection default: %+v %v", result, err)
++	}
++}
+diff --git a/go/internal/masterstate/polling_update_test.go b/go/internal/masterstate/polling_update_test.go
+new file mode 100644
+index 0000000..90683f8
+--- /dev/null
++++ b/go/internal/masterstate/polling_update_test.go
+@@ -0,0 +1,48 @@
++package masterstate
++
++import "testing"
++
++func TestUpdateRunningScanGroupPreservesTargetAndAppliesRange(t *testing.T) {
++	h := serve(t, 0)
++	m, id := newTestManager(t, h, Events{})
++	sid := uint8(7)
++	g := group()
++	g.SlaveID = &sid
++	g, err := m.AddScanGroup(id, g)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err = m.StartPolling(id, g.ID); err != nil {
++		t.Fatal(err)
++	}
++	eventually(t, func() bool { r, _ := m.GetPollData(id, g.ID); return r != nil && len(r.Values) == 3 })
++	g.Name = "updated"
++	g.StartAddress = 10
++	g.Quantity = 6
++	g.IntervalMS = 100
++	if err = m.UpdateScanGroup(id, g); err != nil {
++		t.Fatal(err)
++	}
++	eventually(t, func() bool {
++		r, _ := m.GetPollData(id, g.ID)
++		return r != nil && r.StartAddress == 10 && len(r.Values) == 6
++	})
++	groups, err := m.ListScanGroups(id)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(groups) != 1 || groups[0].ID != g.ID || !groups[0].IsPolling || groups[0].SlaveID == nil || *groups[0].SlaveID != 7 {
++		t.Fatalf("group identity or active polling changed: %+v", groups)
++	}
++	if err = m.StopPolling(id, g.ID); err != nil {
++		t.Fatal(err)
++	}
++	g.Quantity = 2
++	if err = m.UpdateScanGroup(id, g); err != nil {
++		t.Fatal(err)
++	}
++	groups, _ = m.ListScanGroups(id)
++	if groups[0].IsPolling {
++		t.Fatal("editing a stopped group started polling")
++	}
++}
+diff --git a/go/internal/masterstate/project.go b/go/internal/masterstate/project.go
+index 97f53cd..515a218 100644
+--- a/go/internal/masterstate/project.go
++++ b/go/internal/masterstate/project.go
+@@ -36,7 +36,7 @@ func (m *Manager) SaveProject(path string) error {
+ 			if g.SlaveID != nil {
+ 				sid = *g.SlaveID
+ 			}
+-			pg = append(pg, &project.ScanGroup{ID: g.ID, Name: g.Name, SlaveID: sid, FunctionCode: f.FCByte(), StartAddress: g.StartAddress, Count: g.Quantity, IntervalMS: g.IntervalMS, Enabled: g.Enabled})
++			pg = append(pg, &project.ScanGroup{UseDefaultSlaveID: g.SlaveID == nil, ID: g.ID, Name: g.Name, SlaveID: sid, FunctionCode: f.FCByte(), StartAddress: g.StartAddress, Count: g.Quantity, IntervalMS: g.IntervalMS, Enabled: g.Enabled})
+ 		}
+ 		p.Connections = append(p.Connections, s.project(c.id, pg))
+ 	}
+@@ -86,6 +86,9 @@ func (m *Manager) LoadProject(path string) (int, error) {
+ 			}
+ 			sid := pg.SlaveID
+ 			g := ScanGroup{ID: gid, Name: pg.Name, Function: fn, StartAddress: pg.StartAddress, Quantity: pg.Count, IntervalMS: pg.IntervalMS, Enabled: pg.Enabled, SlaveID: &sid}
++			if pg.UseDefaultSlaveID {
++				g.SlaveID = nil
++			}
+ 			if _, err := g.engine(); err != nil {
+ 				return 0, err
+ 			}
 diff --git a/go/internal/masterstate/tls_identity_test.go b/go/internal/masterstate/tls_identity_test.go
 new file mode 100644
 index 0000000..dc46912
@@ -5606,8 +6420,53 @@ index 0000000..dc46912
 +		})
 +	}
 +}
+diff --git a/go/internal/masterstate/tls_version_test.go b/go/internal/masterstate/tls_version_test.go
+new file mode 100644
+index 0000000..331d4dc
+--- /dev/null
++++ b/go/internal/masterstate/tls_version_test.go
+@@ -0,0 +1,39 @@
++package masterstate
++
++import (
++	"encoding/json"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"testing"
++)
++
++func TestTLSVersionSettingsRoundTrip(t *testing.T) {
++	for _, version := range []string{"", "1.2", "1.3"} {
++		s := DefaultSettings()
++		s.Transport.Type = project.TransportTCPTLS
++		s.Transport.TLS = &project.ClientTLS{Enabled: true, Version: version, VerifyServerName: true}
++		encoded, err := json.Marshal(s.project("tls", nil))
++		if err != nil {
++			t.Fatal(err)
++		}
++		var c project.Connection
++		if err = json.Unmarshal(encoded, &c); err != nil {
++			t.Fatal(err)
++		}
++		s.Transport = c.Transport
++		if err = s.validate(); err != nil {
++			t.Fatal(err)
++		}
++		if !s.engine().Config.TLS.VerifyServerName {
++			t.Fatal("server name setting lost")
++		}
++		if got := s.engine().Config.TLS.Version; got != version {
++			t.Fatalf("version lost during save/load: got %q want %q", got, version)
++		}
++	}
++	s := DefaultSettings()
++	s.Transport.Type = project.TransportTCPTLS
++	s.Transport.TLS = &project.ClientTLS{Version: "1.1"}
++	if err := s.validate(); err == nil {
++		t.Fatal("invalid version accepted")
++	}
++}
 diff --git a/go/internal/masterstate/types.go b/go/internal/masterstate/types.go
-index 9731ccb..e4c03ac 100644
+index 9731ccb..f17e1b6 100644
 --- a/go/internal/masterstate/types.go
 +++ b/go/internal/masterstate/types.go
 @@ -61,7 +61,7 @@ func (s Settings) validate() error {
@@ -5615,10 +6474,40 @@ index 9731ccb..e4c03ac 100644
  	cfg := master.Config{TargetAddress: s.Transport.Host, Port: s.Transport.Port, SlaveID: s.SlaveID, TimeoutMs: s.TimeoutMS, Requests: master.RequestSettings{IntervalMs: s.Requests.IntervalMS, MaxReadRegisters: s.Requests.MaxReadRegisters, MaxReadBits: s.Requests.MaxReadBits}}
  	if t := s.Transport.TLS; t != nil {
 -		cfg.TLS = master.TLSConfig{Enabled: t.Enabled, CAFile: t.CAFile, CertFile: t.CertFile, KeyFile: t.KeyFile, PKCS12File: t.PKCS12File, PKCS12Password: t.PKCS12Password, AcceptInvalidCerts: t.AcceptInvalidCerts}
-+		cfg.TLS = master.TLSConfig{Enabled: t.Enabled, CAFile: t.CAFile, CertFile: t.CertFile, KeyFile: t.KeyFile, PKCS12File: t.PKCS12File, PKCS12Password: t.PKCS12Password, AcceptInvalidCerts: t.AcceptInvalidCerts, VerifyServerName: t.VerifyServerName}
++		cfg.TLS = master.TLSConfig{Version: t.Version, Enabled: t.Enabled, CAFile: t.CAFile, CertFile: t.CertFile, KeyFile: t.KeyFile, PKCS12File: t.PKCS12File, PKCS12Password: t.PKCS12Password, AcceptInvalidCerts: t.AcceptInvalidCerts, VerifyServerName: t.VerifyServerName}
  	}
  	if p := s.Socks5; p != nil {
  		cfg.Socks5 = socks5.Config{Enabled: true, Host: p.Host, Port: p.Port, Username: p.Username, Password: p.Password}
+@@ -191,6 +191,7 @@ type SlaveScanRequest struct {
+ 	TimeoutMS uint64
+ }
+ type RegisterScanRequest struct {
++	SlaveID      *uint8
+ 	Function     string
+ 	StartAddress uint16
+ 	EndAddress   uint16
+@@ -202,15 +203,20 @@ type FoundRegister struct {
+ 	Value   uint16
+ }
+ type SlaveScanEvent struct {
++	Completed    uint16
++	Error        string `json:",omitempty"`
+ 	ConnectionID string
+ 	TaskID       string
+ 	CurrentID    uint8
+ 	Total        uint16
+-	FoundIDs     []uint8
++	FoundIDs     []uint16
+ 	Done         bool
+ 	Cancelled    bool
+ }
+ type RegisterScanEvent struct {
++	Completed      uint32
++	Total          uint32
++	Error          string `json:",omitempty"`
+ 	ConnectionID   string
+ 	TaskID         string
+ 	CurrentAddress uint16
 diff --git a/go/internal/project/importv1.go b/go/internal/project/importv1.go
 index 1ebb426..cd7678a 100644
 --- a/go/internal/project/importv1.go
@@ -5640,10 +6529,18 @@ index 1ebb426..cd7678a 100644
  		}
  		if body.ServerTLS != nil {
 diff --git a/go/internal/project/project.go b/go/internal/project/project.go
-index 7bcbd45..3b7485e 100644
+index 7bcbd45..201fb4f 100644
 --- a/go/internal/project/project.go
 +++ b/go/internal/project/project.go
-@@ -157,6 +157,7 @@ type ClientTLS struct {
+@@ -150,6 +150,7 @@ func DefaultSerialConfig() *SerialConfig {
+ 
+ // ClientTLS mirrors transport.rs's TlsConfig (master connects as a client).
+ type ClientTLS struct {
++	Version            string `json:"Version,omitempty"`
+ 	Enabled            bool
+ 	CAFile             string `json:"CAFile,omitempty"`
+ 	CertFile           string `json:"CertFile,omitempty"`
+@@ -157,6 +158,7 @@ type ClientTLS struct {
  	PKCS12File         string `json:"PKCS12File,omitempty"`
  	PKCS12Password     string `json:"PKCS12Password,omitempty"`
  	AcceptInvalidCerts bool   `json:"AcceptInvalidCerts,omitempty"`
@@ -5651,6 +6548,48 @@ index 7bcbd45..3b7485e 100644
  }
  
  // ServerTLS mirrors transport.rs's SlaveTlsConfig (slave listens as a server).
+@@ -258,14 +260,15 @@ type DataSource struct {
+ 
+ // ScanGroup is a periodic read performed by a master project.
+ type ScanGroup struct {
+-	ID           string `json:"ID,omitempty"`
+-	Name         string
+-	SlaveID      uint8
+-	FunctionCode uint8
+-	StartAddress uint16
+-	Count        uint16
+-	IntervalMS   uint64
+-	Enabled      bool
++	UseDefaultSlaveID bool   `json:"UseDefaultSlaveID,omitempty"`
++	ID                string `json:"ID,omitempty"`
++	Name              string
++	SlaveID           uint8
++	FunctionCode      uint8
++	StartAddress      uint16
++	Count             uint16
++	IntervalMS        uint64
++	Enabled           bool
+ }
+ 
+ // RequestSettings mirrors request.rs's RequestSettings.
+diff --git a/go/internal/project/validate.go b/go/internal/project/validate.go
+index 8ae77b2..f607fd5 100644
+--- a/go/internal/project/validate.go
++++ b/go/internal/project/validate.go
+@@ -50,6 +50,13 @@ func (c *Connection) Validate() error {
+ 			return fmt.Errorf("serial port is required for the %s transport", c.Transport.Type)
+ 		}
+ 	}
++	if c.Transport.Type == TransportTCPTLS && c.Transport.TLS != nil {
++		switch c.Transport.TLS.Version {
++		case "", "auto", "1.2", "1.3":
++		default:
++			return fmt.Errorf("unsupported TLS version %q", c.Transport.TLS.Version)
++		}
++	}
+ 	if c.Transport.Type == TransportTCPTLS && c.Transport.ServerTLS != nil {
+ 		if err := validateServerTLS(*c.Transport.ServerTLS); err != nil {
+ 			return err
 diff --git a/go/internal/suitehost/appearance.go b/go/internal/suitehost/appearance.go
 new file mode 100644
 index 0000000..c9e1148
@@ -6009,7 +6948,7 @@ HcmV?d00001
 
 diff --git a/go/scripts/suite.sh b/go/scripts/suite.sh
 new file mode 100755
-index 0000000..70833e1
+index 0000000..5045a66
 --- /dev/null
 +++ b/go/scripts/suite.sh
 @@ -0,0 +1,91 @@
@@ -6084,7 +7023,7 @@ index 0000000..70833e1
 +fs.writeFileSync(plistPath, original.replace(`<string>${standaloneId}</string>`, `<string>cloud.carldai.simlab.modbus.${role}</string>`))
 +NODE
 +
-+if [[ "$(uname -s)" == Darwin ]]; then
++if [[ "$platform" == darwin/* ]]; then
 +  export CGO_ENABLED=1
 +  export CGO_CFLAGS="${CGO_CFLAGS:+$CGO_CFLAGS }-mmacosx-version-min=13.0"
 +  export CGO_LDFLAGS="${CGO_LDFLAGS:+$CGO_LDFLAGS }-framework UniformTypeIdentifiers -mmacosx-version-min=13.0"
@@ -6222,11 +7161,170 @@ index 3e6de11..f366d50 100644
  * {
    margin: 0;
    padding: 0;
+diff --git a/master-frontend/src/components/ConnectionTree.vue b/master-frontend/src/components/ConnectionTree.vue
+index 02728ec..58c6f42 100644
+--- a/master-frontend/src/components/ConnectionTree.vue
++++ b/master-frontend/src/components/ConnectionTree.vue
+@@ -1,7 +1,9 @@
+ <script setup lang="ts">
+-import { ref, inject, watch, onMounted, type Ref } from 'vue'
++import { ref, computed, nextTick, inject, watch, onMounted, onUnmounted, type Ref } from 'vue'
+ import * as App from '../../wailsjs/go/main/App'
+-import { useI18n } from 'shared-frontend'
++import { useI18n, showAlert } from 'shared-frontend'
++import NewConnectionDialog from './NewConnectionDialog.vue'
++import NewScanGroupDialog from './NewScanGroupDialog.vue'
+ import type { MasterConnectionInfo, ScanGroupInfo } from '../types'
+ 
+ const { t } = useI18n()
+@@ -22,6 +24,24 @@ interface TreeConnection {
+ 
+ const connections = ref<TreeConnection[]>([])
+ const selectedNodeId = ref<string | null>(null)
++const editingConnectionId = ref<string | null>(null)
++const editingGroup = ref<{ connId: string; group: ScanGroupInfo } | null>(null)
++const menuElement = ref<HTMLElement | null>(null)
++const contextConnection = computed(() => connections.value.find(c => c.info.ID === contextMenu.value.connId))
++function dismissOutside(event: PointerEvent) {
++  if (!menuElement.value?.contains(event.target as Node)) hideContextMenu()
++}
++function dismissEscape(event: KeyboardEvent) { if (event.key === 'Escape') hideContextMenu() }
++onMounted(() => {
++  document.addEventListener('pointerdown', dismissOutside)
++  document.addEventListener('keydown', dismissEscape)
++  window.addEventListener('resize', hideContextMenu)
++})
++onUnmounted(() => {
++  document.removeEventListener('pointerdown', dismissOutside)
++  document.removeEventListener('keydown', dismissEscape)
++  window.removeEventListener('resize', hideContextMenu)
++})
+ 
+ // Context menu
+ const contextMenu = ref<{ visible: boolean; x: number; y: number; type: 'connection' | 'scan_group'; connId: string; groupId?: string }>({
+@@ -65,15 +85,56 @@ function toggleExpand(conn: TreeConnection) {
+   conn.expanded = !conn.expanded
+ }
+ 
+-function showContextMenu(e: MouseEvent, type: 'connection' | 'scan_group', connId: string, groupId?: string) {
++async function showContextMenu(e: MouseEvent, type: 'connection' | 'scan_group', connId: string, groupId?: string) {
+   e.preventDefault()
++  const conn = connections.value.find(c => c.info.ID === connId)
++  if (!conn) return
++  const group = conn.scanGroups.find(g => g.ID === groupId)
++  if (group) selectScanGroup(conn, group)
++  else selectConnection(conn)
+   contextMenu.value = { visible: true, x: e.clientX, y: e.clientY, type, connId, groupId }
++  await nextTick()
++  const rect = menuElement.value?.getBoundingClientRect()
++  if (rect) {
++    contextMenu.value.x = Math.max(4, Math.min(e.clientX, window.innerWidth - rect.width - 4))
++    contextMenu.value.y = Math.max(4, Math.min(e.clientY, window.innerHeight - rect.height - 4))
++  }
++  menuElement.value?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+ }
+ 
+ function hideContextMenu() {
+   contextMenu.value.visible = false
+ }
+ 
++function ctxEditConnection() {
++  if (contextConnection.value?.info.State !== 'Disconnected') return
++  editingConnectionId.value = contextMenu.value.connId
++  hideContextMenu()
++}
++function ctxEditScanGroup() {
++  const group = contextConnection.value?.scanGroups.find(g => g.ID === contextMenu.value.groupId)
++  if (!group) return
++  editingGroup.value = { connId: contextMenu.value.connId, group: { ...group } }
++  hideContextMenu()
++}
++async function connectionSaved(id: string) {
++  await loadTree()
++  const conn = connections.value.find(c => c.info.ID === id)
++  if (conn) selectConnection(conn)
++  refreshTree()
++}
++function groupSaved(group: ScanGroupInfo) {
++  const conn = connections.value.find(c => c.info.ID === editingGroup.value?.connId)
++  if (conn) selectScanGroup(conn, group)
++  refreshTree()
++}
++async function ctxDisconnect() {
++  const id = contextMenu.value.connId
++  hideContextMenu()
++  try { await App.Disconnect(id); refreshTree() }
++  catch (e) { await showAlert(String(e)) }
++}
++
+ async function ctxStartPolling() {
+   if (!contextMenu.value.groupId) return
+   try {
+@@ -154,23 +215,30 @@ function fcLabel(fn: string): string {
+         >
+           <span :class="['poll-indicator', { active: group.IsPolling }]"></span>
+           <span class="node-label">{{ group.Name }}</span>
+-          <span class="node-meta">{{ fcLabel(group.Function) }} {{ group.StartAddress }}x{{ group.Quantity }}</span>
++          <span class="node-meta">{{ t('dialog.slaveId') }}:{{ group.SlaveID ?? conn.info.SlaveID }} · {{ fcLabel(group.Function) }} {{ group.StartAddress }}x{{ group.Quantity }}</span>
+         </div>
+       </div>
+     </div>
+ 
+     <!-- Context Menu -->
+-    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
++    <div v-if="contextMenu.visible" ref="menuElement" role="menu" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
+       <template v-if="contextMenu.type === 'connection'">
+-        <div class="ctx-item danger" @click="ctxDeleteConnection">{{ t('tree.deleteConnection') }}</div>
++        <button role="menuitem" class="ctx-item" :disabled="contextConnection?.info.State !== 'Disconnected'" :title="t('dialog.editConnectionHint')" @click="ctxEditConnection">{{ t('parity.connectionSettings') }}</button>
++        <button v-if="contextConnection?.info.State !== 'Disconnected'" role="menuitem" class="ctx-item" @click="ctxDisconnect">{{ t('toolbar.disconnect') }}</button>
++        <button role="menuitem" class="ctx-item danger" @click="ctxDeleteConnection">{{ t('tree.deleteConnection') }}</button>
+       </template>
+       <template v-else>
+-        <div class="ctx-item" @click="ctxStartPolling">{{ t('tree.startPolling') }}</div>
+-        <div class="ctx-item" @click="ctxStopPolling">{{ t('tree.stopPolling') }}</div>
+-        <div class="ctx-item danger" @click="ctxRemoveScanGroup">{{ t('tree.deleteScanGroup') }}</div>
++        <button role="menuitem" class="ctx-item" @click="ctxEditScanGroup">{{ t('dialog.editScanGroup') }}</button>
++        <button role="menuitem" class="ctx-item" @click="ctxStartPolling">{{ t('tree.startPolling') }}</button>
++        <button role="menuitem" class="ctx-item" @click="ctxStopPolling">{{ t('tree.stopPolling') }}</button>
++        <button role="menuitem" class="ctx-item danger" @click="ctxRemoveScanGroup">{{ t('tree.deleteScanGroup') }}</button>
+       </template>
+     </div>
+   </div>
++  <NewConnectionDialog v-if="editingConnectionId" :show="true" :connection-id="editingConnectionId"
++    @close="editingConnectionId = null" @saved="connectionSaved(contextMenu.connId)" />
++  <NewScanGroupDialog v-if="editingGroup" :show="true" :connection-id="editingGroup.connId" :group="editingGroup.group"
++    @close="editingGroup = null" @saved="groupSaved" />
+ </template>
+ 
+ <style scoped>
+@@ -295,12 +363,15 @@ function fcLabel(fn: string): string {
+ }
+ 
+ .ctx-item {
++  display: block; width: 100%; text-align: left; border: 0; background: transparent; color: var(--c-text); font-family: inherit;
+   padding: 6px 14px;
+   cursor: pointer;
+   font-size: 12px;
+ }
+ 
+-.ctx-item:hover {
++.ctx-item:disabled { opacity: 0.45; cursor: not-allowed; }
++.ctx-item:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
++.ctx-item:hover:not(:disabled) {
+   background: var(--c-control-bg);
+ }
+ 
 diff --git a/master-frontend/src/components/NewConnectionDialog.vue b/master-frontend/src/components/NewConnectionDialog.vue
-index 2fa9226..fdf6d25 100644
+index 2fa9226..b31e3fe 100644
 --- a/master-frontend/src/components/NewConnectionDialog.vue
 +++ b/master-frontend/src/components/NewConnectionDialog.vue
-@@ -43,6 +43,7 @@ const tlsCertFile = ref('')
+@@ -38,11 +38,13 @@ const parityMode = ref('none')
+ const serialPorts = ref<{ name: string; description: string; manufacturer: string }[]>([])
+ 
+ const useTls = ref(false)
++const tlsVersion = ref('')
+ const tlsCaFile = ref('')
+ const tlsCertFile = ref('')
  const tlsKeyFile = ref('')
  const tlsPkcs12File = ref('')
  const tlsPkcs12Password = ref('')
@@ -6234,7 +7332,13 @@ index 2fa9226..fdf6d25 100644
  const tlsAcceptInvalidCerts = ref(false)
  const useSocks5 = ref(false)
  const socks5Host = ref('127.0.0.1')
-@@ -69,6 +70,7 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
+@@ -64,11 +66,13 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
+   stopBits.value = 1
+   parityMode.value = 'none'
+   useTls.value = false
++  tlsVersion.value = ''
+   tlsCaFile.value = ''
+   tlsCertFile.value = ''
    tlsKeyFile.value = ''
    tlsPkcs12File.value = ''
    tlsPkcs12Password.value = ''
@@ -6242,27 +7346,54 @@ index 2fa9226..fdf6d25 100644
    tlsAcceptInvalidCerts.value = false
    useSocks5.value = false
    socks5Host.value = '127.0.0.1'
-@@ -90,6 +92,7 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
+@@ -88,8 +92,10 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
+     if (transport.Serial) { const sc = transport.Serial; serialPort.value = sc.Port; baudRate.value = sc.BaudRate; dataBits.value = sc.DataBits; stopBits.value = sc.StopBits; parityMode.value = sc.Parity }
+     useTls.value = transport.Type === 'tcp_tls'
      const tls = transport.TLS
++    tlsVersion.value = tls?.Version === 'auto' ? '' : tls?.Version ?? ''
      tlsCaFile.value = tls?.CAFile ?? ''; tlsCertFile.value = tls?.CertFile ?? ''; tlsKeyFile.value = tls?.KeyFile ?? ''
      tlsPkcs12File.value = tls?.PKCS12File ?? ''; tlsPkcs12Password.value = tls?.PKCS12Password ?? ''; tlsAcceptInvalidCerts.value = tls?.AcceptInvalidCerts ?? false
 +    tlsVerifyServerName.value = tls?.VerifyServerName ?? false
      const proxy = settings.Socks5
      useSocks5.value = !!proxy; socks5Host.value = proxy?.Host ?? '127.0.0.1'; socks5Port.value = proxy?.Port ?? 1080
      socks5Username.value = proxy?.Username ?? ''; socks5Password.value = proxy?.Password ?? ''
-@@ -154,7 +157,7 @@ async function submit() {
+@@ -154,7 +160,7 @@ async function submit() {
    const transport: project.Transport = needsSerial
      ? { Type: form.value.transport, Serial: { Port: serialPort.value, BaudRate: baudRate.value, DataBits: dataBits.value, StopBits: stopBits.value, Parity: parityMode.value } }
      : { Type: form.value.transport === 'tcp' && useTls.value ? 'tcp_tls' : form.value.transport, Host: form.value.target_address.trim(), Port: form.value.port }
 -  if (transport.Type === 'tcp_tls') transport.TLS = { Enabled: true, CAFile: tlsCaFile.value, CertFile: tlsCertFile.value, KeyFile: tlsKeyFile.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value, AcceptInvalidCerts: tlsAcceptInvalidCerts.value }
-+  if (transport.Type === 'tcp_tls') transport.TLS = { Enabled: true, CAFile: tlsCaFile.value, CertFile: tlsCertFile.value, KeyFile: tlsKeyFile.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value, VerifyServerName: tlsVerifyServerName.value, AcceptInvalidCerts: tlsAcceptInvalidCerts.value }
++  if (transport.Type === 'tcp_tls') transport.TLS = { Version: tlsVersion.value, Enabled: true, CAFile: tlsCaFile.value, CertFile: tlsCertFile.value, KeyFile: tlsKeyFile.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value, VerifyServerName: tlsVerifyServerName.value, AcceptInvalidCerts: tlsAcceptInvalidCerts.value }
    const settings: masterstate.Settings = { Transport: transport, SlaveID: form.value.slave_id, TimeoutMS: form.value.timeout_ms,
      Requests: communication.value.requests, Reconnect: { ...communication.value.reconnect, MaxAttempts: communication.value.reconnect.MaxAttempts || undefined },
      Socks5: usesNetwork && useSocks5.value ? { Host: socks5Host.value.trim(), Port: socks5Port.value, Username: socks5Username.value, Password: socks5Password.value } : undefined }
-@@ -224,6 +227,10 @@ async function submit() {
+@@ -172,11 +178,12 @@ async function submit() {
+ 
+ <template>
+   <Teleport to="body">
+-    <div v-if="show" class="modal-backdrop" @click.self="close">
++    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
+       <div v-modal="close" class="modal-box" aria-labelledby="connection-dialog-title" :aria-busy="busy">
+         <div id="connection-dialog-title" class="modal-title">{{ t(connectionId ? 'parity.connectionSettings' : 'toolbar.newConnection') }}</div>
+         <p v-if="connectionId" class="form-hint">{{ t('dialog.editConnectionHint') }}</p>
+-        <form @submit.prevent="submit">
++        <form class="modal-form" @submit.prevent="submit">
++        <div class="modal-scroll">
+         <fieldset class="modal-body" :disabled="busy || loadFailed">
+           <label class="form-label">
+             {{ t('dialog.transport') }}
+@@ -224,6 +231,19 @@ async function submit() {
                <input type="checkbox" v-model="useTls" /> {{ t('dialog.enableTls') }}
              </label>
              <template v-if="useTls">
++              <label class="form-label">
++                {{ t('dialog.tlsVersion') }}
++                <select id="tls-version" v-model="tlsVersion" class="form-input" aria-describedby="tls-version-hint">
++                  <option value="">{{ t('dialog.tlsVersionAuto') }}</option>
++                  <option value="1.2">TLS 1.2</option>
++                  <option value="1.3">TLS 1.3</option>
++                </select>
++              </label>
++              <div id="tls-version-hint" class="form-hint">{{ t('dialog.tlsVersionHint') }}</div>
 +              <label class="form-label checkbox-label">
 +                <input id="tls-verify-server-name" type="checkbox" v-model="tlsVerifyServerName" :disabled="tlsAcceptInvalidCerts" :aria-describedby="tlsAcceptInvalidCerts ? 'tls-compatibility-hint' : 'tls-server-name-hint'" /> {{ t('dialog.verifyServerName') }}
 +              </label>
@@ -6270,49 +7401,122 @@ index 2fa9226..fdf6d25 100644
                <label class="form-label checkbox-label">
                  <input type="checkbox" v-model="tlsAcceptInvalidCerts" aria-describedby="tls-compatibility-hint" /> {{ t('dialog.acceptInvalidCerts') }}
                </label>
+@@ -298,7 +318,7 @@ async function submit() {
+             </label>
+           </template>
+           <label class="form-label">
+-            {{ t('dialog.slaveId') }}
++            {{ t('dialog.defaultSlaveId') }}
+             <input v-model.number="form.slave_id" class="form-input" type="number" min="1" max="247" />
+           </label>
+           <label class="form-label">
+@@ -308,6 +328,7 @@ async function submit() {
+           <div id="communication-timeout-hint" class="form-hint timeout-hint">{{ t('dialog.communicationTimeoutHint') }}</div>
+           <CommunicationSettings v-model="communication" />
+         </fieldset>
++        </div>
+         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+         <div class="modal-footer">
+           <button type="button" class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
+@@ -320,13 +341,16 @@ async function submit() {
+ </template>
+ 
+ <style scoped>
++.modal-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
++.modal-form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
++
+ .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+-.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+-.modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+-.modal-body { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+-.form-error { color: var(--c-red); white-space: pre-wrap; overflow-wrap: anywhere; }
++.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.modal-title { flex-shrink: 0;  font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
++.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
++.form-error { flex-shrink: 0; max-height: 20vh; overflow: auto;  color: var(--c-red); white-space: pre-wrap; overflow-wrap: anywhere; }
+ button:disabled { opacity: 0.4; cursor: default; }
+-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
++.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+ .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
+ .checkbox-label { flex-direction: row; align-items: center; }
+ .form-hint { margin-top: -6px; color: var(--c-subtext0); font-size: 11px; line-height: 1.4; }
 diff --git a/master-frontend/src/components/NewScanGroupDialog.vue b/master-frontend/src/components/NewScanGroupDialog.vue
-index b051189..47494ab 100644
+index b051189..3845875 100644
 --- a/master-frontend/src/components/NewScanGroupDialog.vue
 +++ b/master-frontend/src/components/NewScanGroupDialog.vue
-@@ -1,7 +1,7 @@
+@@ -1,13 +1,18 @@
  <script setup lang="ts">
  import { ref, watch } from 'vue'
  import * as App from '../../wailsjs/go/main/App'
 -import { useI18n, showAlert } from 'shared-frontend'
 +import { useI18n, showAlert, vModal } from 'shared-frontend'
++import type { ScanGroupInfo } from '../types'
  
  const { t } = useI18n()
  
-@@ -9,6 +9,9 @@ interface Props { show: boolean; connectionId: string | null }
+-interface Props { show: boolean; connectionId: string | null }
++interface Props { show: boolean; connectionId: string | null; group?: ScanGroupInfo }
  const props = defineProps<Props>()
- const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
- 
+-const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
++const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void; (e: 'saved', group: ScanGroupInfo): void }>()
 +const busy = ref(false)
++const useDefaultSlave = ref(true)
++const slaveID = ref(1)
 +function close() { if (!busy.value) emit('close') }
-+
+ 
  const form = ref({
    Name: '',
-   Function: 'read_holding_registers',
-@@ -23,7 +26,7 @@ watch(() => props.show, (visible) => {
+@@ -17,13 +22,20 @@ const form = ref({
+   IntervalMS: 1000,
  })
+ 
+-watch(() => props.show, (visible) => {
++watch(() => [props.show, props.group] as const, ([visible, group]) => {
+   if (!visible) return
+-  form.value = { Name: '', Function: 'read_holding_registers', StartAddress: 0, Quantity: 10, IntervalMS: 1000 }
+-})
++  useDefaultSlave.value = group?.SlaveID == null
++  slaveID.value = group?.SlaveID ?? 1
++  form.value = group ? { Name: group.Name, Function: group.Function, StartAddress: group.StartAddress, Quantity: group.Quantity, IntervalMS: group.IntervalMS }
++    : { Name: '', Function: 'read_holding_registers', StartAddress: 0, Quantity: 10, IntervalMS: 1000 }
++}, { immediate: true })
  
  async function submit() {
 -  if (!props.connectionId) return
 +  if (!props.connectionId || busy.value) return
++  if (!useDefaultSlave.value && (!Number.isInteger(slaveID.value) || slaveID.value < 1 || slaveID.value > 247)) {
++    await showAlert(t('errors.invalidSlaveId'))
++    return
++  }
    if (!Number.isInteger(form.value.StartAddress) || form.value.StartAddress < 0
      || !Number.isInteger(form.value.Quantity) || form.value.Quantity < 1 || form.value.Quantity > 65535
      || form.value.StartAddress + form.value.Quantity > 65536
-@@ -31,6 +34,7 @@ async function submit() {
+@@ -31,30 +43,50 @@ async function submit() {
      await showAlert(t('errors.invalidScanRange'))
      return
    }
 +  busy.value = true
    try {
-     await App.AddScanGroup(props.connectionId, { ID: '', Enabled: true, IsPolling: false, ...{
-         Name: form.value.Name || `SG-${Date.now() % 10000}`,
-@@ -42,15 +46,17 @@ async function submit() {
+-    await App.AddScanGroup(props.connectionId, { ID: '', Enabled: true, IsPolling: false, ...{
+-        Name: form.value.Name || `SG-${Date.now() % 10000}`,
+-        Function: form.value.Function,
+-        StartAddress: form.value.StartAddress,
+-        Quantity: form.value.Quantity,
+-        IntervalMS: form.value.IntervalMS,
+-      } })
++    const group: ScanGroupInfo = {
++      ...(props.group ?? { ID: '', Enabled: true, IsPolling: false }),
++      ...form.value, SlaveID: useDefaultSlave.value ? undefined : slaveID.value, Name: form.value.Name || `SG-${Date.now() % 10000}`,
++    }
++    if (props.group) {
++      await App.UpdateScanGroup(props.connectionId, group)
++      emit('saved', group)
++    } else {
++      await App.AddScanGroup(props.connectionId, group)
++      emit('created')
++    }
      emit('close')
-     emit('created')
+-    emit('created')
    } catch (e) { await showAlert(String(e)) }
 +  finally { busy.value = false }
  }
@@ -6322,54 +7526,446 @@ index b051189..47494ab 100644
    <Teleport to="body">
 -    <div v-if="show" class="modal-backdrop" @click.self="emit('close')">
 -      <div class="modal-box">
-+    <div v-if="show" class="modal-backdrop" @click.self="close">
-+      <div v-modal="close" class="modal-box" :aria-label="t('dialog.newScanGroup')" :aria-busy="busy">
-         <div class="modal-title">{{ t('dialog.newScanGroup') }}</div>
+-        <div class="modal-title">{{ t('dialog.newScanGroup') }}</div>
 -        <div class="modal-body">
-+        <form @submit.prevent="submit">
++    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
++      <div class="modal-box" v-modal="close" :aria-label="t(group ? 'dialog.editScanGroup' : 'dialog.newScanGroup')">
++        <div class="modal-title">{{ t(group ? 'dialog.editScanGroup' : 'dialog.newScanGroup') }}</div>
++        <p v-if="group" class="form-hint">{{ t('dialog.editScanGroupHint') }}</p>
++        <form class="modal-form" @submit.prevent="submit">
++        <div class="modal-scroll">
 +        <fieldset class="modal-body" :disabled="busy">
            <label class="form-label">
              {{ t('dialog.simpleName') }}
              <input v-model="form.Name" class="form-input" type="text" :placeholder="t('dialog.scanGroupName')" />
-@@ -69,7 +75,7 @@ async function submit() {
+           </label>
++          <label class="form-label">
++            {{ t('dialog.pollSlaveTarget') }}
++            <select id="poll-slave-mode" v-model="useDefaultSlave" class="form-input">
++              <option :value="true">{{ t('dialog.followDefaultSlave') }}</option>
++              <option :value="false">{{ t('dialog.specifySlave') }}</option>
++            </select>
++          </label>
++          <label v-if="!useDefaultSlave" class="form-label">
++            {{ t('dialog.slaveId') }}
++            <input id="poll-slave-id" v-model.number="slaveID" class="form-input" type="number" min="1" max="247" />
++          </label>
++          <p class="form-hint">{{ t('dialog.multiSlaveHint') }}</p>
+           <label class="form-label">
+             {{ t('table.function') }}
+             <select v-model="form.Function" class="form-input">
+@@ -69,8 +101,8 @@ async function submit() {
              <input v-model.number="form.StartAddress" class="form-input" type="number" min="0" max="65535" />
            </label>
            <label class="form-label">
 -            {{ t('table.Quantity') }}
+-            <input v-model.number="form.Quantity" class="form-input" type="number" min="1" :max="Math.min(65535, 65536 - form.StartAddress)" aria-describedby="scan-Quantity-hint" />
 +            {{ t('table.quantity') }}
-             <input v-model.number="form.Quantity" class="form-input" type="number" min="1" :max="Math.min(65535, 65536 - form.StartAddress)" aria-describedby="scan-Quantity-hint" />
++            <input id="poll-quantity" v-model.number="form.Quantity" class="form-input" type="number" min="1" :max="Math.min(65535, 65536 - form.StartAddress)" aria-describedby="scan-Quantity-hint" />
            </label>
            <p id="scan-Quantity-hint" class="form-hint">{{ t('dialog.scanQuantityHint') }}</p>
-@@ -78,11 +84,12 @@ async function submit() {
+           <label class="form-label">
+@@ -78,22 +110,27 @@ async function submit() {
              <input v-model.number="form.IntervalMS" class="form-input" type="number" min="100" max="60000" aria-describedby="scan-interval-hint" />
            </label>
            <p id="scan-interval-hint" class="form-hint">{{ t('dialog.scanIntervalHint') }}</p>
--        </div>
 +        </fieldset>
+         </div>
          <div class="modal-footer">
 -          <button class="btn btn-secondary" @click="emit('close')">{{ t('common.cancel') }}</button>
 -          <button class="btn btn-primary" @click="submit">{{ t('common.create') }}</button>
-+          <button type="button" class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
-+          <button type="submit" class="btn btn-primary" :disabled="busy">{{ t('common.create') }}</button>
++          <button type="button" class="btn btn-secondary"  :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
++          <button type="submit" class="btn btn-primary" :disabled="busy">{{ t(busy ? 'common.loading' : group ? 'common.save' : 'common.create') }}</button>
          </div>
 +        </form>
        </div>
      </div>
    </Teleport>
-@@ -92,7 +99,7 @@ async function submit() {
+ </template>
+ 
+ <style scoped>
++.modal-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
++.modal-form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
++
  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
- .modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
- .modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+-.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+-.modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
 -.modal-body { display: flex; flex-direction: column; gap: 12px; }
-+.modal-body { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
- .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
++.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.modal-title { flex-shrink: 0;  font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
++.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
++.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
  .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
  .form-hint { margin: -6px 0 0; color: var(--c-subtext0); font-size: 12px; line-height: 1.5; }
+ .form-input { padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
 diff --git a/master-frontend/src/components/ScanDialog.vue b/master-frontend/src/components/ScanDialog.vue
-index bfaa8f2..fc63795 100644
+index bfaa8f2..5e89365 100644
 --- a/master-frontend/src/components/ScanDialog.vue
 +++ b/master-frontend/src/components/ScanDialog.vue
-@@ -245,7 +245,7 @@ async function addSlaveGroups(ids: number[]) {
+@@ -1,229 +1,254 @@
+ <script setup lang="ts">
+-import { ref, inject, onMounted, onUnmounted, watch, type Ref } from 'vue'
++import { ref, computed, inject, onMounted, onUnmounted, watch, type Ref } from 'vue'
+ import * as App from '../../wailsjs/go/main/App'
+ import { EventsOn } from '../../wailsjs/runtime/runtime'
+-import { useI18n, showAlert, vModal } from 'shared-frontend'
+-import type { SlaveIdScanEvent, RegisterScanEvent, FoundRegisterDto } from '../types'
++import { useI18n, vModal } from 'shared-frontend'
++import type { ScanGroupInfo, SlaveIdScanEvent, RegisterScanEvent, FoundRegisterDto } from '../types'
+ const { t } = useI18n()
+ const emit = defineEmits<{ (e: 'close'): void }>()
+ const selectedConnectionId = inject<Ref<string | null>>('selectedConnectionId')!
++const selectedGroup = inject<Ref<ScanGroupInfo | null>>('selectedScanGroup', ref(null))
+ const refreshTree = inject<() => void>('refreshTree')!
+ const connectionID = selectedConnectionId.value!
+ const tab = ref<'slave' | 'register'>('slave')
+-const scanning = ref(false), cancelling = ref(false), autoAddGroups = ref(true)
++const scanning = ref(false), cancelling = ref(false), adding = ref(false), loading = ref(true)
++const autoAddGroups = ref(false), error = ref(''), addedMessage = ref('')
+ const slaveScanTimeout = ref(500), slaveStartId = ref(1), slaveEndId = ref(247)
+-const slaveProgress = ref({ CurrentID: 0, Total: 247, FoundIDs: [] as number[] })
+-const slaveScanDone = ref(false), slaveScanPhase = ref<'idle' | 'scanning_ids' | 'scanning_regs'>('idle'), slaveScanStatus = ref('')
+-const regFunction = ref('read_holding_registers'), regStartAddr = ref(0), regEndAddr = ref(99), regChunkSize = ref(10), regTimeout = ref(1000)
+-const regProgress = ref({ CurrentAddress: 0, EndAddress: 0, FoundRegisters: [] as FoundRegisterDto[] })
+-const regScanDone = ref(false)
++const slaveProgress = ref({ CurrentID: 0, Completed: 0, Total: 247, FoundIDs: [] as number[] })
++const slaveScanDone = ref(false), slaveCancelled = ref(false)
++const regSlaveID = ref(selectedGroup.value?.SlaveID ?? 1), defaultSlaveID = ref(1)
++const regFunction = ref(selectedGroup.value?.Function ?? 'read_holding_registers')
++const regStartAddr = ref(selectedGroup.value?.StartAddress ?? 0), regEndAddr = ref(selectedGroup.value ? selectedGroup.value.StartAddress + selectedGroup.value.Quantity - 1 : 99)
++const regChunkSize = ref(10), regTimeout = ref(1000)
++const regProgress = ref({ CurrentAddress: 0, EndAddress: 0, Completed: 0, Total: 0, FoundRegisters: [] as FoundRegisterDto[] })
++const regScanDone = ref(false), registerCancelled = ref(false), resultTarget = ref<{ slaveID: number; fn: string } | null>(null)
++const regPage = ref(0), pageSize = 100
++const regPages = computed(() => Math.max(1, Math.ceil(regProgress.value.FoundRegisters.length / pageSize)))
++const visibleRegisters = computed(() => regProgress.value.FoundRegisters.slice(regPage.value * pageSize, (regPage.value + 1) * pageSize))
++const busy = computed(() => scanning.value || adding.value || loading.value)
++const maxChunk = computed(() => ['read_coils', 'read_discrete_inputs'].includes(regFunction.value) ? 2000 : 125)
+ const functionOptions = [ { value: 'read_coils', label: 'FC01 Read Coils' }, { value: 'read_discrete_inputs', label: 'FC02 Read Discrete Inputs' }, { value: 'read_holding_registers', label: 'FC03 Read Holding Registers' }, { value: 'read_input_registers', label: 'FC04 Read Input Registers' } ]
+-let disposed = false, slaveTaskID: string | null = null, registerTaskID: string | null = null
+-let startingSlave = false, startingRegister = false
++let disposed = false, activeKind: 'slave_scan' | 'register_scan' | null = null
++let slaveTaskID: string | null = null, registerTaskID: string | null = null
++let startingSlave = false, startingRegister = false, cancelRequested = false, stopAdding = false
+ const pendingSlaves = new Map<string, SlaveIdScanEvent>(), pendingRegisters = new Map<string, RegisterScanEvent>()
+ let unlistenSlave: (() => void) | undefined, unlistenReg: (() => void) | undefined
+-function close() { if (!scanning.value && slaveScanPhase.value === 'idle') emit('close') }
++function close() { if (!busy.value) emit('close') }
++function report(cause: unknown) { if (!disposed) error.value = String(cause) }
++function finished() { scanning.value = false; cancelling.value = false; activeKind = null }
+ async function handleSlave(p: SlaveIdScanEvent) {
+  if (disposed || p.ConnectionID !== connectionID) return
+  if (startingSlave) { pendingSlaves.set(p.TaskID, p); return }
+  if (p.TaskID !== slaveTaskID) return
+- slaveProgress.value = { CurrentID: p.CurrentID, Total: p.Total, FoundIDs: p.FoundIDs }
+- if (p.Done || p.Cancelled) {
+-  slaveTaskID = null; scanning.value = false; cancelling.value = false; slaveScanDone.value = true; slaveScanPhase.value = 'idle'
+-  if (p.Done && !p.Cancelled && p.FoundIDs.length) await addSlaveGroups(p.FoundIDs)
+- }
++ if (!Array.isArray(p.FoundIDs)) { report(t('scanDialog.invalidResponse')); slaveTaskID = null; finished(); return }
++ slaveProgress.value = { CurrentID: p.CurrentID, Completed: p.Completed, Total: p.Total, FoundIDs: p.FoundIDs }
++ if (p.Done || p.Cancelled) { slaveTaskID = null; finished(); slaveScanDone.value = true; slaveCancelled.value = p.Cancelled; if (p.Error) report(p.Error) }
+ }
+ async function handleRegister(p: RegisterScanEvent) {
+  if (disposed || p.ConnectionID !== connectionID) return
+  if (startingRegister) { pendingRegisters.set(p.TaskID, p); return }
+  if (p.TaskID !== registerTaskID) return
+- regProgress.value = { CurrentAddress: p.CurrentAddress, EndAddress: p.EndAddress, FoundRegisters: p.FoundRegisters }
++ regProgress.value = { CurrentAddress: p.CurrentAddress, EndAddress: p.EndAddress, Completed: p.Completed, Total: p.Total, FoundRegisters: p.FoundRegisters }
+  if (p.Done || p.Cancelled) {
+-  registerTaskID = null; scanning.value = false; cancelling.value = false; regScanDone.value = true
+-  if (p.Done && !p.Cancelled && autoAddGroups.value && p.FoundRegisters.length) await addRegisterGroups(p.FoundRegisters, regFunction.value)
++  registerTaskID = null; finished(); regScanDone.value = true; registerCancelled.value = p.Cancelled
++  if (p.Error) report(p.Error)
++  else if (p.Done && !p.Cancelled && !cancelRequested && autoAddGroups.value && p.FoundRegisters.length) await addRegisterGroups()
+  }
+ }
+-function report(error: unknown) { if (!disposed) void showAlert(String(error)) }
+-onMounted(() => {
++onMounted(async () => {
+  unlistenSlave = EventsOn('scan-slave-progress', (p: SlaveIdScanEvent) => { void handleSlave(p).catch(report) })
+  unlistenReg = EventsOn('scan-register-progress', (p: RegisterScanEvent) => { void handleRegister(p).catch(report) })
++ try {
++  const settings = await App.GetSettings(connectionID)
++  if (disposed) return
++  defaultSlaveID.value = settings.SlaveID
++  regSlaveID.value = selectedGroup.value?.SlaveID ?? settings.SlaveID
++ } catch (cause) { report(cause) }
++ finally { if (!disposed) loading.value = false }
+ })
+ onUnmounted(() => {
+- disposed = true; unlistenSlave?.(); unlistenReg?.()
+- if (scanning.value) void App.CancelScan(connectionID, tab.value === 'slave' ? 'slave_scan' : 'register_scan').catch(() => {})
++ disposed = true; stopAdding = true; unlistenSlave?.(); unlistenReg?.()
++ if (activeKind) void App.CancelScan(connectionID, activeKind).catch(() => {})
+ })
+ watch(selectedConnectionId, id => { if (id !== connectionID) emit('close') })
++watch(maxChunk, maximum => { regChunkSize.value = Math.min(regChunkSize.value, maximum) })
+ const intIn = (v: number, min: number, max: number) => Number.isInteger(v) && v >= min && v <= max
+ async function startSlaveScan() {
+- if (scanning.value) return
+- if (!intIn(slaveStartId.value, 1, 247) || !intIn(slaveEndId.value, slaveStartId.value, 247) || !intIn(slaveScanTimeout.value, 1, 600000)) { await showAlert(t('errors.invalidScanRange')); return }
+- scanning.value = true; cancelling.value = false; startingSlave = true; slaveScanDone.value = false; slaveScanPhase.value = 'scanning_ids'
+- slaveProgress.value = { CurrentID: slaveStartId.value - 1, Total: slaveEndId.value - slaveStartId.value + 1, FoundIDs: [] }
++ if (busy.value) return
++ if (!intIn(slaveStartId.value, 1, 247) || !intIn(slaveEndId.value, slaveStartId.value, 247) || !intIn(slaveScanTimeout.value, 1, 600000)) { report(t('errors.invalidScanRange')); return }
++ error.value = ''; scanning.value = true; cancelling.value = false; cancelRequested = false; startingSlave = true; activeKind = 'slave_scan'; slaveScanDone.value = false; slaveCancelled.value = false
++ slaveProgress.value = { CurrentID: slaveStartId.value, Completed: 0, Total: slaveEndId.value - slaveStartId.value + 1, FoundIDs: [] }
+  try {
+   slaveTaskID = await App.StartSlaveIDScan(connectionID, { StartID: slaveStartId.value, EndID: slaveEndId.value, TimeoutMS: slaveScanTimeout.value })
+   startingSlave = false
++  if (disposed || cancelRequested) await App.CancelScan(connectionID, 'slave_scan')
+   const pending = pendingSlaves.get(slaveTaskID); pendingSlaves.clear()
+-  if (disposed) { void App.CancelScan(connectionID, 'slave_scan').catch(() => {}); return }
+   if (pending) await handleSlave(pending)
+- } catch (e) { scanning.value = false; slaveScanPhase.value = 'idle'; report(e) }
++ } catch (cause) { slaveTaskID = null; finished(); report(cause) }
+  finally { startingSlave = false }
+ }
+ async function startRegisterScan() {
+- if (scanning.value) return
+- if (!intIn(regStartAddr.value, 0, 65535) || !intIn(regEndAddr.value, regStartAddr.value, 65535) || !intIn(regChunkSize.value, 1, 2000) || !intIn(regTimeout.value, 1, 600000)) { await showAlert(t('errors.invalidScanRange')); return }
+- scanning.value = true; cancelling.value = false; startingRegister = true; regScanDone.value = false
+- regProgress.value = { CurrentAddress: regStartAddr.value, EndAddress: regEndAddr.value, FoundRegisters: [] }
++ if (busy.value) return
++ if (!intIn(regSlaveID.value, 1, 247) || !intIn(regStartAddr.value, 0, 65535) || !intIn(regEndAddr.value, regStartAddr.value, 65535) || !intIn(regChunkSize.value, 1, maxChunk.value) || !intIn(regTimeout.value, 1, 600000)) { report(t('errors.invalidScanRange')); return }
++ error.value = ''; addedMessage.value = ''; scanning.value = true; cancelling.value = false; cancelRequested = false; startingRegister = true; activeKind = 'register_scan'; regScanDone.value = false; registerCancelled.value = false; regPage.value = 0
++ resultTarget.value = { slaveID: regSlaveID.value, fn: regFunction.value }
++ regProgress.value = { CurrentAddress: regStartAddr.value, EndAddress: regEndAddr.value, Completed: 0, Total: regEndAddr.value - regStartAddr.value + 1, FoundRegisters: [] }
+  try {
+-  registerTaskID = await App.StartRegisterScan(connectionID, { Function: regFunction.value, StartAddress: regStartAddr.value, EndAddress: regEndAddr.value, ChunkSize: regChunkSize.value, TimeoutMS: regTimeout.value })
++  registerTaskID = await App.StartRegisterScan(connectionID, { Function: regFunction.value, SlaveID: regSlaveID.value, StartAddress: regStartAddr.value, EndAddress: regEndAddr.value, ChunkSize: regChunkSize.value, TimeoutMS: regTimeout.value })
+   startingRegister = false
++  if (disposed || cancelRequested) await App.CancelScan(connectionID, 'register_scan')
+   const pending = pendingRegisters.get(registerTaskID); pendingRegisters.clear()
+-  if (disposed) { void App.CancelScan(connectionID, 'register_scan').catch(() => {}); return }
+   if (pending) await handleRegister(pending)
+- } catch (e) { scanning.value = false; report(e) }
++ } catch (cause) { registerTaskID = null; finished(); report(cause) }
+  finally { startingRegister = false }
+ }
+ async function cancelScan() {
+- if (cancelling.value) return
+- cancelling.value = true
+- try { await App.CancelScan(connectionID, tab.value === 'slave' ? 'slave_scan' : 'register_scan') } catch (e) { cancelling.value = false; report(e) }
++ if (adding.value) { stopAdding = true; return }
++ if (!activeKind || cancelling.value) return
++ cancelRequested = true; cancelling.value = true
++ if (startingSlave || startingRegister) return
++ try { await App.CancelScan(connectionID, activeKind) }
++ catch (cause) { cancelling.value = false; report(cause) }
+ }
+-function slaveProgressPct() { return Math.max(0, Math.min(100, (slaveProgress.value.CurrentID - slaveStartId.value + 1) / slaveProgress.value.Total * 100)) }
+-function regProgressPct() { return Math.max(0, Math.min(100, (regProgress.value.CurrentAddress - regStartAddr.value + 1) / (regEndAddr.value - regStartAddr.value + 1) * 100)) }
++function slaveProgressPct() { return slaveProgress.value.Completed / slaveProgress.value.Total * 100 }
++function regProgressPct() { return regProgress.value.Total ? regProgress.value.Completed / regProgress.value.Total * 100 : 0 }
+ function fmtHex(v: number) { return '0x' + (v & 65535).toString(16).toUpperCase().padStart(4, '0') }
+-async function addRegisterGroups(regs: FoundRegisterDto[], fn: string) {
+- const sorted = [...regs].sort((a,b) => a.Address - b.Address)
++function scanFoundSlave(id: number) { regSlaveID.value = id; tab.value = 'register'; error.value = '' }
++async function addRegisterGroups() {
++ const target = resultTarget.value
++ if (!target || adding.value || !regProgress.value.FoundRegisters.length) return
++ const addresses = [...new Set(regProgress.value.FoundRegisters.map(r => r.Address))].sort((a,b) => a-b)
+  const ranges: { start: number; count: number }[] = []
+- for (const r of sorted) { const last = ranges.at(-1); if (last && r.Address === last.start + last.count && last.count < 65535) last.count++; else ranges.push({ start: r.Address, count: 1 }) }
+- scanning.value = true
+- try { for (const r of ranges) { if (disposed) return; await App.AddScanGroup(connectionID, { ID: '', Name: `Scan ${r.start}-${r.start+r.count-1}`, Function: fn, StartAddress: r.start, Quantity: r.count, IntervalMS: 1000, Enabled: true, IsPolling: false }) }; refreshTree() }
+- finally { scanning.value = false }
+-}
+-async function addSlaveGroups(ids: number[]) {
+- slaveScanPhase.value = 'scanning_regs'; scanning.value = true
++ for (const address of addresses) { const last = ranges.at(-1); if (last && address === last.start + last.count && last.count < 65535) last.count++; else ranges.push({ start: address, count: 1 }) }
++ adding.value = true; stopAdding = false; error.value = ''; let count = 0
+  try {
+-  for (const id of ids) for (const fc of functionOptions) {
+-   if (disposed) return
+-   slaveScanStatus.value = t('scanDialog.addingProgress', { id, fc: fc.label })
+-   await App.AddScanGroup(connectionID, { ID: '', Name: `S${id} ${fc.label} 0-99`, Function: fc.value, StartAddress: 0, Quantity: 100, IntervalMS: 1000, Enabled: true, IsPolling: false, SlaveID: id })
++  const existing = await App.ListScanGroups(connectionID)
++  for (const range of ranges) {
++   if (disposed || stopAdding) break
++   if (existing.some(g => (g.SlaveID ?? defaultSlaveID.value) === target.slaveID && g.Function === target.fn && g.StartAddress === range.start && g.Quantity === range.count)) continue
++   await App.AddScanGroup(connectionID, { ID: '', Name: `S${target.slaveID} ${target.fn} ${range.start}-${range.start+range.count-1}`, Function: target.fn, SlaveID: target.slaveID, StartAddress: range.start, Quantity: range.count, IntervalMS: 1000, Enabled: true, IsPolling: false })
++   count++
+   }
+-  refreshTree()
+- } finally { slaveScanStatus.value = ''; slaveScanPhase.value = 'idle'; scanning.value = false }
++  if (!disposed) addedMessage.value = t('scanDialog.addedGroups', { count })
++ } catch (cause) { report(cause) }
++ finally { refreshTree(); adding.value = false }
+ }
+ </script>
+ 
+ 
+ <template>
+   <Teleport to="body">
+-    <div class="modal-backdrop" @click.self="close">
++    <div class="modal-backdrop" @pointerdown.self.left="close">
+       <div class="modal-box scan-dialog" v-modal="close" role="dialog" aria-modal="true" :aria-label="t('scanDialog.title')">
+         <div class="modal-title">{{ t('scanDialog.title') }}</div>
+ 
++        <p v-if="error" class="scan-error" role="alert">{{ error }}<br>{{ t('scanDialog.failureHint') }}</p>
+         <div class="tab-bar">
+-          <button :class="['tab-btn', { active: tab === 'slave' }]" @click="tab = 'slave'" :disabled="scanning">{{ t('scanDialog.slaveScan') }}</button>
+-          <button :class="['tab-btn', { active: tab === 'register' }]" @click="tab = 'register'" :disabled="scanning">{{ t('scanDialog.registerScan') }}</button>
++          <button :class="['tab-btn', { active: tab === 'slave' }]" @click="tab = 'slave'" :disabled="busy">{{ t('scanDialog.slaveScan') }}</button>
++          <button :class="['tab-btn', { active: tab === 'register' }]" @click="tab = 'register'" :disabled="busy">{{ t('scanDialog.registerScan') }}</button>
+         </div>
+ 
+         <!-- Slave ID Scan -->
+         <div v-if="tab === 'slave'" class="tab-content">
+           <div class="form-row-inline">
+             <div class="form-row">
+-              <label>{{ t('scanDialog.startId') }}</label>
+-              <input v-model.number="slaveStartId" type="number" min="1" max="247" :disabled="scanning" />
++              <label for="scan-field-1">{{ t('scanDialog.startId') }}</label>
++              <input id="scan-field-1" v-model.number="slaveStartId" type="number" min="1" max="247" :disabled="busy" />
+             </div>
+             <div class="form-row">
+-              <label>{{ t('scanDialog.endId') }}</label>
+-              <input v-model.number="slaveEndId" type="number" min="1" max="247" :disabled="scanning" />
++              <label for="scan-field-2">{{ t('scanDialog.endId') }}</label>
++              <input id="scan-field-2" v-model.number="slaveEndId" type="number" min="1" max="247" :disabled="busy" />
+             </div>
+             <div class="form-row">
+-              <label>{{ t('dialog.timeout') }}</label>
+-              <input v-model.number="slaveScanTimeout" type="number" min="100" max="5000" step="100" :disabled="scanning" />
++              <label for="scan-field-3">{{ t('dialog.timeout') }}</label>
++              <input id="scan-field-3" v-model.number="slaveScanTimeout" type="number" min="100" max="600000" step="100" :disabled="busy" />
+             </div>
+           </div>
+ 
+-          <div class="scan-hint">{{ t('scanDialog.autoAddHint') }}</div>
++          <div class="scan-hint">{{ t('scanDialog.discoveryHint') }}</div>
+ 
+           <div class="action-row">
+-            <button v-if="!scanning && slaveScanPhase === 'idle'" class="btn-primary" @click="startSlaveScan">{{ t('scanDialog.startScan') }}</button>
+-            <button v-else-if="scanning" class="btn-danger" :disabled="cancelling || slaveScanPhase === 'scanning_regs'" :aria-busy="cancelling" @click="cancelScan">{{ t('common.cancel') }}</button>
+-            <div v-else-if="slaveScanPhase === 'scanning_regs'" class="status-text">{{ slaveScanStatus }}</div>
++            <button v-if="!scanning && !adding" :disabled="busy" class="btn-primary" @click="startSlaveScan">{{ t('scanDialog.startScan') }}</button>
++            <button v-else-if="scanning" class="btn-danger" :disabled="cancelling" :aria-busy="cancelling" @click="cancelScan">{{ t(adding ? 'scanDialog.stopAdding' : 'common.cancel') }}</button>
+           </div>
+ 
+           <div v-if="scanning || slaveScanDone" class="progress-section">
+             <div class="progress-bar-bg">
+               <div class="progress-bar-fill" :style="{ width: slaveProgressPct() + '%' }"></div>
+             </div>
+-            <div class="progress-text">{{ slaveProgress.CurrentID }} / {{ slaveProgress.Total }}</div>
++            <div class="progress-text">{{ t('scanDialog.progressCount', { current: slaveProgress.Completed, total: slaveProgress.Total }) }} · ID {{ slaveProgress.CurrentID }}<span v-if="slaveCancelled"> · {{ t('scanDialog.cancelled') }}</span></div>
+           </div>
+ 
+           <div v-if="slaveProgress.FoundIDs.length > 0" class="result-section">
+             <div class="result-title">{{ t('scanDialog.foundSlaves', { count: slaveProgress.FoundIDs.length }) }}</div>
+             <div class="result-scroll">
+               <table class="result-table">
+-                <thead><tr><th>{{ t('dialog.slaveId') }}</th></tr></thead>
++                <thead><tr><th>{{ t('dialog.slaveId') }}</th><th>{{ t('scanDialog.nextStep') }}</th></tr></thead>
+                 <tbody>
+                   <tr v-for="id in slaveProgress.FoundIDs" :key="id">
+-                    <td>{{ id }}</td>
++                    <td>{{ id }}</td><td><button class="btn-secondary" :disabled="busy" @click="scanFoundSlave(id)">{{ t('scanDialog.scanThisSlave') }}</button></td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+           </div>
+-          <div v-else-if="slaveScanDone" class="empty-result">{{ t('scanDialog.noSlavesFound') }}</div>
++          <div v-else-if="slaveScanDone && !error" class="empty-result">{{ t('scanDialog.noSlavesFound') }}</div>
+         </div>
+ 
+         <!-- Register Scan -->
+         <div v-if="tab === 'register'" class="tab-content">
++          <div class="form-row"><label for="scan-slave-id">{{ t('dialog.slaveId') }}</label><input id="scan-slave-id" v-model.number="regSlaveID" type="number" min="1" max="247" :disabled="busy" /></div>
+           <div class="form-row">
+-            <label>{{ t('table.function') }}</label>
+-            <select v-model="regFunction" :disabled="scanning">
++            <label for="scan-field-4">{{ t('table.function') }}</label>
++              <select id="scan-field-4" v-model="regFunction" :disabled="busy">
+               <option v-for="opt in functionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+             </select>
+           </div>
+           <div class="form-row-inline">
+             <div class="form-row">
+-              <label>{{ t('table.startAddress') }}</label>
+-              <input v-model.number="regStartAddr" type="number" min="0" max="65535" :disabled="scanning" />
++              <label for="scan-field-5">{{ t('table.startAddress') }}</label>
++              <input id="scan-field-5" v-model.number="regStartAddr" type="number" min="0" max="65535" :disabled="busy" />
+             </div>
+             <div class="form-row">
+-              <label>{{ t('table.endAddress') }}</label>
+-              <input v-model.number="regEndAddr" type="number" min="0" max="65535" :disabled="scanning" />
++              <label for="scan-field-6">{{ t('table.endAddress') }}</label>
++              <input id="scan-field-6" v-model.number="regEndAddr" type="number" min="0" max="65535" :disabled="busy" />
+             </div>
+           </div>
+           <div class="form-row-inline">
+             <div class="form-row">
+-              <label>{{ t('scanDialog.chunkSize') }}</label>
+-              <input v-model.number="regChunkSize" type="number" min="1" max="125" :disabled="scanning" />
++              <label for="scan-field-7">{{ t('scanDialog.chunkSize') }}</label>
++              <input id="scan-field-7" v-model.number="regChunkSize" type="number" min="1" :max="maxChunk" :disabled="busy" />
+             </div>
+             <div class="form-row">
+-              <label>{{ t('dialog.timeout') }}</label>
+-              <input v-model.number="regTimeout" type="number" min="100" max="10000" step="100" :disabled="scanning" />
++              <label for="scan-field-8">{{ t('dialog.timeout') }}</label>
++              <input id="scan-field-8" v-model.number="regTimeout" type="number" min="100" max="600000" step="100" :disabled="busy" />
+             </div>
+           </div>
+ 
+           <label class="checkbox-row">
+-            <input type="checkbox" v-model="autoAddGroups" :disabled="scanning" />
++            <input type="checkbox" v-model="autoAddGroups" :disabled="busy" />
+             <span>{{ t('scanDialog.autoAddAfterScan') }}</span>
+           </label>
+ 
+           <div class="action-row">
+-            <button v-if="!scanning" class="btn-primary" @click="startRegisterScan">{{ t('scanDialog.startScan') }}</button>
+-            <button v-else class="btn-danger" :disabled="cancelling || slaveScanPhase === 'scanning_regs'" :aria-busy="cancelling" @click="cancelScan">{{ t('common.cancel') }}</button>
++            <button v-if="!scanning && !adding" :disabled="busy" class="btn-primary" @click="startRegisterScan">{{ t('scanDialog.startScan') }}</button>
++            <button v-else class="btn-danger" :disabled="cancelling" :aria-busy="cancelling" @click="cancelScan">{{ t(adding ? 'scanDialog.stopAdding' : 'common.cancel') }}</button>
+           </div>
+ 
+           <div v-if="scanning || regScanDone" class="progress-section">
+             <div class="progress-bar-bg">
+               <div class="progress-bar-fill" :style="{ width: regProgressPct() + '%' }"></div>
+             </div>
+-            <div class="progress-text">{{ regProgress.CurrentAddress }} / {{ regProgress.EndAddress }}</div>
++            <div class="progress-text">{{ t('scanDialog.progressCount', { current: regProgress.Completed, total: regProgress.Total }) }}<span v-if="registerCancelled"> · {{ t('scanDialog.cancelled') }}</span></div>
+           </div>
+ 
+           <div v-if="regProgress.FoundRegisters.length > 0" class="result-section">
+-            <div class="result-title">{{ t('scanDialog.foundRegisters', { count: regProgress.FoundRegisters.length }) }}</div>
++            <div class="result-title">{{ t('scanDialog.foundRegisters', { count: regProgress.FoundRegisters.length }) }} · ID {{ resultTarget?.slaveID }}</div>
+             <div class="result-scroll">
+               <table class="result-table">
+                 <thead><tr><th>{{ t('table.address') }}</th><th>Hex</th><th>{{ t('dialog.simpleValue') }}</th></tr></thead>
+                 <tbody>
+-                  <tr v-for="reg in regProgress.FoundRegisters" :key="reg.Address">
++                  <tr v-for="reg in visibleRegisters" :key="reg.Address">
+                     <td>{{ reg.Address }}</td>
+                     <td class="mono">{{ fmtHex(reg.Value) }}</td>
+                     <td class="mono">{{ reg.Value }}</td>
+@@ -232,11 +257,14 @@ async function addSlaveGroups(ids: number[]) {
+               </table>
+             </div>
+           </div>
+-          <div v-else-if="regScanDone" class="empty-result">{{ t('scanDialog.noRegistersFound') }}</div>
++          <div v-if="regPages > 1" class="result-pages"><button class="btn-secondary" :disabled="regPage === 0" @click="regPage--">{{ t('scanDialog.previousPage') }}</button><span>{{ regPage + 1 }} / {{ regPages }}</span><button class="btn-secondary" :disabled="regPage + 1 >= regPages" @click="regPage++">{{ t('scanDialog.nextPage') }}</button></div>
++          <button v-if="regScanDone && regProgress.FoundRegisters.length" class="btn-primary add-results" :disabled="busy" @click="addRegisterGroups">{{ t('scanDialog.addResults') }}</button>
++          <p v-if="addedMessage" role="status" class="scan-hint">{{ addedMessage }}</p>
++          <div v-if="regScanDone && !regProgress.FoundRegisters.length && !error" class="empty-result">{{ t('scanDialog.noRegistersFound') }}</div>
+         </div>
+ 
+         <div class="modal-footer">
+-          <button class="btn-secondary" @click="close" :disabled="scanning">{{ t('common.close') }}</button>
++          <button class="btn-secondary" @click="close" :disabled="busy">{{ t('common.close') }}</button>
+         </div>
+       </div>
+     </div>
+@@ -245,7 +273,7 @@ async function addSlaveGroups(ids: number[]) {
  
  <style scoped>
  .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
@@ -6378,7 +7974,7 @@ index bfaa8f2..fc63795 100644
  .modal-title { padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--c-text); border-bottom: 1px solid var(--c-surface0); }
  .modal-footer { padding: 8px 16px; border-top: 1px solid var(--c-surface0); display: flex; justify-content: flex-end; }
  
-@@ -254,14 +254,14 @@ async function addSlaveGroups(ids: number[]) {
+@@ -254,14 +282,14 @@ async function addSlaveGroups(ids: number[]) {
  .tab-btn.active { color: var(--c-blue); border-bottom-color: var(--c-blue); }
  .tab-btn:disabled { opacity: 0.5; cursor: not-allowed; }
  
@@ -6395,8 +7991,18 @@ index bfaa8f2..fc63795 100644
  
  .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text); cursor: pointer; margin-bottom: 8px; }
  .checkbox-row input { accent-color: var(--c-blue); }
+@@ -286,5 +314,9 @@ async function addSlaveGroups(ids: number[]) {
+ .result-table .mono { font-family: var(--font-mono); }
+ .empty-result { text-align: center; color: var(--c-subtext0); font-size: 12px; padding: 16px; }
+ .scan-hint { font-size: 11px; color: var(--c-subtext0); margin-bottom: 8px; }
++.scan-error { color: var(--c-red); padding: 10px 16px; font-size: 12px; overflow-wrap: anywhere; }
++.result-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; }
++.add-results { margin-top: 10px; }
++button:disabled { opacity: .5; cursor: not-allowed; }
+ .status-text { font-size: 12px; color: var(--c-blue); text-align: center; padding: 6px; }
+ </style>
 diff --git a/master-frontend/src/components/WriteDialog.vue b/master-frontend/src/components/WriteDialog.vue
-index 124e4d6..c9a0104 100644
+index 124e4d6..697d0a0 100644
 --- a/master-frontend/src/components/WriteDialog.vue
 +++ b/master-frontend/src/components/WriteDialog.vue
 @@ -1,7 +1,7 @@
@@ -6416,55 +8022,63 @@ index 124e4d6..c9a0104 100644
  const isMultiCoilFC = computed(() => form.value.Function === 'write_multiple_coils')
  // Keep empty comma-separated entries so an omitted value cannot shift later addresses.
  const coilTokens = computed(() => {
-@@ -131,10 +132,10 @@ async function submit() {
+@@ -131,10 +132,11 @@ async function submit() {
  
  <template>
    <Teleport to="body">
 -    <div v-if="show" class="modal-backdrop" @click.self="emit('close')">
 -      <div class="modal-box" :class="{ 'coil-modal': isMultiCoilFC }">
-+    <div v-if="show" class="modal-backdrop" @click.self="close">
++    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
 +      <div v-modal="close" :aria-label="t('dialog.writeRegisters')" :aria-busy="busy" class="modal-box" :class="{ 'coil-modal': isMultiCoilFC }">
          <div class="modal-title">{{ t('dialog.writeRegisters') }}</div>
 -        <div class="modal-body">
++        <div class="modal-scroll">
 +        <fieldset class="modal-body" :disabled="busy">
            <div class="form-hint write-target">{{ writeTarget }}</div>
            <label class="form-label">
              {{ t('table.function') }}
-@@ -209,9 +210,9 @@ async function submit() {
+@@ -209,9 +211,10 @@ async function submit() {
                </tbody>
              </table>
            </div>
--        </div>
 +        </fieldset>
+         </div>
          <div class="modal-footer">
 -          <button class="btn btn-secondary" @click="emit('close')">{{ t('common.cancel') }}</button>
 +          <button class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
            <button class="btn btn-primary" @click="submit"
              :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || (isFloat32Mode && (!float32Valid || !!float32Warning))">{{ t('toolbar.write') }}</button>
          </div>
-@@ -222,7 +223,7 @@ async function submit() {
+@@ -221,8 +224,9 @@ async function submit() {
+ </template>
  
  <style scoped>
++.modal-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 -.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 340px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-+.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; box-sizing: border-box; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
++.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; box-sizing: border-box; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
  .coil-modal { width: min(520px, calc(100vw - 32px)); min-width: 0; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
  .coil-modal .form-label, .coil-modal .form-hint { color: var(--c-subtext1); }
  .coil-error { margin: 0; color: var(--c-red); font-size: 12px; }
-@@ -233,7 +234,7 @@ async function submit() {
+@@ -232,9 +236,9 @@ async function submit() {
+ .coil-toggle.on { background: var(--c-success-bg); color: var(--c-success-text); border-color: var(--c-green); }
  .coil-toggle:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
  .coil-toggle:disabled { cursor: default; opacity: 0.6; }
- .modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+-.modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
 -.modal-body { display: flex; flex-direction: column; gap: 12px; }
-+.modal-body { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
- .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
++.modal-title { flex-shrink: 0;  font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
++.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
++.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
  .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
  .form-input { padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
+ .form-input:focus { outline: none; border-color: var(--c-blue); }
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
-index 8f74f8b..2432f06 100644
+index 8f74f8b..c812ef1 100644
 --- a/master-frontend/src/main.ts
 +++ b/master-frontend/src/main.ts
-@@ -1,3 +1,8 @@
+@@ -1,3 +1,9 @@
++import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
 +import './simlab-ui/tokens.css'
 +import './simlab-ui/components.css'
 +import { createSuiteAppearance, suiteAppearanceKey } from './suiteAppearance'
@@ -6473,7 +8087,7 @@ index 8f74f8b..2432f06 100644
  import { GetVersion } from '../wailsjs/go/main/App'
  import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
  import 'shared-frontend/src/styles/tokens.css'
-@@ -7,4 +12,11 @@ import { createApp } from 'vue'
+@@ -7,4 +13,13 @@ import { createApp } from 'vue'
  import App from './App.vue'
  
  initTheme()
@@ -6486,6 +8100,8 @@ index 8f74f8b..2432f06 100644
 +  .provide(suiteAppearanceKey, appearance)
 +  .mount('#app')
 +if (import.meta.hot) import.meta.hot.dispose(() => appearance?.dispose())
++
++void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
 diff --git a/master-frontend/src/simlab-ui/.source.json b/master-frontend/src/simlab-ui/.source.json
 new file mode 100644
 index 0000000..3640d0d
@@ -7384,11 +9000,67 @@ index 0000000..565f631
 +
 +export type SuiteAppearance = ReturnType<typeof createSuiteAppearance>
 +export const suiteAppearanceKey: InjectionKey<SuiteAppearance> = Symbol('suite-appearance')
+diff --git a/master-frontend/src/types.ts b/master-frontend/src/types.ts
+index 85b1c68..91a02d9 100644
+--- a/master-frontend/src/types.ts
++++ b/master-frontend/src/types.ts
+@@ -6,6 +6,6 @@ export type ReadResultDto = masterstate.ReadResult
+ export type LogEntry = masterstate.LogEntry
+ export interface PollDataPayload { ConnectionID: string; ScanGroupID: string; Result: ReadResultDto }
+ export interface PollErrorPayload { ConnectionID: string; ScanGroupID: string; Error: string }
+-export interface SlaveIdScanEvent { ConnectionID: string; TaskID: string; CurrentID: number; Total: number; FoundIDs: number[]; Done: boolean; Cancelled: boolean }
++export interface SlaveIdScanEvent { ConnectionID: string; TaskID: string; CurrentID: number; Completed: number; Error?: string; Total: number; FoundIDs: number[]; Done: boolean; Cancelled: boolean }
+ export interface FoundRegisterDto { Address: number; Value: number }
+-export interface RegisterScanEvent { ConnectionID: string; TaskID: string; CurrentAddress: number; EndAddress: number; FoundCount: number; FoundRegisters: FoundRegisterDto[]; Done: boolean; Cancelled: boolean }
++export interface RegisterScanEvent { ConnectionID: string; TaskID: string; CurrentAddress: number; Completed: number; Total: number; Error?: string; EndAddress: number; FoundCount: number; FoundRegisters: FoundRegisterDto[]; Done: boolean; Cancelled: boolean }
 diff --git a/master-frontend/wailsjs/go/models.ts b/master-frontend/wailsjs/go/models.ts
-index d566b2c..9fb3edc 100755
+index d566b2c..d39878b 100755
 --- a/master-frontend/wailsjs/go/models.ts
 +++ b/master-frontend/wailsjs/go/models.ts
-@@ -86,6 +86,7 @@ export namespace project {
+@@ -1,5 +1,5 @@
+ export namespace main {
+-
++	
+ 	export interface FileFilter {
+ 	    Name: string;
+ 	    Extensions: string[];
+@@ -12,7 +12,7 @@ export namespace main {
+ }
+ 
+ export namespace masterstate {
+-
++	
+ 	export interface ConnectionInfo {
+ 	    ID: string;
+ 	    TargetAddress: string;
+@@ -42,13 +42,14 @@ export namespace masterstate {
+ 	    Error?: string;
+ 	}
+ 	export interface RegisterScanRequest {
++	    SlaveID?: number;
+ 	    Function: string;
+ 	    StartAddress: number;
+ 	    EndAddress: number;
+ 	    ChunkSize: number;
+ 	    TimeoutMS: number;
+ 	}
+-
++	
+ 	export interface ScanGroup {
+ 	    ID: string;
+ 	    Name: string;
+@@ -77,8 +78,9 @@ export namespace masterstate {
+ }
+ 
+ export namespace project {
+-
++	
+ 	export interface ClientTLS {
++	    Version?: string;
+ 	    Enabled: boolean;
+ 	    CAFile?: string;
+ 	    CertFile?: string;
+@@ -86,6 +88,7 @@ export namespace project {
  	    PKCS12File?: string;
  	    PKCS12Password?: string;
  	    AcceptInvalidCerts?: boolean;
@@ -7396,13 +9068,13 @@ index d566b2c..9fb3edc 100755
  	}
  	export interface ReconnectPolicy {
  	    Enabled: boolean;
-@@ -131,3 +132,13 @@ export namespace project {
+@@ -131,3 +134,14 @@ export namespace project {
  	}
  
  }
 +
 +export namespace suitehost {
-+
++	
 +	export interface AppearanceV1 {
 +	    schemaVersion: number;
 +	    theme: string;
@@ -7410,6 +9082,7 @@ index d566b2c..9fb3edc 100755
 +	}
 +
 +}
++
 diff --git a/master-frontend/wailsjs/go/suitehost/Appearance.d.ts b/master-frontend/wailsjs/go/suitehost/Appearance.d.ts
 new file mode 100755
 index 0000000..480ad81
@@ -7465,7 +9138,7 @@ index 0000000..2ba0068
 +  }
 +})
 diff --git a/shared-frontend/src/components/AppDialog.vue b/shared-frontend/src/components/AppDialog.vue
-index 600ed66..c110b91 100644
+index 600ed66..0bb9ab0 100644
 --- a/shared-frontend/src/components/AppDialog.vue
 +++ b/shared-frontend/src/components/AppDialog.vue
 @@ -9,8 +9,8 @@ const { state, dialogConfirm, dialogCancel } = useDialogState()
@@ -7496,7 +9169,7 @@ index 600ed66..c110b91 100644
    <Teleport to="body">
 -    <div v-if="state.visible" v-modal="dialogCancel" :aria-label="state.title" class="dialog-backdrop" @click.self="dialogCancel" @keydown="handleKeydown">
 -      <div class="dialog" role="dialog" aria-modal="true">
-+    <div v-if="state.visible" v-modal="dialogCancel" :aria-label="state.title" class="dialog-backdrop" @click.self="dialogCancel">
++    <div v-if="state.visible" v-modal="dialogCancel" :aria-label="state.title" class="dialog-backdrop" @pointerdown.self.left="dialogCancel">
 +      <div class="dialog">
          <div class="dialog-header">
            <span class="dialog-title">{{ state.title }}</span>
@@ -7552,6 +9225,38 @@ index 9b2dff0..a516e6b 100644
 +.managed-label { align-self: center; padding-inline: 5px; font-size: 11px; white-space: nowrap; }
 +button:disabled { cursor: default; }
  </style>
+diff --git a/shared-frontend/src/composables/nativeWindowTheme.ts b/shared-frontend/src/composables/nativeWindowTheme.ts
+new file mode 100644
+index 0000000..19f8cbe
+--- /dev/null
++++ b/shared-frontend/src/composables/nativeWindowTheme.ts
+@@ -0,0 +1,26 @@
++type NativeRuntime = {
++  Environment(): Promise<{ platform: string }>
++  WindowSetDarkTheme(): void
++  WindowSetLightTheme(): void
++  WindowSetSystemDefaultTheme(): void
++}
++
++/** Follow the effective suite palette, falling back to the standalone choice. */
++export async function startNativeWindowTheme(): Promise<() => void> {
++  const runtime = (window as unknown as { runtime?: NativeRuntime }).runtime
++  if (!runtime || (await runtime.Environment()).platform !== 'windows') return () => {}
++  const root = document.documentElement
++  let last: string | undefined
++  function apply() {
++    const theme = root.dataset.simlabTheme ?? root.dataset.theme ?? 'system'
++    if (theme === last) return
++    if (theme === 'dark') runtime!.WindowSetDarkTheme()
++    else if (theme === 'light') runtime!.WindowSetLightTheme()
++    else runtime!.WindowSetSystemDefaultTheme()
++    last = theme
++  }
++  const observer = new MutationObserver(apply)
++  observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-simlab-theme'] })
++  apply()
++  return () => observer.disconnect()
++}
 diff --git a/shared-frontend/src/directives/modal.ts b/shared-frontend/src/directives/modal.ts
 index 11e2b6e..8805d94 100644
 --- a/shared-frontend/src/directives/modal.ts
@@ -7620,7 +9325,7 @@ index f0af503..bbd69be 100644
    }
  }
 diff --git a/shared-frontend/src/i18n/locales/en-US.ts b/shared-frontend/src/i18n/locales/en-US.ts
-index 1687f00..86b79ec 100644
+index 1687f00..ed283bd 100644
 --- a/shared-frontend/src/i18n/locales/en-US.ts
 +++ b/shared-frontend/src/i18n/locales/en-US.ts
 @@ -1,6 +1,21 @@
@@ -7645,16 +9350,52 @@ index 1687f00..86b79ec 100644
    parity: {
      connectionSettings: 'Connection settings',
      stoppedSettings: 'Stop the connection before changing its endpoint or serial settings. Devices and registers are preserved.',
-@@ -323,6 +338,8 @@ const messages: Messages = {
+@@ -323,6 +338,11 @@ const messages: Messages = {
      pkcs12File: 'PKCS#12 Bundle',
      pkcs12Password: 'PKCS#12 Password',
      acceptInvalidCerts: 'Legacy certificate compatibility (skip certificate and hostname checks)',
 +    verifyServerName: 'Verify server name/IP',
 +    verifyServerNameHint: 'When off, skip only server name/IP matching. The CA certificate chain and validity period are still verified.',
++    tlsVersion: 'TLS version',
++    tlsVersionAuto: 'Automatic (TLS 1.2 / 1.3)',
++    tlsVersionHint: 'Negotiate automatically by default. If a legacy device or network path interrupts the handshake, select TLS 1.2 for this connection. Traffic remains encrypted.',
      tlsCompatibilityHint: 'Allow legacy certificates with missing EKU/SAN, mismatched names or self-signatures. Traffic remains encrypted, but server identity is not verified. Use only in trusted test environments.',
      requireClientCert: 'Require client certificate (mTLS)',
      refreshSerialPorts: 'Refresh Serial Ports',
-@@ -413,6 +430,20 @@ const messages: Messages = {
+@@ -348,6 +368,13 @@ const messages: Messages = {
+     valueHintFloat32: '(comma-separated floats, e.g. 3.14, 2.71, 1.41)',
+     writeRegisters: 'Write Registers',
+     newScanGroup: 'New Scan Group',
++    defaultSlaveId: 'Default slave ID',
++    pollSlaveTarget: 'Polling target',
++    followDefaultSlave: 'Use connection default slave ID',
++    specifySlave: 'Specify slave ID',
++    multiSlaveHint: 'Create multiple groups on one connection with different slave IDs. Reads and writes use the selected group target.',
++    editScanGroup: 'Polling settings',
++    editScanGroupHint: 'Saving applies the new settings and resumes active polling.',
+     scanGroupName: 'Scan Group Name',
+     scanGroupNamePlaceholder: 'Enter scan group name',
+     scanInterval: 'Poll Interval (ms)',
+@@ -395,6 +422,18 @@ const messages: Messages = {
+     rangeTooLarge: 'Range too large (max 50000)',
+   },
+   scanDialog: {
++    stopAdding: 'Stop adding',
++    discoveryHint: "After discovering a responding slave, scan its registers using the correct function and address range. Device exception replies also prove a response. Unverified groups are not created automatically.",
++    invalidResponse: "Invalid scan response. Reopen the application.",
++    failureHint: "Check the slave ID, function, zero-based address and response timeout.",
++    progressCount: "Scanned {current} / {total}",
++    cancelled: "Cancelled",
++    nextStep: "Next step",
++    scanThisSlave: "Scan registers",
++    addedGroups: "Added {count} polling groups; duplicates were skipped.",
++    previousPage: "Previous",
++    nextPage: "Next",
++    addResults: "Add results as polling groups",
+     title: 'Device Scan',
+     slaveScan: 'Slave Scan',
+     registerScan: 'Register Scan',
+@@ -413,6 +452,20 @@ const messages: Messages = {
      autoAddAfterScan: 'Auto-add to monitor after scan',
      addingProgress: 'Adding Slave {id} {fc} 0-99...',
    },
@@ -7676,7 +9417,7 @@ index 1687f00..86b79ec 100644
      title: 'Batch Import Registers',
      namePrefix: 'Name Prefix (optional)',
 diff --git a/shared-frontend/src/i18n/locales/zh-CN.ts b/shared-frontend/src/i18n/locales/zh-CN.ts
-index 955f0b4..60b02bb 100644
+index 955f0b4..88e9cc2 100644
 --- a/shared-frontend/src/i18n/locales/zh-CN.ts
 +++ b/shared-frontend/src/i18n/locales/zh-CN.ts
 @@ -1,4 +1,19 @@
@@ -7699,16 +9440,52 @@ index 955f0b4..60b02bb 100644
    parity: {
      connectionSettings: '连接设置',
      stoppedSettings: '停止连接后可以修改监听地址、端口或串口参数；保留现有设备和寄存器。',
-@@ -326,6 +341,8 @@ const messages = {
+@@ -326,6 +341,11 @@ const messages = {
      pkcs12File: 'PKCS#12配置',
      pkcs12Password: 'PKCS#12密码',
      acceptInvalidCerts: '兼容旧设备证书（跳过证书及地址校验）',
 +    verifyServerName: '校验服务器名称/IP',
 +    verifyServerNameHint: '关闭时仅跳过服务器名称/IP 匹配，仍校验 CA 证书链和有效期。',
++    tlsVersion: 'TLS 版本',
++    tlsVersionAuto: '自动协商（TLS 1.2 / 1.3）',
++    tlsVersionHint: '默认自动协商。若旧设备或网络链路在握手时断开，可为此连接选择 TLS 1.2；连接仍使用加密。',
      tlsCompatibilityHint: '兼容缺少 EKU/SAN、名称不匹配或自签名的旧证书。连接仍加密，但不验证服务器身份；仅限可信测试环境。',
      requireClientCert: '要求客户端证书(mTLS)',
      refreshSerialPorts: '刷新串口列表',
-@@ -416,6 +433,20 @@ const messages = {
+@@ -351,6 +371,13 @@ const messages = {
+     valueHintFloat32: '（逗号分隔浮点数，如 3.14, 2.71, 1.41）',
+     writeRegisters: '写入寄存器',
+     newScanGroup: '新建扫描组',
++    defaultSlaveId: '默认从站 ID',
++    pollSlaveTarget: '轮询目标',
++    followDefaultSlave: '跟随连接默认从站 ID',
++    specifySlave: '指定从站 ID',
++    multiSlaveHint: '同一连接可创建多个轮询组，分别指定不同从站 ID；读取和写入均使用所选组的目标。',
++    editScanGroup: '轮询设置',
++    editScanGroupHint: '保存后按新参数继续当前轮询，保留启用状态。',
+     scanGroupName: '扫描组名称',
+     scanGroupNamePlaceholder: '输入扫描组名称',
+     scanInterval: '轮询间隔(ms)',
+@@ -398,6 +425,18 @@ const messages = {
+     rangeTooLarge: '范围过大（最多 50000）',
+   },
+   scanDialog: {
++    stopAdding: '停止添加',
++    discoveryHint: "发现有响应的从站后，点击“扫描寄存器”，选择实际功能码和地址范围。设备异常响应也可证明从站有响应；不会自动创建未验证的地址组。",
++    invalidResponse: "扫描结果格式无效，请重新打开应用。",
++    failureHint: "请核对从站 ID、功能码、从 0 开始的地址和响应超时。",
++    progressCount: "已扫描 {current} / {total}",
++    cancelled: "已中止",
++    nextStep: "下一步",
++    scanThisSlave: "扫描寄存器",
++    addedGroups: "已添加 {count} 个轮询组，重复组已跳过。",
++    previousPage: "上一页",
++    nextPage: "下一页",
++    addResults: "将结果添加为轮询组",
+     title: '设备扫描',
+     slaveScan: '从站扫描',
+     registerScan: '寄存器扫描',
+@@ -416,6 +455,20 @@ const messages = {
      autoAddAfterScan: '扫描完成后自动添加到监控',
      addingProgress: '添加 Slave {id} {fc} 0-99...',
    },
@@ -7729,6 +9506,42 @@ index 955f0b4..60b02bb 100644
    batchAdd: {
      title: '批量导入寄存器',
      namePrefix: '名称前缀（可选）',
+diff --git a/shared-frontend/tests/dialogBackdrop.spec.ts b/shared-frontend/tests/dialogBackdrop.spec.ts
+new file mode 100644
+index 0000000..955d500
+--- /dev/null
++++ b/shared-frontend/tests/dialogBackdrop.spec.ts
+@@ -0,0 +1,30 @@
++import { afterEach, expect, it, vi } from 'vitest'
++import { mount, flushPromises } from '@vue/test-utils'
++import NewConnectionDialog from '../../master-frontend/src/components/NewConnectionDialog.vue'
++import { useI18n } from '../src/i18n'
++
++vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({ ListSerialPorts: vi.fn().mockResolvedValue([]), CreateConnection: vi.fn(), GetSettings: vi.fn(), UpdateConnection: vi.fn(), OpenFileDialog: vi.fn() }))
++let wrapper: ReturnType<typeof mount> | undefined
++afterEach(() => { wrapper?.unmount(); document.body.innerHTML = ''; vi.clearAllMocks() })
++it('does not dismiss a form when text selection ends on the backdrop', async () => {
++ useI18n().setLocale('zh-CN')
++ wrapper = mount(NewConnectionDialog, { attachTo: document.body, props: { show: true } })
++ await flushPromises()
++ const field = document.querySelector<HTMLInputElement>('input[placeholder="127.0.0.1"]')!
++ field.value = '10.15.205.21'; field.dispatchEvent(new Event('input', { bubbles: true }))
++ field.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
++ const backdrop = document.querySelector('.modal-backdrop')!
++ backdrop.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 0 }))
++ backdrop.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }))
++ await flushPromises()
++ expect(wrapper.emitted('close')).toBeUndefined()
++ expect(field.value).toBe('10.15.205.21')
++ // A deliberate primary-button press outside still closes; right-click does not.
++ backdrop.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 2 }))
++ expect(wrapper.emitted('close')).toBeUndefined()
++ backdrop.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
++ expect(wrapper.emitted('close')).toHaveLength(1)
++ await wrapper.setProps({ show: false }); await wrapper.setProps({ show: true })
++ await flushPromises()
++ expect(document.querySelector<HTMLInputElement>('input[placeholder="127.0.0.1"]')!.value).toBe('127.0.0.1')
++})
 diff --git a/shared-frontend/tests/dialogKeyboard.spec.ts b/shared-frontend/tests/dialogKeyboard.spec.ts
 new file mode 100644
 index 0000000..9c13129
@@ -7776,6 +9589,244 @@ index 0000000..9c13129
 +    await input.trigger('keydown', { key: 'Enter' })
 +    expect(await second).toBe('new')
 +  })
++})
+diff --git a/shared-frontend/tests/masterContextMenu.spec.ts b/shared-frontend/tests/masterContextMenu.spec.ts
+new file mode 100644
+index 0000000..71184c6
+--- /dev/null
++++ b/shared-frontend/tests/masterContextMenu.spec.ts
+@@ -0,0 +1,94 @@
++import { afterEach, expect, it, vi } from 'vitest'
++import { mount, flushPromises } from '@vue/test-utils'
++import { ref } from 'vue'
++import { useI18n } from '../src/i18n'
++import ConnectionTree from '../../master-frontend/src/components/ConnectionTree.vue'
++import NewScanGroupDialog from '../../master-frontend/src/components/NewScanGroupDialog.vue'
++import * as App from '../../master-frontend/wailsjs/go/main/App'
++
++vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({
++ ListConnections: vi.fn(), ListScanGroups: vi.fn(), UpdateScanGroup: vi.fn(), AddScanGroup: vi.fn(), Disconnect: vi.fn(),
++}))
++let wrapper: ReturnType<typeof mount> | undefined
++const group = { ID: 'g2', Name: 'second', Function: 'read_holding_registers', StartAddress: 0, Quantity: 5, IntervalMS: 1000, Enabled: true, IsPolling: true, SlaveID: 7 }
++afterEach(() => { wrapper?.unmount(); vi.resetAllMocks(); document.body.innerHTML = '' })
++async function tree(state = 'Disconnected') {
++ useI18n().setLocale('zh-CN')
++ vi.mocked(App.ListConnections).mockResolvedValue(['c1', 'c2'].map(ID => ({ ID, State: state, TargetAddress: ID, Port: 502, SlaveID: 1, ScanGroupCount: 1 })))
++ vi.mocked(App.ListScanGroups).mockResolvedValue([group])
++ wrapper = mount(ConnectionTree, { attachTo: document.body, global: {
++  provide: { treeRefreshKey: ref(0), refreshTree: vi.fn() },
++  stubs: { NewConnectionDialog: { props: ['connectionId'], template: '<div data-test="edit-connection">{{ connectionId }}</div>' }, NewScanGroupDialog: { props: ['connectionId', 'group'], template: '<div data-test="edit-poll">{{ connectionId }} {{ group.ID }}</div>' } },
++ } })
++ await flushPromises()
++ return wrapper
++}
++it('right click selects and edits the clicked connection, not the previous selection', async () => {
++ const w = await tree()
++ await w.findAll('.tree-node')[0]!.trigger('click')
++ await w.findAll('.tree-node')[2]!.trigger('contextmenu', { clientX: 100, clientY: 100 })
++ expect(w.emitted('connection-select')!.at(-1)).toEqual(['c2', 'Disconnected'])
++ await w.find('button[role="menuitem"]').trigger('click')
++ expect(w.find('[data-test="edit-connection"]').text()).toBe('c2')
++ expect(w.find('[role="menu"]').exists()).toBe(false)
++})
++it('offers disconnect before editing connected parameters', async () => {
++ const w = await tree('Connected')
++ await w.findAll('.tree-node')[2]!.trigger('contextmenu')
++ const buttons = w.findAll('button[role="menuitem"]')
++ expect(buttons[0]!.attributes('disabled')).toBeDefined()
++ await buttons[1]!.trigger('click')
++ expect(App.Disconnect).toHaveBeenCalledWith('c2')
++})
++it('edits the right-clicked polling group and dismisses menus with Escape', async () => {
++ const w = await tree('Connected')
++ await w.findAll('.tree-child')[1]!.trigger('contextmenu')
++ await w.find('button[role="menuitem"]').trigger('click')
++ expect(w.find('[data-test="edit-poll"]').text()).toBe('c2 g2')
++ await w.findAll('.tree-child')[1]!.trigger('contextmenu')
++ document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
++ await flushPromises()
++ expect(w.find('[role="menu"]').exists()).toBe(false)
++})
++it('updates an existing group while preserving its identity, slave ID and enabled state', async () => {
++ useI18n().setLocale('zh-CN')
++ wrapper = mount(NewScanGroupDialog, { attachTo: document.body, props: { show: true, connectionId: 'c2', group } })
++ await flushPromises()
++ expect(document.body.textContent).toContain('数量')
++  expect(document.body.textContent).not.toContain('table.Quantity')
++  const quantity = document.querySelector<HTMLInputElement>('#poll-quantity')!
++ expect(quantity.value).toBe('5')
++ quantity.value = '6'; quantity.dispatchEvent(new Event('input', { bubbles: true }))
++ await flushPromises()
++ ;[...document.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === '保存')!.click()
++ await flushPromises()
++ expect(App.UpdateScanGroup).toHaveBeenCalledWith('c2', { ...group, Quantity: 6 })
++ expect(App.AddScanGroup).not.toHaveBeenCalled()
++ expect(group.Quantity).toBe(5)
++ expect(wrapper.emitted('saved')?.[0]).toEqual([{ ...group, Quantity: 6 }])
++})
++
++it('creates different slave targets on one connection and can restore default inheritance', async () => {
++ useI18n().setLocale('zh-CN')
++ wrapper = mount(NewScanGroupDialog, { attachTo: document.body, props: { show: true, connectionId: 'c2' } })
++ await flushPromises()
++ const mode = document.querySelector<HTMLSelectElement>('#poll-slave-mode')!
++ mode.selectedIndex = 1; mode.dispatchEvent(new Event('change', { bubbles: true }))
++ await flushPromises()
++ const input = document.querySelector<HTMLInputElement>('#poll-slave-id')!
++ input.value = '7'; input.dispatchEvent(new Event('input', { bubbles: true }))
++ await flushPromises()
++ document.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
++ await flushPromises()
++ expect(App.AddScanGroup).toHaveBeenCalledWith('c2', expect.objectContaining({ SlaveID: 7 }))
++ await wrapper.setProps({ show: false })
++ await wrapper.setProps({ show: true, group })
++ await flushPromises()
++ expect(document.querySelector<HTMLInputElement>('#poll-slave-id')!.value).toBe('7')
++ const reset = document.querySelector<HTMLSelectElement>('#poll-slave-mode')!
++ reset.selectedIndex = 0; reset.dispatchEvent(new Event('change', { bubbles: true }))
++ await flushPromises()
++ document.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
++ await flushPromises()
++ expect(App.UpdateScanGroup).toHaveBeenCalledWith('c2', expect.objectContaining({ ID: 'g2', SlaveID: undefined }))
++})
+diff --git a/shared-frontend/tests/masterScanDialog.spec.ts b/shared-frontend/tests/masterScanDialog.spec.ts
+new file mode 100644
+index 0000000..019a31f
+--- /dev/null
++++ b/shared-frontend/tests/masterScanDialog.spec.ts
+@@ -0,0 +1,85 @@
++import { afterEach, beforeEach, expect, it, vi } from 'vitest'
++import { flushPromises, mount } from '@vue/test-utils'
++import { ref } from 'vue'
++import ScanDialog from '../../master-frontend/src/components/ScanDialog.vue'
++import * as App from '../../master-frontend/wailsjs/go/main/App'
++import { useI18n } from '../src/i18n'
++const listeners = vi.hoisted(() => new Map<string, (event: unknown) => void>())
++vi.mock('../../master-frontend/wailsjs/runtime/runtime', () => ({ EventsOn: vi.fn((name, callback) => { listeners.set(name, callback); return () => listeners.delete(name) }) }))
++vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({ GetSettings: vi.fn(), StartSlaveIDScan: vi.fn(), StartRegisterScan: vi.fn(), CancelScan: vi.fn(), AddScanGroup: vi.fn(), ListScanGroups: vi.fn() }))
++let wrapper: ReturnType<typeof mount>
++beforeEach(() => {
++ useI18n().setLocale('zh-CN')
++ vi.mocked(App.GetSettings).mockResolvedValue({ SlaveID: 1 } as never)
++ vi.mocked(App.StartSlaveIDScan).mockResolvedValue('ids-1')
++ vi.mocked(App.StartRegisterScan).mockResolvedValue('regs-1')
++ vi.mocked(App.ListScanGroups).mockResolvedValue([])
++ vi.mocked(App.CancelScan).mockResolvedValue(undefined)
++})
++afterEach(() => { wrapper?.unmount(); vi.resetAllMocks(); listeners.clear(); document.body.innerHTML = '' })
++async function open(slaveID?: number) {
++ wrapper = mount(ScanDialog, { attachTo: document.body, global: { provide: { selectedConnectionId: ref('c1'), selectedScanGroup: ref(slaveID == null ? null : { SlaveID: slaveID, Function: 'read_holding_registers', StartAddress: 0, Quantity: 20 }), refreshTree: vi.fn() }, stubs: { teleport: true } } })
++ await flushPromises(); return wrapper
++}
++function button(label: string) { return wrapper.findAll('button').find(button => button.text() === label)! }
++function emitProgress(kind: 'slave' | 'register', overrides: Record<string, unknown> = {}) {
++ const payload = kind === 'slave' ? { ConnectionID: 'c1', TaskID: 'ids-1', CurrentID: 8, Completed: 8, Total: 8, FoundIDs: [1, 2, 7], Done: true, Cancelled: false }
++  : { ConnectionID: 'c1', TaskID: 'regs-1', CurrentAddress: 19, EndAddress: 19, Completed: 20, Total: 20, FoundCount: 4, FoundRegisters: [{Address: 2, Value: 7002}, {Address: 3, Value: 7003}, {Address: 10, Value: 7010}, {Address: 11, Value: 7011}], Done: true, Cancelled: false }
++ listeners.get(`scan-${kind}-progress`)?.(JSON.parse(JSON.stringify({ ...payload, ...overrides })))
++}
++it('discovers numeric IDs without creating unverified groups and scans the chosen slave', async () => {
++ await open(); await button('开始扫描').trigger('click'); await flushPromises()
++ emitProgress('slave'); await flushPromises()
++ expect(wrapper.findAll('.result-table tbody tr')).toHaveLength(3)
++ expect(App.AddScanGroup).not.toHaveBeenCalled()
++ await wrapper.findAll('.result-table tbody tr')[2]!.find('button').trigger('click')
++ expect(wrapper.get<HTMLInputElement>('#scan-slave-id').element.value).toBe('7')
++ await button('开始扫描').trigger('click'); await flushPromises()
++ expect(App.StartRegisterScan).toHaveBeenCalledWith('c1', expect.objectContaining({ SlaveID: 7 }))
++})
++it('keeps the scanned target when the form changes and skips already-added ranges', async () => {
++ await open(7); await button('寄存器扫描').trigger('click'); await button('开始扫描').trigger('click'); await flushPromises()
++ emitProgress('register'); await flushPromises()
++ await wrapper.get('#scan-slave-id').setValue(9)
++ const created: any[] = []
++ vi.mocked(App.AddScanGroup).mockImplementation(async (_id, group) => { const result = {...group, ID: `g${created.length}`}; created.push(result); return result })
++ vi.mocked(App.ListScanGroups).mockImplementation(async () => [...created])
++ await button('将结果添加为轮询组').trigger('click'); await flushPromises()
++ expect(created.map(g => [g.SlaveID, g.StartAddress, g.Quantity])).toEqual([[7,2,2],[7,10,2]])
++ await button('将结果添加为轮询组').trigger('click'); await flushPromises()
++ expect(App.AddScanGroup).toHaveBeenCalledTimes(2)
++})
++it('accepts completion that arrives before the start call returns', async () => {
++ vi.mocked(App.StartSlaveIDScan).mockImplementation(async () => { emitProgress('slave'); return 'ids-1' })
++ await open(); await button('开始扫描').trigger('click'); await flushPromises()
++ expect(wrapper.findAll('.result-table tbody tr')).toHaveLength(3)
++ expect(button('开始扫描').attributes('disabled')).toBeUndefined()
++})
++it('cancels a pending start after its task has been registered', async () => {
++ let resolve!: (id: string) => void
++ vi.mocked(App.StartSlaveIDScan).mockReturnValue(new Promise(done => { resolve = done }))
++ vi.mocked(App.CancelScan).mockImplementation(async () => { emitProgress('slave', { Done: false, Cancelled: true }); })
++ await open(); await button('开始扫描').trigger('click'); await button('取消').trigger('click')
++ expect(App.CancelScan).not.toHaveBeenCalled()
++ resolve('ids-1'); await flushPromises()
++ expect(App.CancelScan).toHaveBeenCalledWith('c1', 'slave_scan')
++ expect(wrapper.text()).toContain('已中止')
++})
++it('ignores other tasks and connections and shows terminal errors without adding groups', async () => {
++ await open(7); await button('寄存器扫描').trigger('click'); await button('开始扫描').trigger('click'); await flushPromises()
++ emitProgress('register', { ConnectionID: 'other' }); emitProgress('register', { TaskID: 'old' }); await flushPromises()
++ expect(wrapper.findAll('.result-table tbody tr')).toHaveLength(0)
++ emitProgress('register', { Error: 'Modbus exception: 0x01' }); await flushPromises()
++ expect(wrapper.get('[role="alert"]').text()).toContain('0x01')
++ expect(App.AddScanGroup).not.toHaveBeenCalled()
++})
++it('uses completed counts for non-one-based ID ranges and paginates large results', async () => {
++ await open(); await button('开始扫描').trigger('click'); await flushPromises()
++ emitProgress('slave', { CurrentID: 102, Completed: 3, Total: 3 }); await flushPromises()
++ expect(wrapper.get('.progress-text').text()).toContain('3 / 3')
++ await button('寄存器扫描').trigger('click'); await button('开始扫描').trigger('click'); await flushPromises()
++ emitProgress('register', { FoundCount: 2000, FoundRegisters: Array.from({length:2000}, (_, Address) => ({Address, Value: Address})) }); await flushPromises()
++ expect(wrapper.findAll('.result-table tbody tr')).toHaveLength(100)
++ await button('下一页').trigger('click')
++ expect(wrapper.find('.result-table tbody td').text()).toBe('100')
++})
+diff --git a/shared-frontend/tests/nativeWindowTheme.spec.ts b/shared-frontend/tests/nativeWindowTheme.spec.ts
+new file mode 100644
+index 0000000..a4fbeb7
+--- /dev/null
++++ b/shared-frontend/tests/nativeWindowTheme.spec.ts
+@@ -0,0 +1,41 @@
++import { afterEach, expect, it, vi } from 'vitest'
++import { startNativeWindowTheme } from '../src/composables/nativeWindowTheme'
++
++let stop: (() => void) | undefined
++const bridge = window as unknown as { runtime?: unknown }
++afterEach(() => {
++ stop?.(); stop = undefined; delete bridge.runtime
++ delete document.documentElement.dataset.theme
++ delete document.documentElement.dataset.simlabTheme
++})
++it('syncs Windows chrome with the effective suite theme and ignores duplicate DOM changes', async () => {
++ const runtime = { Environment: vi.fn().mockResolvedValue({ platform: 'windows' }), WindowSetDarkTheme: vi.fn(), WindowSetLightTheme: vi.fn(), WindowSetSystemDefaultTheme: vi.fn() }
++ bridge.runtime = runtime
++ document.documentElement.dataset.theme = 'light'
++ stop = await startNativeWindowTheme()
++ expect(runtime.WindowSetLightTheme).toHaveBeenCalledOnce()
++ document.documentElement.dataset.simlabTheme = 'dark'
++ await Promise.resolve()
++ expect(runtime.WindowSetDarkTheme).toHaveBeenCalledOnce()
++ document.documentElement.dataset.theme = 'light'
++ await Promise.resolve()
++ expect(runtime.WindowSetLightTheme).toHaveBeenCalledOnce()
++ delete document.documentElement.dataset.simlabTheme
++ document.documentElement.dataset.theme = 'system'
++ await Promise.resolve()
++ expect(runtime.WindowSetSystemDefaultTheme).toHaveBeenCalledOnce()
++ stop()
++ document.documentElement.dataset.theme = 'dark'
++ await Promise.resolve()
++ expect(runtime.WindowSetDarkTheme).toHaveBeenCalledOnce()
++})
++it('does not call Windows appearance APIs on macOS', async () => {
++ const dark = vi.fn()
++ bridge.runtime = { Environment: vi.fn().mockResolvedValue({ platform: 'darwin' }), WindowSetDarkTheme: dark }
++ document.documentElement.dataset.theme = 'dark'
++ stop = await startNativeWindowTheme()
++ expect(dark).not.toHaveBeenCalled()
++})
++it('allows browser previews without a native bridge', async () => {
++ await expect(startNativeWindowTheme()).resolves.toBeTypeOf('function')
 +})
 diff --git a/shared-frontend/tests/suiteAppearance.spec.ts b/shared-frontend/tests/suiteAppearance.spec.ts
 new file mode 100644

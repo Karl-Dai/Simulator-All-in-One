@@ -36,16 +36,16 @@ Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104,
 
 ## Download
 
-**Current release: [v0.1.3](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3)** · Every package includes the launcher and all eight simulators.
+**Current release: [v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · Every package includes the launcher and all eight simulators.
 
 | Platform | Download | Requirements |
 | --- | --- | --- |
-| **macOS · Apple Silicon** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.zip) | macOS 13.0+ · arm64 |
-| **macOS · Intel** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
-| **Windows · x64** | [Offline installer](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_windows-amd64-setup.exe) | Bundled WebView2 offline installer |
-| **Linux · x64** | [Self-extracting archive](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_linux-amd64.run) | Ubuntu 22.04 baseline · glibc 2.35+ |
+| **macOS · Apple Silicon** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.zip) | macOS 13.0+ · arm64 |
+| **macOS · Intel** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
+| **Windows · x64** | [Offline installer](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_windows-amd64-setup.exe) | Bundled WebView2 offline installer |
+| **Linux · x64** | [Self-extracting archive](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_linux-amd64.run) | Ubuntu 22.04 baseline · glibc 2.35+ |
 
-[Release notes](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3) · [SHA256SUMS](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SHA256SUMS) · [Changelog](CHANGELOG.md)
+[Release notes](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4) · [SHA256SUMS](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SHA256SUMS) · [Changelog](CHANGELOG.md)
 
 1. Download the package for your platform and verify its checksum.
 2. Install the suite. On macOS, drag **Simulator All-in-One.app** into Applications.

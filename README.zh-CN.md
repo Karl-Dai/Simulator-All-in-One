@@ -36,16 +36,16 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 
 ## 下载
 
-**当前版本：[v0.1.3](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3)** · 每份安装包都包含入口和全部八个模拟器。
+**当前版本：[v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · 每份安装包都包含入口和全部八个模拟器。
 
 | 平台 | 下载 | 运行要求 |
 | --- | --- | --- |
-| **macOS · Apple Silicon** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.zip) | macOS 13.0+ · arm64 |
-| **macOS · Intel** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
-| **Windows · x64** | [离线安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_windows-amd64-setup.exe) | 内置 WebView2 离线安装器 |
-| **Linux · x64** | [自解压安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_linux-amd64.run) | 以 Ubuntu 22.04 为基准 · glibc 2.35+ |
+| **macOS · Apple Silicon** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.zip) | macOS 13.0+ · arm64 |
+| **macOS · Intel** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
+| **Windows · x64** | [离线安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_windows-amd64-setup.exe) | 内置 WebView2 离线安装器 |
+| **Linux · x64** | [自解压安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_linux-amd64.run) | 以 Ubuntu 22.04 为基准 · glibc 2.35+ |
 
-[发布说明](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3) · [SHA256 校验表](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SHA256SUMS) · [更新记录](CHANGELOG.md)
+[发布说明](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4) · [SHA256 校验表](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SHA256SUMS) · [更新记录](CHANGELOG.md)
 
 1. 下载对应平台的安装包，核对 SHA256 校验值。
 2. 安装套件；macOS 用户将 **Simulator All-in-One.app** 拖入“应用程序”。

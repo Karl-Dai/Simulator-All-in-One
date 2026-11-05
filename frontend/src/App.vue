@@ -394,7 +394,7 @@ onMounted(refresh);
         <h1>{{ t("about.title") }}</h1>
         <p class="about-description"><span lang="en">{{ PRODUCT_SUMMARY_EN }}</span><span lang="zh-CN">{{ PRODUCT_SUMMARY_ZH }}</span></p>
         <p class="about-meta">
-          {{ t("about.suite") }} · v{{ snapshot?.version ?? "0.1.3" }} ·
+          {{ t("about.suite") }} · v{{ snapshot?.version ?? "0.1.4" }} ·
           {{ platformName }} / {{ snapshot?.architecture ?? "—" }} ·
           {{
             t("about.protocols", {

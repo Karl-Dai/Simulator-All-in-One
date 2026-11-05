@@ -1,7 +1,9 @@
 # Role icons
 
-The four protocol families use distinct colors and symbols. A round **M** badge
-identifies a master (**C** for the OPC UA client); a square **S** badge identifies a slave, substation, or server.
+The four protocol families use distinct colors and symbols. The lower-right
+badge reads **104** for IEC 60870-5-104, **UA** for OPC UA, and **P** for PMU.
+Modbus keeps **M** for the master and **S** for the slave. A round badge
+identifies a master or client; a square badge identifies a slave, substation, or server.
 The browser title spells out the complete role.
 
 Each `icon.svg` is the editable source. PNG, ICO and ICNS files were generated
