@@ -1,59 +1,114 @@
-# Simulator All-in-One (SAIO)
+<p align="center">
+  <img src="docs/images/saio-banner.svg" alt="Simulator All-in-One — One installer. Eight simulators. Independent windows." width="1200" />
+</p>
 
-English | [简体中文](README.zh-CN.md)
+<p align="center">
+  <a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases/latest"><img src="https://img.shields.io/github/v/release/Karl-Dai/Simulator-All-in-One?style=flat-square&amp;color=d79162&amp;label=release" alt="Latest release" /></a>
+  <a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases"><img src="https://img.shields.io/github/downloads/Karl-Dai/Simulator-All-in-One/total?style=flat-square&amp;color=50798d" alt="Total downloads" /></a>
+  <a href="https://github.com/Karl-Dai/Simulator-All-in-One/actions/workflows/build-suite.yml"><img src="https://img.shields.io/github/actions/workflow/status/Karl-Dai/Simulator-All-in-One/build-suite.yml?branch=main&amp;style=flat-square&amp;label=native%20build" alt="Native build status" /></a>
+  <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-203441?style=flat-square" alt="macOS, Windows and Linux" />
+</p>
 
-**One installer. Eight industrial protocol simulators. Independent windows.**
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-Simulator All-in-One, formerly **SimLab Desktop**, bundles IEC 60870-5-104, Modbus, PMU and OPC UA tools in one desktop suite. Open any simulator without downloading or installing individual components. Each runs in its own process and window, and keeps running when the launcher closes.
+<p align="center">
+  <a href="#download">Download</a> &nbsp;·&nbsp; <a href="#preview">Preview</a> &nbsp;·&nbsp; <a href="#simulators">Simulators</a> &nbsp;·&nbsp; <a href="#development">Development</a>
+</p>
 
-Repository: [Karl-Dai/Simulator-All-in-One](https://github.com/Karl-Dai/Simulator-All-in-One).
+---
 
-| Protocol | Included applications | Component version |
+**Your industrial protocol test bench, in one desktop suite.**
+
+Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104, Modbus, PMU and OPC UA tools together. Install once, choose a role and start testing in an independent window.
+
+<table>
+<tr>
+<td width="50%"><strong>8 simulators, one installation</strong><br />All four protocol pairs are bundled. No separate component downloads.</td>
+<td width="50%"><strong>Independent windows</strong><br />Run several roles side by side. Children keep running when the launcher closes.</td>
+</tr>
+<tr>
+<td><strong>A launcher that fits your workflow</strong><br />Favorites, launch feedback, responsive layout, light and dark themes.</td>
+<td><strong>English &amp; 简体中文</strong><br />Choose your language or follow the system. Preferences persist between sessions.</td>
+</tr>
+</table>
+
+## Download
+
+**Current release: [v0.1.3](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3)** · Every package includes the launcher and all eight simulators.
+
+| Platform | Download | Requirements |
 | --- | --- | --- |
-| IEC 60870-5-104 | IEC104Master, IEC104Slave | 1.15.22 |
-| Modbus | ModbusMaster, ModbusSlave | 0.17.9 |
-| PMU V2 / V3 | PmuSim, PmuSub | 0.13.2 |
-| OPC UA | OPCUAMaster, OPCUAServer | 0.8.0 |
+| **macOS · Apple Silicon** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-arm64.zip) | macOS 13.0+ · arm64 |
+| **macOS · Intel** | [DMG](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.dmg) · [ZIP](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
+| **Windows · x64** | [Offline installer](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_windows-amd64-setup.exe) | Bundled WebView2 offline installer |
+| **Linux · x64** | [Self-extracting archive](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SAIO_0.1.3_linux-amd64.run) | Ubuntu 22.04 baseline · glibc 2.35+ |
 
-## Features
+[Release notes](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3) · [SHA256SUMS](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.3/SHA256SUMS) · [Changelog](CHANGELOG.md)
 
-- Eight bundled roles, ready to open from one launcher.
-- Favorites and persistent appearance and language preferences.
-- English by default on new installations, with Simplified Chinese and system-language options. Existing language choices are preserved.
-- Separate suite data directories for each role, including OPC UA PKI and configuration.
-- Manifest, SHA256, architecture and complete resource-tree checks before packaging.
-- Suite-owned updates: bundled simulators do not independently update themselves. Automatic replacement of the complete suite is not implemented in version 0.1.3.
+1. Download the package for your platform and verify its checksum.
+2. Install the suite. On macOS, drag **Simulator All-in-One.app** into Applications.
+3. Open **SAIO**, select a protocol and launch the roles you need.
 
-## Installation and current status
+> [!NOTE]
+> macOS packages currently use ad-hoc signatures and are not notarized. If macOS blocks the app, review it in **System Settings → Privacy & Security**. Linux still requires a display server and compatible graphics drivers.
 
-Download **v0.1.3** from [GitHub Releases](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3). Packages use these names:
+<details>
+<summary><strong>Installation, repair and updates</strong></summary>
 
-| Target | Installer | Launcher |
-| --- | --- | --- |
-| macOS Apple Silicon, 13.0+ | `SAIO_0.1.3_darwin-arm64.dmg` | `Simulator All-in-One.app` |
-| macOS Intel, 13.0+ | `SAIO_0.1.3_darwin-amd64.dmg` | `Simulator All-in-One.app` |
-| Windows x64 | `SAIO_0.1.3_windows-amd64-setup.exe` | `SAIO.exe` |
-| Ubuntu 22.04 x64 baseline | `SAIO_0.1.3_linux-amd64.run` | `SAIO` |
+- **Windows:** one NSIS installer includes all eight payloads and a SHA256-verified offline WebView2 installer. It installs WebView2 only when missing, repairs declared files, protects unrelated files and blocks replacement while suite applications are running.
+- **Linux:** the archive includes GTK3/WebKitGTK 4.1, verifies its contents and extracts to a stable version directory under `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/`. It does not require FUSE. The host provides glibc, the display server and graphics/EGL/GLX drivers.
+- **Updates:** bundled simulators do not independently update themselves. Version 0.1.3 does not automatically download and replace the complete suite.
 
-The public release contains six archives built from the same commit: two macOS DMGs, two macOS ZIPs, one Windows installer and one Linux archive. Verify downloads against `SHA256SUMS` or the adjacent `.sha256.json` files. [Four-target build and checks](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41967403951) passed; [publication](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41974642759) verifies source provenance and all package checksums before release.
+</details>
 
-This release passed native compilation and packaging for all four targets, Windows installation/repair/startup/uninstall checks, and Linux offline container startup. Earlier macOS Apple Silicon builds received actual window and launcher interaction checks; those historical checks do not establish complete GUI or protocol acceptance for this release. Full Windows/Linux/Intel GUI and protocol acceptance, a fresh Windows offline installation without WebView2, and macOS 13 hardware validation remain open. See the [dated implementation and acceptance record](docs/implementation-status.md).
+## Preview
 
-On macOS, drag `Simulator All-in-One.app` from the new DMG into Applications. Current packaging supports ad-hoc signing or an existing signing identity; Developer ID distribution and Apple notarization remain pending.
+<img src="docs/images/launcher-light.png" alt="SAIO launcher in English, light theme, showing all eight simulator roles" width="1160" />
 
-The Windows NSIS installer bundles all eight payloads and a pinned, SHA256-verified offline WebView2 Standalone Installer. It installs WebView2 only when missing, blocks replacement while suite applications are running, repairs declared files, and refuses to overwrite unrelated files.
+*Light theme · English · Launcher rendered from the application source with demo data.*
 
-The Linux `.run` archive verifies and extracts to a stable directory under `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/`, then starts the launcher. It includes GTK3/WebKitGTK 4.1 runtime files and does not require FUSE. The host must still provide glibc 2.35+, a display server and compatible graphics/EGL/GLX drivers.
+<details>
+<summary><strong>Dark theme · 简体中文</strong></summary>
 
-## Data and rename compatibility
+<img src="docs/images/launcher-dark.png" alt="SAIO launcher in Simplified Chinese with the dark theme" width="1160" />
 
-The public product name, About screens, repository and new executable/package names use **Simulator All-in-One / SAIO**. The Go module is `github.com/Karl-Dai/Simulator-All-in-One`.
+*The same launcher in dark mode. Preview images demonstrate the UI; they are not native protocol acceptance evidence.*
 
-Compatibility identities remain unchanged: the `SimLab` user-data directory, `SIMLAB_*` environment variables, `cloud.carldai.simlab*` bundle IDs, `simlab-suite` build feature, Windows installation/uninstall registry paths, and `.simlab-owned` marker. Existing projects, certificates, favorites and saved language choices continue to use their current locations. The Windows checker accepts both the legacy `SimLab.exe` and the new `SAIO.exe`; new installers replace the legacy Start Menu shortcut.
+</details>
 
-Historical records and existing artifacts retain their original names. Original standalone simulator repositories are not modified by suite builds; exact upstream commits and suite patches are used in isolated component checkouts.
+## Simulators
 
-## Build from source
+Four protocols, paired roles, separate processes and windows. Component versions are pinned independently of the suite version.
+
+| Protocol | Included applications | Roles | Component version |
+| --- | --- | --- | --- |
+| **IEC 60870-5-104** | [IEC104Master · IEC104Slave](https://github.com/Karl-Dai/IEC60870-5-104-Simulator) | Master / Slave | `1.15.22` |
+| **Modbus** | [ModbusMaster · ModbusSlave](https://github.com/Karl-Dai/ModbusSim) | Master / Slave | `0.17.9` |
+| **PMU V2 / V3** | [PmuSim · PmuSub](https://github.com/Karl-Dai/PmuSim) | Master / Substation | `0.13.2` |
+| **OPC UA** | [OPCUAMaster · OPCUAServer](https://github.com/Karl-Dai/OPCUASim) | Client / Server | `0.8.0` |
+
+Each role has its own suite data directory. Projects, connection settings and certificates keep the original applications' semantics; closing the launcher does not delete them.
+
+## Release checks
+
+All four targets passed the [v0.1.3 native build](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41967403951). The [release workflow](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41974642759) checked the tagged source and all six archive checksums before publication.
+
+| Target | Automated checks passed |
+| --- | --- |
+| **macOS · ARM & Intel** | Native compilation, backend tests, complete resource manifests, nested signatures and DMG/ZIP packaging |
+| **Windows · x64** | Build, installation, repair, directory protection, nine-process startup and uninstall |
+| **Linux · x64** | Build, runtime dependency audit, packaging and offline clean-container startup |
+
+Full cross-platform GUI/protocol acceptance, a clean Windows offline first installation without WebView2, macOS 13 hardware validation and Apple notarization remain open. See the [dated evidence and limits](docs/implementation-status.md).
+
+## Development
+
+Build native bundles from pinned upstream commits, reviewed suite patches and a shared toolchain lock. The standalone upstream repositories remain untouched.
+
+<details>
+<summary><strong>Build from source, package layout and CI commands</strong></summary>
 
 Build tools are pinned in [`toolchain.lock.json`](toolchain.lock.json). Use the selected Python interpreter to check your environment before building:
 
@@ -61,7 +116,7 @@ Build tools are pinned in [`toolchain.lock.json`](toolchain.lock.json). Use the 
 python scripts/toolchain.py check
 ```
 
-The checker reports missing or mismatched tools without changing your installation. CI reads the same version file and remains manual-only. Build receipts and the suite manifest retain the observed tool versions, native environment details and configuration digest; a changed toolchain requires a new native build. The selected versions are a unified candidate until all four native targets have been revalidated.
+The checker reports missing or mismatched tools without changing your installation. CI reads the same version file and remains manual-only. Build receipts and the suite manifest retain the observed tool versions, native environment details and configuration digest; a changed toolchain requires a new native build. These pinned versions passed the four-target v0.1.3 build; detailed provenance is recorded in the implementation status document.
 
 Shared appearance contracts and Vue components live in `ui/`. ModbusMaster and IEC104Master are the initial integration targets; the remaining roles retain the legacy theme entry point. Suite language changes apply to the current session without overwriting standalone language preferences. Shared files are exported and checked by `scripts/sync_ui.py`; edit the source in `ui/` and regenerate the reviewed suite patches rather than editing generated copies.
 
@@ -85,7 +140,7 @@ python3 packaging/linux/runtime.py prepare dist/staging/linux-amd64
 python3 packaging/linux/runtime.py audit dist/staging/linux-amd64
 ```
 
-`components.lock.json` pins all four upstream commits, component versions, suite patches and Rust lockfiles. npm builds use lockfiles and `npm ci`; Rust builds use `--locked`. `bootstrap` refuses dirty component checkouts rather than resetting them. For another workspace, use the same absolute `--workspace` path for every command. Do not bootstrap an existing manually adapted `.components/` tree again.
+`components.lock.json` pins all four upstream commits, component versions, suite patches and Rust lockfiles. npm builds use lockfiles and `npm ci`; Rust builds use `--locked`. `bootstrap` refuses dirty component checkouts rather than resetting them. For another workspace, use the same absolute `--workspace` path for every command. On Windows, keep that path short (for example `D:/s`) for `bootstrap`, `build` and `collect`, to avoid vendored OpenSSL compiler path limits. Do not bootstrap an existing manually adapted `.components/` tree again.
 
 `collect` requires all eight roles and valid source/build receipts. macOS children are signed before their final hashes are written, and the outer app is signed separately. `SIMLAB_SIGNING_IDENTITY` or `--signing-identity` selects an existing identity; notarization is not part of this pipeline. Byte-for-byte reproducibility across compilers or OS images is not promised.
 
@@ -128,6 +183,29 @@ All workflows are started manually (`workflow_dispatch`); validation and native 
 
 See [implementation and acceptance evidence](docs/implementation-status.md) and the [Chinese build and packaging guide](README.zh-CN.md) for detailed platform constraints, pinned offline WebView2 distribution and runtime closure handling.
 
-## Changelog
+</details>
 
-See [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/Karl-Dai/Simulator-All-in-One/releases).
+<details>
+<summary><strong>User data, product rename and compatibility</strong></summary>
+
+The public product name, About screens, repository and new executable/package names use **Simulator All-in-One / SAIO**. The Go module is `github.com/Karl-Dai/Simulator-All-in-One`.
+
+Compatibility identities remain unchanged: the `SimLab` user-data directory, `SIMLAB_*` environment variables, `cloud.carldai.simlab*` bundle IDs, `simlab-suite` build feature, Windows installation/uninstall registry paths, and `.simlab-owned` marker. Existing projects, certificates, favorites and saved language choices continue to use their current locations. The Windows checker accepts both the legacy `SimLab.exe` and the new `SAIO.exe`; new installers replace the legacy Start Menu shortcut.
+
+Historical records and existing artifacts retain their original names. Original standalone simulator repositories are not modified by suite builds; exact upstream commits and suite patches are used in isolated component checkouts.
+
+</details>
+
+## Documentation
+
+| Resource | Contents |
+| --- | --- |
+| [Changelog](CHANGELOG.md) | Bilingual release history |
+| [Implementation & acceptance](docs/implementation-status.md) | Build provenance, dated checks and remaining work |
+| [Suite architecture](docs/brainstorm/2026-10-22-simulator-hub-app-design.md) | Launcher and independent application design |
+| [Shared UI](docs/ui-unification.md) | Appearance and component integration |
+| [Component lock](components.lock.json) · [Toolchain lock](toolchain.lock.json) | Exact upstream revisions and build tools |
+
+---
+
+<p align="center"><strong>One installer. Eight simulators. Independent windows.</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">Get SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">Report an issue</a> · <a href="README.zh-CN.md">简体中文</a></p>

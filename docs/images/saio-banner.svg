@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Simulator All-in-One</title>
+  <desc id="desc">One installer. Eight industrial protocol simulators. Independent windows. IEC 104, Modbus, PMU and OPC UA.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#9fc4d3" stroke-opacity=".07"/></pattern>
+  </defs>
+  <rect width="1200" height="400" rx="24" fill="#172a35"/>
+  <rect width="1200" height="400" rx="24" fill="url(#grid)"/>
+  <path d="M48 0H304" stroke="#d79162" stroke-width="5"/>
+  <g transform="translate(48 37) scale(.048)">
+    <rect x="36" y="36" width="952" height="952" rx="218" fill="#29414e"/>
+    <path d="M257 648V393a42 42 0 0 1 84 0v255a42 42 0 0 1-84 0Z" fill="#dceaf0"/>
+    <path d="M470 724V299a42 42 0 0 1 84 0v425a42 42 0 0 1-84 0Z" fill="#d79162"/>
+    <path d="M683 623V350a42 42 0 0 1 84 0v273a42 42 0 0 1-84 0Z" fill="#9fc4d3"/>
+    <path d="M299 648h213m0-299h213" fill="none" stroke="#dceaf0" stroke-width="22" stroke-linecap="round"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+    <text x="114" y="68" font-size="13" letter-spacing="2.4" fill="#a9c1cc">INDUSTRIAL PROTOCOL TOOLKIT</text>
+    <text x="48" y="160" font-size="65" font-weight="700" letter-spacing="-2" fill="#f3f6f7">Simulator</text>
+    <text x="48" y="232" font-size="65" font-weight="700" letter-spacing="-2" fill="#dca177">All-in-One.</text>
+    <text x="51" y="278" font-size="20" fill="#bed0d8">One installer. Eight simulators. Independent windows.</text>
+    <g font-size="13" font-weight="600" letter-spacing=".8" fill="#dceaf0">
+      <rect x="50" y="321" width="91" height="31" rx="7" fill="#29414e"/><text x="66" y="342">IEC 104</text>
+      <rect x="151" y="321" width="103" height="31" rx="7" fill="#29414e"/><text x="167" y="342">MODBUS</text>
+      <rect x="264" y="321" width="69" height="31" rx="7" fill="#29414e"/><text x="281" y="342">PMU</text>
+      <rect x="343" y="321" width="98" height="31" rx="7" fill="#29414e"/><text x="359" y="342">OPC UA</text>
+    </g>
+    <path d="M869 136L962 200L1060 136M869 268L962 200L1060 268" fill="none" stroke="#50707f" stroke-width="2"/>
+    <circle cx="962" cy="200" r="29" fill="#29414e" stroke="#d79162" stroke-width="1.5"/>
+    <text x="962" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#f3f6f7">SAIO</text>
+    <g>
+      <rect x="791" y="64" width="157" height="84" rx="12" fill="#203946" stroke="#3b5664"/>
+      <rect x="980" y="64" width="157" height="84" rx="12" fill="#203946" stroke="#3b5664"/>
+      <rect x="791" y="253" width="157" height="84" rx="12" fill="#203946" stroke="#3b5664"/>
+      <rect x="980" y="253" width="157" height="84" rx="12" fill="#203946" stroke="#3b5664"/>
+    </g>
+    <g font-size="18" font-weight="600" fill="#f3f6f7">
+      <text x="809" y="98">IEC 104</text><text x="998" y="98">Modbus</text>
+      <text x="809" y="287">PMU</text><text x="998" y="287">OPC UA</text>
+    </g>
+    <g font-size="12" fill="#b4cbd5">
+      <text x="809" y="124">Master / Slave</text><text x="998" y="124">Master / Slave</text>
+      <text x="809" y="313">Master / Substation</text><text x="998" y="313">Client / Server</text>
+    </g>
+    <text x="963" y="372" text-anchor="middle" font-size="12" letter-spacing="1.5" fill="#8eacba">macOS · WINDOWS · LINUX</text>
+  </g>
+</svg>
