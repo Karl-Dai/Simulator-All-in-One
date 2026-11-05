@@ -166,6 +166,7 @@ class SuiteTests(unittest.TestCase):
         sync_ui = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(sync_ui)
         shutil.copytree(suite.ROOT / "ui", self.root / "ui")
+        shutil.copytree(suite.ROOT / "assets/roles", self.root / "assets/roles")
         targets = []
         for source, target in sync_ui.assets(self.workspace, self.root):
             target.parent.mkdir(parents=True, exist_ok=True)

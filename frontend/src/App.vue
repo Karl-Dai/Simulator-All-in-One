@@ -58,6 +58,8 @@ const loading = ref(true);
 const page = ref<"all" | "favorites" | "about">("all");
 const busy = ref(new Set<string>());
 const favoriteBusy = ref(new Set<string>());
+const themeBusy = ref(false);
+const languageBusy = ref(false);
 const error = ref("");
 const notice = ref("");
 const errorPanel = ref<HTMLElement | null>(null);
@@ -171,7 +173,12 @@ async function toggleFavorite(role: RoleState) {
   favoriteBusy.value = new Set([...favoriteBusy.value, role.id]);
   try {
     const prefs = await backend().SetFavorite(role.id, !isFavorite(role.id));
-    if (snapshot.value) snapshot.value.preferences = prefs;
+    if (snapshot.value) {
+      const favorites = new Set(snapshot.value.preferences.favorites);
+      if (prefs.favorites.includes(role.id)) favorites.add(role.id);
+      else favorites.delete(role.id);
+      snapshot.value.preferences.favorites = [...favorites];
+    }
   } catch (cause) {
     error.value = message(cause);
   } finally {
@@ -181,21 +188,29 @@ async function toggleFavorite(role: RoleState) {
   }
 }
 async function changeTheme(value: Preferences["theme"]) {
+  if (themeBusy.value) return;
+  themeBusy.value = true;
   try {
     const prefs = await backend().SetTheme(value);
-    if (snapshot.value) snapshot.value.preferences = prefs;
+    if (snapshot.value) snapshot.value.preferences.theme = prefs.theme;
   } catch (cause) {
     error.value = message(cause);
+  } finally {
+    themeBusy.value = false;
   }
 }
 async function cycleLanguage() {
+  if (languageBusy.value) return;
+  languageBusy.value = true;
   const order: Language[] = ["auto", "zh-CN", "en"];
   const next = order[(order.indexOf(language.value) + 1) % order.length];
   try {
     const prefs = await backend().SetLanguage(next);
-    if (snapshot.value) snapshot.value.preferences = prefs;
+    if (snapshot.value) snapshot.value.preferences.language = prefs.language;
   } catch (cause) {
     error.value = message(cause);
+  } finally {
+    languageBusy.value = false;
   }
 }
 watch(
@@ -216,11 +231,11 @@ watch(language, (value) => setLocale(value), { immediate: true });
 function setLocale(value: Language) {
   locale.value = resolveLocale(value);
 }
-watch(error, async (value) => {
+watch(error, async (value, previous) => {
   if (value) {
-    previousFocus = document.activeElement as HTMLElement | null;
+    if (!previous) previousFocus = document.activeElement as HTMLElement | null;
     await nextTick();
-    errorPanel.value?.querySelector<HTMLButtonElement>("button")?.focus();
+    if (error.value) errorPanel.value?.querySelector<HTMLButtonElement>("button")?.focus();
   } else if (previousFocus?.isConnected) previousFocus.focus();
 });
 function trapErrorFocus(event: KeyboardEvent) {
@@ -401,7 +416,7 @@ onMounted(refresh);
         </div>
         <div class="theme-setting">
           <div><strong>{{ t('settings.language') }}</strong></div>
-          <button class="lang-button ghost-button" :aria-label="t('lang.aria', { label: languageLabel })" @click="cycleLanguage">{{ languageLabel }}<span>{{ languageBadge }}</span></button>
+          <button class="lang-button ghost-button" :disabled="languageBusy" :aria-busy="languageBusy" :aria-label="t('lang.aria', { label: languageLabel })" @click="cycleLanguage">{{ languageLabel }}<span>{{ languageBadge }}</span></button>
         </div>
         <div class="theme-setting">
           <div>
@@ -416,6 +431,8 @@ onMounted(refresh);
                 { id: 'dark', label: t('theme.dark'), icon: Moon },
               ] as const"
               :key="option.id"
+              :disabled="themeBusy"
+              :aria-busy="themeBusy"
               :aria-pressed="theme === option.id"
               :class="{ active: theme === option.id }"
               @click="changeTheme(option.id as Preferences['theme'])"

@@ -162,6 +162,42 @@ describe("complete suite launcher", () => {
     expect(api.SetTheme).toHaveBeenCalledWith("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
+  it("keeps a completed theme change when an older favorite response arrives", async () => {
+    let complete!: (value: Snapshot["preferences"]) => void;
+    const oldPreferences = structuredClone(state.preferences);
+    vi.mocked(api.SetFavorite).mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const app = render();
+    await flushPromises();
+    await app.get('[aria-label="收藏 OPC UA 服务端"]').trigger("click");
+    await app.get(".about-link").trigger("click");
+    await app.findAll(".theme-options button")[2].trigger("click");
+    await flushPromises();
+    complete({ ...oldPreferences, favorites: ["opcua.server"] });
+    await flushPromises();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(app.findAll(".theme-options button")[2].attributes("aria-pressed")).toBe("true");
+    await app.findAll("nav button")[1].trigger("click");
+    expect(app.findAll(".protocol-card")).toHaveLength(1);
+  });
+  it("shows pending language feedback and restores the control after a failure", async () => {
+    let fail!: (reason: Error) => void;
+    vi.mocked(api.SetLanguage).mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }));
+    const app = render();
+    await flushPromises();
+    await app.get(".about-link").trigger("click");
+    const language = app.get(".lang-button");
+    await language.trigger("click");
+    await language.trigger("click");
+    expect(api.SetLanguage).toHaveBeenCalledTimes(1);
+    expect(language.attributes("disabled")).toBeDefined();
+    expect(language.attributes("aria-busy")).toBe("true");
+    fail(new Error("保存语言失败"));
+    await flushPromises();
+    expect(language.attributes("disabled")).toBeUndefined();
+    expect(app.get('[role="alertdialog"]').text()).toContain("保存语言失败");
+    await app.get(".error-backdrop").trigger("keydown", { key: "Escape" });
+    expect(app.find('[role="alertdialog"]').exists()).toBe(false);
+  });
   it("switches the interface language and persists it", async () => {
     const app = render();
     await flushPromises();

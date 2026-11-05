@@ -40,6 +40,17 @@ def assets(workspace, root=ROOT):
     for c in lock["components"]:
         for source in frontend_assets(root):
             yield source, repos[c["repository"]] / c["frontend"] / "src/simlab-ui" / source.relative_to(root / "ui")
+        # Role assets belong to the suite, just like shared UI assets. Keep
+        # browser previews and native bundles on the same checked-in identity.
+        if "project" in c:
+            icons = root / "assets/roles" / c["id"]
+            repo = repos[c["repository"]]
+            yield icons / "icon.svg", repo / c["frontend"] / "public/suite-icon.svg"
+            destination = repo / c["project"] / "suite-icons"
+            for name in ("32x32.png", "128x128.png", "128x128@2x.png", "icon.png", "icon.icns", "icon.ico"):
+                yield icons / name, destination / name
+            if c["repository"] == "modbus":
+                yield icons / "128x128.png", repo / "go/internal/suitehost/icons" / (c["id"] + ".png")
     for identity, repo in repos.items():
         if identity == "modbus":
             yield root / "ui/preferences.go", repo / "go/internal/suitehost/appearance.go"

@@ -46,6 +46,30 @@ class SharedUIExportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Stale shared UI asset"):
             sync_ui.check(self.workspace, self.root)
 
+    def test_role_icons_export_to_browser_and_native_without_replacing_standalone(self):
+        lock = json.loads((self.root / "components.lock.json").read_text())
+        lock["components"][0]["project"] = "go/cmd/mastergui"
+        lock["components"].append({"id": "modbus.slave", "repository": "modbus",
+                                   "frontend": "slave-frontend", "project": "go/cmd/slavegui"})
+        (self.root / "components.lock.json").write_text(json.dumps(lock))
+        for role in ("master", "slave"):
+            icons = self.root / "assets/roles" / ("modbus." + role)
+            icons.mkdir(parents=True)
+            for name in ("icon.svg", "32x32.png", "128x128.png", "128x128@2x.png", "icon.png", "icon.icns", "icon.ico"):
+                (icons / name).write_text(role + name)
+            standalone = self.workspace / "modbus/go/cmd" / (role + "gui") / "build/appicon.png"
+            standalone.parent.mkdir(parents=True)
+            standalone.write_text("standalone")
+        self.export()
+        for role, frontend in (("master", "frontend"), ("slave", "slave-frontend")):
+            self.assertEqual((self.workspace / "modbus" / frontend / "public/suite-icon.svg").read_text(), role + "icon.svg")
+            build = self.workspace / "modbus/go/cmd" / (role + "gui") / "build"
+            self.assertEqual((build.parent / "suite-icons/icon.ico").read_text(), role + "icon.ico")
+            self.assertEqual((build / "appicon.png").read_text(), "standalone")
+        (self.workspace / "modbus/frontend/public/suite-icon.svg").write_text("wrong role")
+        with self.assertRaisesRegex(ValueError, "Stale shared UI asset"):
+            sync_ui.check(self.workspace, self.root)
+
     def add_old_record(self, name, contents):
         (self.destination / ".source.json").write_text(json.dumps({"files": {
             name: hashlib.sha256(contents.encode()).hexdigest(),
