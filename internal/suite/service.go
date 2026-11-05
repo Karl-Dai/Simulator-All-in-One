@@ -82,7 +82,7 @@ func (s *Service) Snapshot() Snapshot {
 	defer s.mu.Unlock()
 	result := Snapshot{Version: s.manifest.SuiteVersion, Platform: runtime.GOOS, Architecture: runtime.GOARCH, Roles: []RoleState{}, Preferences: s.prefs, Warning: s.warning}
 	if result.Version == "" {
-		result.Version = "0.1.2"
+		result.Version = "0.1.3"
 	}
 	// Copy preferences before leaving the lock; UI reads may overlap writes.
 	result.Preferences.Favorites = slices.Clone(s.prefs.Favorites)

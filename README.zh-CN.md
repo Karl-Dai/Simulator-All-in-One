@@ -15,11 +15,11 @@
 | PMU V2 / V3 | PmuSim、PmuSub | 0.13.2 |
 | OPC UA | OPCUAMaster、OPCUAServer | 0.8.0 |
 
-当前套件版本为 **0.1.2**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
+当前套件版本为 **0.1.3**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
 
 ## 安装与使用
 
-macOS 要求 **13.0+**。打开新构建的 `SAIO_0.1.2_darwin-arm64.dmg`，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。改名后的完整三平台安装包尚未重建。上一轮 2026-10-30 的双语入口完整重建基于 `b5371b8`，该轮四个原生目标的安装包和两个 macOS ZIP 汇总在本机 `dist/ci-packages/b5371b8/`；`SHA256SUMS`、`.sha256.json` 和 `provenance.json` 提供校验值、来源提交、CI 与验收记录。旧包保留在 `dist/ci-packages/`。GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
+macOS 要求 **13.0+**。打开新构建的 `SAIO_0.1.3_darwin-arm64.dmg`，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。改名后的完整三平台安装包尚未重建。上一轮 2026-10-30 的双语入口完整重建基于 `b5371b8`，该轮四个原生目标的安装包和两个 macOS ZIP 汇总在本机 `dist/ci-packages/b5371b8/`；`SHA256SUMS`、`.sha256.json` 和 `provenance.json` 提供校验值、来源提交、CI 与验收记录。旧包保留在 `dist/ci-packages/`。GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
 
 Windows 使用一个 NSIS 安装包，内置八个免安装 payload，并携带一份对应架构的 WebView2 离线 Standalone Installer。安装器检测已有 WebView2，仅在缺少时安装；不会逐一启动八个子安装器。套件运行中禁止替换，完整新目录先准备并校验，再切换，切换失败保留或恢复旧目录。非空目标目录必须有 SimLab 所有权标记及可识别文件清单，未知文件会阻止覆盖；声明内程序缺失或损坏可以重装修复。该流程已在原生 Windows CI 通过安装、修复、目录保护、活动实例检查、入口与八角色启动和卸载；runner 可能预装 WebView2，尚未验证无 WebView2 的干净 Windows 断网首次安装。
 

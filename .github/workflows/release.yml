@@ -1,8 +1,14 @@
 name: Release complete suite
 on:
   workflow_dispatch:
+    inputs:
+      source_run:
+        description: Optional successful main build-suite run for the exact tagged commit
+        type: string
+        default: ''
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -23,23 +29,45 @@ jobs:
           assert json.load(open('frontend/package.json'))['version'] == version
           assert f'## [{version}] - ' in open('CHANGELOG.md').read()
           PY
+      - name: Verify optional candidate build provenance
+        if: inputs.source_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > source-run.json
+          python3 - <<'PY'
+          import json, os
+          run = json.load(open('source-run.json'))
+          assert run['head_sha'] == os.environ['GITHUB_SHA'], 'Candidate commit mismatch'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['head_branch'] == 'main' and run['event'] == 'workflow_dispatch'
+          assert run['path'] == '.github/workflows/build-suite.yml'
+          assert run['repository']['full_name'] == os.environ['GITHUB_REPOSITORY']
+          PY
   validate:
     needs: check
     uses: ./.github/workflows/validate.yml
   build:
+    if: inputs.source_run == ''
     needs: [check, validate]
     uses: ./.github/workflows/build-suite.yml
   publish:
-    needs: build
+    needs: [check, validate, build]
+    if: always() && needs.check.result == 'success' && needs.validate.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: SAIO-*
           path: artifacts
+          run-id: ${{ inputs.source_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Verify packages and render release notes
         run: python3 scripts/prepare_release.py "$GITHUB_REF_NAME" artifacts release-assets
       - name: Publish complete verified suite
