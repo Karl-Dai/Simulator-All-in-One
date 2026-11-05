@@ -44,6 +44,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     env:
+      # Keep vendored OpenSSL generated paths below the Windows compiler limit.
+      SUITE_WORKSPACE: ${{ matrix.platform == 'windows' && 'D:/s' || '.components' }}
       CARGO_INCREMENTAL: '0'
       PYTHONUTF8: '1'
       MACOSX_DEPLOYMENT_TARGET: '13.0'
@@ -104,20 +106,20 @@ jobs:
       - name: Packaging tests
         run: python -m unittest discover -s scripts/tests -v
       - name: Clone exact commits and strictly apply suite patches
-        run: python scripts/suite.py bootstrap
+        run: python scripts/suite.py bootstrap --workspace "${{ env.SUITE_WORKSPACE }}"
       - name: Cache native Rust build outputs, including failed packaging runs
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('toolchain.lock.json', 'components.lock.json', 'patches/*.patch', 'packaging/locks/*.lock') }}
           workspaces: |
-            .components/IEC60870-5-104-Simulator -> target
-            .components/PmuSim -> target
-            .components/OPCUASim -> target
+            ${{ env.SUITE_WORKSPACE }}/IEC60870-5-104-Simulator -> target
+            ${{ env.SUITE_WORKSPACE }}/PmuSim -> target
+            ${{ env.SUITE_WORKSPACE }}/OPCUASim -> target
           cache-on-failure: true
           cache-all-crates: true
           cache-bin: false
       - name: Build all eight suite payloads and launcher
-        run: python scripts/suite.py build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+        run: python scripts/suite.py build --workspace "${{ env.SUITE_WORKSPACE }}" --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - name: Launcher backend tests
         shell: bash
         run: |
@@ -132,7 +134,7 @@ jobs:
           esac
       - name: Collect all payloads and verify
         run: |
-          python scripts/suite.py collect --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+          python scripts/suite.py collect --workspace "${{ env.SUITE_WORKSPACE }}" --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
           python scripts/suite.py verify --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
       - name: Prepare Linux runtime closure
         if: matrix.platform == 'linux'
