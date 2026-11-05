@@ -2,7 +2,7 @@
 
 Notable changes are documented in English and Chinese, following Keep a Changelog.
 
-## [0.1.1] - 2026-11-05
+## [0.1.2] - 2026-11-05
 
 ### Highlights / 亮点
 

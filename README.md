@@ -22,18 +22,18 @@ Repository: [Karl-Dai/Simulator-All-in-One](https://github.com/Karl-Dai/Simulato
 - English by default on new installations, with Simplified Chinese and system-language options. Existing language choices are preserved.
 - Separate suite data directories for each role, including OPC UA PKI and configuration.
 - Manifest, SHA256, architecture and complete resource-tree checks before packaging.
-- Suite-owned updates: bundled simulators do not independently update themselves. Automatic replacement of the complete suite is not implemented in version 0.1.1.
+- Suite-owned updates: bundled simulators do not independently update themselves. Automatic replacement of the complete suite is not implemented in version 0.1.2.
 
 ## Installation and current status
 
-The suite version remains **0.1.1**. New builds use these names:
+The suite version remains **0.1.2**. New builds use these names:
 
 | Target | Installer | Launcher |
 | --- | --- | --- |
-| macOS Apple Silicon, 13.0+ | `SAIO_0.1.1_darwin-arm64.dmg` | `Simulator All-in-One.app` |
-| macOS Intel, 13.0+ | `SAIO_0.1.1_darwin-amd64.dmg` | `Simulator All-in-One.app` |
-| Windows x64 | `SAIO_0.1.1_windows-amd64-setup.exe` | `SAIO.exe` |
-| Ubuntu 22.04 x64 baseline | `SAIO_0.1.1_linux-amd64.run` | `SAIO` |
+| macOS Apple Silicon, 13.0+ | `SAIO_0.1.2_darwin-arm64.dmg` | `Simulator All-in-One.app` |
+| macOS Intel, 13.0+ | `SAIO_0.1.2_darwin-amd64.dmg` | `Simulator All-in-One.app` |
+| Windows x64 | `SAIO_0.1.2_windows-amd64-setup.exe` | `SAIO.exe` |
+| Ubuntu 22.04 x64 baseline | `SAIO_0.1.2_linux-amd64.run` | `SAIO` |
 
 The complete four-target installers have **not been rebuilt with this rename**. The previous complete build, commit `b5371b8`, is available locally in `dist/ci-packages/b5371b8/` with its original `SimLab_*` filenames, checksums and provenance. Those packages do not contain the new name. No tag or GitHub Release has been created.
 

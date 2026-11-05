@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "suiteVersion": "0.1.1",
+  "suiteVersion": "0.1.2",
   "repositories": [
     {
       "id": "modbus",
