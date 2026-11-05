@@ -1,0 +1,33 @@
+{
+  "fileCases": [
+    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
+    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
+    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
+    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
+    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
+    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
+  ],
+  "interfaceCases": [
+    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
+    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
+    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
+    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
+    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
+    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
+    { "name": "null response", "input": null, "error": "invalid_response" },
+    { "name": "array response", "input": [], "error": "invalid_response" }
+  ],
+  "languageCases": [
+    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
+    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
+    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
+    { "language": "auto", "systemLanguage": "", "locale": "en" },
+    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
+    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
+  ]
+}

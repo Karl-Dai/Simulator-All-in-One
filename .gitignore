@@ -11,3 +11,6 @@ frontend/package.json.md5
 __pycache__/
 .DS_Store
 .validation/
+
+.codegraph/
+.playwright-cli/

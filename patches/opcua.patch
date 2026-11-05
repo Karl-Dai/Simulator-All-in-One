@@ -441,13 +441,100 @@ index 0000000..35f30af
 +        assert!(resolve(None, None, "opcua-master").is_err());
 +    }
 +}
+diff --git a/crates/shared/contracts/appearance-cases.json b/crates/shared/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/crates/shared/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
 diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
 new file mode 100644
-index 0000000..970489f
+index 0000000..795c0c1
 --- /dev/null
 +++ b/crates/shared/simlab_preferences.rs
-@@ -0,0 +1,24 @@
-+/// Read only the suite appearance preference, never expose the full settings.
+@@ -0,0 +1,104 @@
++#[derive(Debug, serde::Serialize, PartialEq)]
++#[serde(rename_all = "camelCase")]
++pub(crate) struct AppearanceV1 {
++    schema_version: u32,
++    theme: String,
++    language: String,
++}
++
++fn read_appearance(root: &std::path::Path) -> Result<AppearanceV1, String> {
++    if !root.is_absolute() {
++        return Err("SIMLAB_DATA_DIR must be absolute".into());
++    }
++    let mut result = AppearanceV1 {
++        schema_version: 1,
++        theme: "system".into(),
++        language: "en".into(),
++    };
++    let data = match std::fs::read(root.join("launcher.json")) {
++        Ok(data) => data,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
++        Err(error) => return Err(error.to_string()),
++    };
++    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
++    if !value.is_object()
++        || value.get("schemaVersion").is_some_and(|v| v.as_u64() != Some(1))
++    {
++        return Err("unsupported launcher preferences version".into());
++    }
++    if let Some(theme @ ("light" | "dark")) = value["theme"].as_str() {
++        result.theme = theme.into();
++    }
++    if let Some(language @ ("auto" | "zh-CN")) = value["language"].as_str() {
++        result.language = language.into();
++    }
++    Ok(result)
++}
++
++#[tauri::command]
++pub(crate) fn simlab_appearance() -> Result<AppearanceV1, String> {
++    if !cfg!(feature = "simlab-suite") {
++        return Err("Appearance is managed by the standalone application".into());
++    }
++    let root = std::env::var_os("SIMLAB_DATA_DIR")
++        .map(std::path::PathBuf::from)
++        .ok_or("SIMLAB_DATA_DIR is not configured")?;
++    read_appearance(&root)
++}
++
++/// Legacy theme behavior remains unchanged for components not yet migrated.
 +#[tauri::command]
 +pub(crate) fn simlab_theme() -> Result<String, String> {
 +    if !cfg!(feature = "simlab-suite") {
@@ -469,6 +556,38 @@ index 0000000..970489f
 +        Some("light") => Ok("light".into()),
 +        Some("dark") => Ok("dark".into()),
 +        _ => Ok("system".into()),
++    }
++}
++
++#[cfg(test)]
++mod appearance_tests {
++    use super::*;
++
++    #[test]
++    fn shared_file_contract_and_read_only_behavior() {
++        let cases: serde_json::Value = serde_json::from_str(include_str!("contracts/appearance-cases.json")).unwrap();
++        let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
++        let root = std::env::temp_dir().join(format!("saio-appearance-{}-{unique}", std::process::id()));
++        std::fs::create_dir_all(&root).unwrap();
++        let path = root.join("launcher.json");
++        for case in cases["fileCases"].as_array().unwrap() {
++            if let Some(contents) = case["contents"].as_str() {
++                std::fs::write(&path, contents).unwrap();
++            } else if path.exists() {
++                std::fs::remove_file(&path).unwrap();
++            }
++            let got = read_appearance(&root);
++            if case.get("error").is_some() {
++                assert!(got.is_err(), "{}", case["name"]);
++            } else {
++                assert_eq!(serde_json::to_value(got.unwrap()).unwrap(), case["appearance"], "{}", case["name"]);
++            }
++            if let Some(contents) = case["contents"].as_str() {
++                assert_eq!(std::fs::read_to_string(&path).unwrap(), contents);
++            }
++        }
++        std::fs::remove_dir_all(root).unwrap();
++        assert!(read_appearance(std::path::Path::new("relative")).is_err());
 +    }
 +}
 diff --git a/frontend/src/components/AddressTree.vue b/frontend/src/components/AddressTree.vue
@@ -602,6 +721,27 @@ index 975ab50..08e19c8 100644
  
 +if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
  createApp(App).mount('#app')
+diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
+new file mode 100644
+index 0000000..e9d3045
+--- /dev/null
++++ b/frontend/src/simlab-ui/.source.json
+@@ -0,0 +1,15 @@
++{
++  "schemaVersion": 1,
++  "sourceSha256": "7483f5daaeb6c59bb158144059e5a7d02201677c2ed6716217cfc069d5a9e25f",
++  "files": {
++    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
++    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
++    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
++    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
++    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
++    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
++    "theme.ts": "366fa8ca2fbb8d7f550ae81ac43e448b0f720de0e36a2a06d49ee8e027b3b4b1",
++    "tokens.css": "88683597fbabfd1157e883df269e413088d4d89df77a54a25bfc10f56b8490a0"
++  }
++}
 diff --git a/frontend/src/simlab-ui/Icon.vue b/frontend/src/simlab-ui/Icon.vue
 new file mode 100644
 index 0000000..183ddc1
@@ -640,6 +780,137 @@ index 0000000..183ddc1
 +<style scoped>
 +.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
 +</style>
+diff --git a/frontend/src/simlab-ui/appearance.ts b/frontend/src/simlab-ui/appearance.ts
+new file mode 100644
+index 0000000..c2186fb
+--- /dev/null
++++ b/frontend/src/simlab-ui/appearance.ts
+@@ -0,0 +1,125 @@
++import {
++  DEFAULT_APPEARANCE,
++  parseAppearance,
++  resolveLanguage,
++  type AppearanceReader,
++  type AppearanceV1,
++  type ResolvedLocale,
++} from './contracts/appearance'
++
++export interface AppearanceSyncOptions {
++  /** The application must apply this override without saving its local preference. */
++  onLocale(locale: ResolvedLocale): void
++  /** A null value clears the previous synchronization error. */
++  onError(error: Error | null): void
++  /** Standalone readers must use their application's own settings source. */
++  mode?: 'suite' | 'standalone'
++}
++
++export interface AppearanceSync {
++  refresh(): Promise<void>
++  dispose(): void
++}
++
++const activeSyncs = new WeakMap<Document, () => void>()
++
++/** Synchronize only the injected preferences; never access a host bridge or storage. */
++export function startAppearanceSync(
++  reader: AppearanceReader,
++  options: AppearanceSyncOptions,
++): AppearanceSync {
++  activeSyncs.get(document)?.()
++  const root = document.documentElement
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let current: AppearanceV1 = { ...DEFAULT_APPEARANCE }
++  let lastLocale: ResolvedLocale | undefined
++  let lastError: string | undefined
++  let stopped = false
++  let requestId = 0
++  let pending: Promise<void> | undefined
++  let timer: ReturnType<typeof setTimeout> | undefined
++
++  function apply() {
++    if (stopped) return
++    const theme = current.theme === 'system' ? (media.matches ? 'dark' : 'light') : current.theme
++    if (options.mode !== 'standalone') {
++      root.dataset.simlab = 'component'
++      root.dataset.simlabTheme = theme
++    }
++    root.dataset.theme = theme
++    root.style.colorScheme = theme
++    const locale = resolveLanguage(current.language, navigator.languages?.[0] || navigator.language)
++    root.lang = locale
++    if (locale !== lastLocale) {
++      options.onLocale(locale)
++      lastLocale = locale
++    }
++  }
++
++  function report(error: Error | null) {
++    if (stopped) return
++    const signature = error ? `${error.name}: ${error.message}` : undefined
++    if (signature === lastError) return
++    lastError = signature
++    options.onError(error)
++  }
++
++  function refresh(): Promise<void> {
++    clearTimeout(timer)
++    if (stopped || document.hidden) return Promise.resolve()
++    if (pending) return pending
++    const id = ++requestId
++    pending = Promise.resolve().then(async () => {
++      try {
++        if (stopped || id !== requestId || document.hidden) return
++        const value = parseAppearance(await reader.readAppearance())
++        if (stopped || id !== requestId || document.hidden) return
++        current = value
++        apply()
++        report(null)
++      } catch (cause) {
++        if (stopped || id !== requestId || document.hidden) return
++        report(cause instanceof Error ? cause : new Error(String(cause)))
++      } finally {
++        if (!stopped && id === requestId) {
++          pending = undefined
++          if (!document.hidden) timer = setTimeout(() => { void refresh() }, 1500)
++        }
++      }
++    })
++    return pending
++  }
++
++  function visibility() {
++    clearTimeout(timer)
++    if (document.hidden) {
++      // Native calls cannot be cancelled; invalidate their results and let a
++      // restored window read immediately even if an earlier call is still slow.
++      requestId++
++      pending = undefined
++    } else {
++      void refresh()
++    }
++  }
++
++  function dispose() {
++    if (stopped) return
++    stopped = true
++    requestId++
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('languagechange', apply)
++    window.removeEventListener('pagehide', dispose)
++    if (activeSyncs.get(document) === dispose) activeSyncs.delete(document)
++  }
++
++  activeSyncs.set(document, dispose)
++  apply()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('languagechange', apply)
++  window.addEventListener('pagehide', dispose)
++  void refresh()
++  return { refresh, dispose }
++}
 diff --git a/frontend/src/simlab-ui/components.css b/frontend/src/simlab-ui/components.css
 new file mode 100644
 index 0000000..dbd4181
@@ -785,6 +1056,232 @@ index 0000000..dbd4181
 +  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
 +    animation: none !important; transition: none !important; scroll-behavior: auto !important;
 +  }
++}
+diff --git a/frontend/src/simlab-ui/components/ErrorNotice.vue b/frontend/src/simlab-ui/components/ErrorNotice.vue
+new file mode 100644
+index 0000000..41b34bc
+--- /dev/null
++++ b/frontend/src/simlab-ui/components/ErrorNotice.vue
+@@ -0,0 +1,67 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  message: string
++  details?: string
++  detailsLabel?: string
++  closeLabel: string
++  retryLabel?: string
++  busy?: boolean
++}>(), { details: '', detailsLabel: '', retryLabel: '', busy: false })
++
++const emit = defineEmits<{
++  close: []
++  retry: []
++}>()
++</script>
++
++<template>
++  <section class="error-notice" :aria-busy="busy">
++    <p class="error-notice__message" role="status" aria-live="polite" aria-atomic="true">{{ message }}</p>
++    <details v-if="details && detailsLabel" class="error-notice__details">
++      <summary>{{ detailsLabel }}</summary>
++      <pre>{{ details }}</pre>
++    </details>
++    <div class="error-notice__actions">
++      <button v-if="retryLabel" type="button" :disabled="busy" @click="emit('retry')">{{ retryLabel }}</button>
++      <button type="button" @click="emit('close')">{{ closeLabel }}</button>
++    </div>
++  </section>
++</template>
++
++<style scoped>
++.error-notice {
++  padding: 12px;
++  border: 1px solid var(--danger, #b93737);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  font-size: 13px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.error-notice__message { margin: 0; }
++.error-notice__details { margin-top: 8px; }
++.error-notice__details summary { cursor: pointer; }
++.error-notice__details pre {
++  margin: 8px 0 0;
++  max-height: 160px;
++  overflow: auto;
++  white-space: pre-wrap;
++  font-size: 12px;
++}
++.error-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
++.error-notice__actions button {
++  padding: 4px 10px;
++  min-height: 30px;
++  border: 1px solid var(--c-surface1, #b9c1cc);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  cursor: pointer;
++}
++.error-notice__actions button:hover:not(:disabled) { background: var(--hover, #eef1f5); }
++.error-notice__actions button:disabled { cursor: wait; opacity: .6; }
++.error-notice :is(button, summary):focus-visible { outline: 2px solid var(--focus, #245ccc); outline-offset: 2px; }
++</style>
+diff --git a/frontend/src/simlab-ui/components/StatusBadge.vue b/frontend/src/simlab-ui/components/StatusBadge.vue
+new file mode 100644
+index 0000000..add4070
+--- /dev/null
++++ b/frontend/src/simlab-ui/components/StatusBadge.vue
+@@ -0,0 +1,52 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  label: string
++  tone?: 'neutral' | 'success' | 'warning' | 'danger'
++  busy?: boolean
++}>(), { tone: 'neutral', busy: false })
++</script>
++
++<template>
++  <span class="status-badge" :class="`status-badge--${tone}`" role="status" aria-live="polite" aria-atomic="true" :aria-busy="busy">
++    <span class="status-badge__indicator" :class="{ 'status-badge__indicator--busy': busy }" aria-hidden="true" />
++    <span>{{ label }}</span>
++  </span>
++</template>
++
++<style scoped>
++.status-badge {
++  --status-color: var(--muted, #596579);
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  max-width: 100%;
++  color: var(--status-color);
++  font: inherit;
++  font-size: 12px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.status-badge--success { --status-color: var(--success, #26744b); }
++.status-badge--warning { --status-color: var(--warning, #946000); }
++.status-badge--danger { --status-color: var(--danger, #b93737); }
++.status-badge__indicator {
++  width: 7px;
++  height: 7px;
++  flex: none;
++  border-radius: 50%;
++  background: currentColor;
++}
++.status-badge__indicator--busy {
++  width: 10px;
++  height: 10px;
++  box-sizing: border-box;
++  background: transparent;
++  border: 2px solid currentColor;
++  border-right-color: transparent;
++  animation: status-rotate 900ms linear infinite;
++}
++@keyframes status-rotate { to { transform: rotate(360deg); } }
++@media (prefers-reduced-motion: reduce) {
++  .status-badge__indicator--busy { animation: none; }
++}
++</style>
+diff --git a/frontend/src/simlab-ui/contracts/appearance-cases.json b/frontend/src/simlab-ui/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/frontend/src/simlab-ui/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
+diff --git a/frontend/src/simlab-ui/contracts/appearance.ts b/frontend/src/simlab-ui/contracts/appearance.ts
+new file mode 100644
+index 0000000..bea1803
+--- /dev/null
++++ b/frontend/src/simlab-ui/contracts/appearance.ts
+@@ -0,0 +1,50 @@
++export type Theme = 'system' | 'light' | 'dark'
++export type Language = 'auto' | 'zh-CN' | 'en'
++export type ResolvedLocale = Exclude<Language, 'auto'>
++
++export interface AppearanceV1 {
++  schemaVersion: 1
++  theme: Theme
++  language: Language
++}
++
++export interface AppearanceReader {
++  readAppearance(): Promise<AppearanceV1>
++}
++
++export const DEFAULT_APPEARANCE: Readonly<AppearanceV1> = Object.freeze({
++  schemaVersion: 1,
++  theme: 'system',
++  language: 'en',
++})
++
++export class AppearanceContractError extends Error {
++  readonly code: 'invalid_response' | 'unsupported_version'
++
++  constructor(code: 'invalid_response' | 'unsupported_version') {
++    super(code === 'unsupported_version'
++      ? 'Unsupported appearance interface version; repair the complete suite.'
++      : 'The appearance adapter returned an invalid response.')
++    this.name = 'AppearanceContractError'
++    this.code = code
++  }
++}
++
++/** Validate the native response without returning unrelated settings. */
++export function parseAppearance(value: unknown): AppearanceV1 {
++  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++    throw new AppearanceContractError('invalid_response')
++  }
++  const input = value as Record<string, unknown>
++  if (input.schemaVersion !== 1) throw new AppearanceContractError('unsupported_version')
++  return {
++    schemaVersion: 1,
++    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
++    language: input.language === 'auto' || input.language === 'zh-CN' ? input.language : 'en',
++  }
++}
++
++export function resolveLanguage(language: Language, systemLanguage: string): ResolvedLocale {
++  if (language !== 'auto') return language
++  return systemLanguage.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 +}
 diff --git a/frontend/src/simlab-ui/theme.ts b/frontend/src/simlab-ui/theme.ts
 new file mode 100644
@@ -1283,6 +1780,27 @@ index 975ab50..08e19c8 100644
  
 +if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
  createApp(App).mount('#app')
+diff --git a/master-frontend/src/simlab-ui/.source.json b/master-frontend/src/simlab-ui/.source.json
+new file mode 100644
+index 0000000..e9d3045
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/.source.json
+@@ -0,0 +1,15 @@
++{
++  "schemaVersion": 1,
++  "sourceSha256": "7483f5daaeb6c59bb158144059e5a7d02201677c2ed6716217cfc069d5a9e25f",
++  "files": {
++    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
++    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
++    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
++    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
++    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
++    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
++    "theme.ts": "366fa8ca2fbb8d7f550ae81ac43e448b0f720de0e36a2a06d49ee8e027b3b4b1",
++    "tokens.css": "88683597fbabfd1157e883df269e413088d4d89df77a54a25bfc10f56b8490a0"
++  }
++}
 diff --git a/master-frontend/src/simlab-ui/Icon.vue b/master-frontend/src/simlab-ui/Icon.vue
 new file mode 100644
 index 0000000..183ddc1
@@ -1321,6 +1839,137 @@ index 0000000..183ddc1
 +<style scoped>
 +.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
 +</style>
+diff --git a/master-frontend/src/simlab-ui/appearance.ts b/master-frontend/src/simlab-ui/appearance.ts
+new file mode 100644
+index 0000000..c2186fb
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/appearance.ts
+@@ -0,0 +1,125 @@
++import {
++  DEFAULT_APPEARANCE,
++  parseAppearance,
++  resolveLanguage,
++  type AppearanceReader,
++  type AppearanceV1,
++  type ResolvedLocale,
++} from './contracts/appearance'
++
++export interface AppearanceSyncOptions {
++  /** The application must apply this override without saving its local preference. */
++  onLocale(locale: ResolvedLocale): void
++  /** A null value clears the previous synchronization error. */
++  onError(error: Error | null): void
++  /** Standalone readers must use their application's own settings source. */
++  mode?: 'suite' | 'standalone'
++}
++
++export interface AppearanceSync {
++  refresh(): Promise<void>
++  dispose(): void
++}
++
++const activeSyncs = new WeakMap<Document, () => void>()
++
++/** Synchronize only the injected preferences; never access a host bridge or storage. */
++export function startAppearanceSync(
++  reader: AppearanceReader,
++  options: AppearanceSyncOptions,
++): AppearanceSync {
++  activeSyncs.get(document)?.()
++  const root = document.documentElement
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let current: AppearanceV1 = { ...DEFAULT_APPEARANCE }
++  let lastLocale: ResolvedLocale | undefined
++  let lastError: string | undefined
++  let stopped = false
++  let requestId = 0
++  let pending: Promise<void> | undefined
++  let timer: ReturnType<typeof setTimeout> | undefined
++
++  function apply() {
++    if (stopped) return
++    const theme = current.theme === 'system' ? (media.matches ? 'dark' : 'light') : current.theme
++    if (options.mode !== 'standalone') {
++      root.dataset.simlab = 'component'
++      root.dataset.simlabTheme = theme
++    }
++    root.dataset.theme = theme
++    root.style.colorScheme = theme
++    const locale = resolveLanguage(current.language, navigator.languages?.[0] || navigator.language)
++    root.lang = locale
++    if (locale !== lastLocale) {
++      options.onLocale(locale)
++      lastLocale = locale
++    }
++  }
++
++  function report(error: Error | null) {
++    if (stopped) return
++    const signature = error ? `${error.name}: ${error.message}` : undefined
++    if (signature === lastError) return
++    lastError = signature
++    options.onError(error)
++  }
++
++  function refresh(): Promise<void> {
++    clearTimeout(timer)
++    if (stopped || document.hidden) return Promise.resolve()
++    if (pending) return pending
++    const id = ++requestId
++    pending = Promise.resolve().then(async () => {
++      try {
++        if (stopped || id !== requestId || document.hidden) return
++        const value = parseAppearance(await reader.readAppearance())
++        if (stopped || id !== requestId || document.hidden) return
++        current = value
++        apply()
++        report(null)
++      } catch (cause) {
++        if (stopped || id !== requestId || document.hidden) return
++        report(cause instanceof Error ? cause : new Error(String(cause)))
++      } finally {
++        if (!stopped && id === requestId) {
++          pending = undefined
++          if (!document.hidden) timer = setTimeout(() => { void refresh() }, 1500)
++        }
++      }
++    })
++    return pending
++  }
++
++  function visibility() {
++    clearTimeout(timer)
++    if (document.hidden) {
++      // Native calls cannot be cancelled; invalidate their results and let a
++      // restored window read immediately even if an earlier call is still slow.
++      requestId++
++      pending = undefined
++    } else {
++      void refresh()
++    }
++  }
++
++  function dispose() {
++    if (stopped) return
++    stopped = true
++    requestId++
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('languagechange', apply)
++    window.removeEventListener('pagehide', dispose)
++    if (activeSyncs.get(document) === dispose) activeSyncs.delete(document)
++  }
++
++  activeSyncs.set(document, dispose)
++  apply()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('languagechange', apply)
++  window.addEventListener('pagehide', dispose)
++  void refresh()
++  return { refresh, dispose }
++}
 diff --git a/master-frontend/src/simlab-ui/components.css b/master-frontend/src/simlab-ui/components.css
 new file mode 100644
 index 0000000..dbd4181
@@ -1466,6 +2115,232 @@ index 0000000..dbd4181
 +  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
 +    animation: none !important; transition: none !important; scroll-behavior: auto !important;
 +  }
++}
+diff --git a/master-frontend/src/simlab-ui/components/ErrorNotice.vue b/master-frontend/src/simlab-ui/components/ErrorNotice.vue
+new file mode 100644
+index 0000000..41b34bc
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/components/ErrorNotice.vue
+@@ -0,0 +1,67 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  message: string
++  details?: string
++  detailsLabel?: string
++  closeLabel: string
++  retryLabel?: string
++  busy?: boolean
++}>(), { details: '', detailsLabel: '', retryLabel: '', busy: false })
++
++const emit = defineEmits<{
++  close: []
++  retry: []
++}>()
++</script>
++
++<template>
++  <section class="error-notice" :aria-busy="busy">
++    <p class="error-notice__message" role="status" aria-live="polite" aria-atomic="true">{{ message }}</p>
++    <details v-if="details && detailsLabel" class="error-notice__details">
++      <summary>{{ detailsLabel }}</summary>
++      <pre>{{ details }}</pre>
++    </details>
++    <div class="error-notice__actions">
++      <button v-if="retryLabel" type="button" :disabled="busy" @click="emit('retry')">{{ retryLabel }}</button>
++      <button type="button" @click="emit('close')">{{ closeLabel }}</button>
++    </div>
++  </section>
++</template>
++
++<style scoped>
++.error-notice {
++  padding: 12px;
++  border: 1px solid var(--danger, #b93737);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  font-size: 13px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.error-notice__message { margin: 0; }
++.error-notice__details { margin-top: 8px; }
++.error-notice__details summary { cursor: pointer; }
++.error-notice__details pre {
++  margin: 8px 0 0;
++  max-height: 160px;
++  overflow: auto;
++  white-space: pre-wrap;
++  font-size: 12px;
++}
++.error-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
++.error-notice__actions button {
++  padding: 4px 10px;
++  min-height: 30px;
++  border: 1px solid var(--c-surface1, #b9c1cc);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  cursor: pointer;
++}
++.error-notice__actions button:hover:not(:disabled) { background: var(--hover, #eef1f5); }
++.error-notice__actions button:disabled { cursor: wait; opacity: .6; }
++.error-notice :is(button, summary):focus-visible { outline: 2px solid var(--focus, #245ccc); outline-offset: 2px; }
++</style>
+diff --git a/master-frontend/src/simlab-ui/components/StatusBadge.vue b/master-frontend/src/simlab-ui/components/StatusBadge.vue
+new file mode 100644
+index 0000000..add4070
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/components/StatusBadge.vue
+@@ -0,0 +1,52 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  label: string
++  tone?: 'neutral' | 'success' | 'warning' | 'danger'
++  busy?: boolean
++}>(), { tone: 'neutral', busy: false })
++</script>
++
++<template>
++  <span class="status-badge" :class="`status-badge--${tone}`" role="status" aria-live="polite" aria-atomic="true" :aria-busy="busy">
++    <span class="status-badge__indicator" :class="{ 'status-badge__indicator--busy': busy }" aria-hidden="true" />
++    <span>{{ label }}</span>
++  </span>
++</template>
++
++<style scoped>
++.status-badge {
++  --status-color: var(--muted, #596579);
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  max-width: 100%;
++  color: var(--status-color);
++  font: inherit;
++  font-size: 12px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.status-badge--success { --status-color: var(--success, #26744b); }
++.status-badge--warning { --status-color: var(--warning, #946000); }
++.status-badge--danger { --status-color: var(--danger, #b93737); }
++.status-badge__indicator {
++  width: 7px;
++  height: 7px;
++  flex: none;
++  border-radius: 50%;
++  background: currentColor;
++}
++.status-badge__indicator--busy {
++  width: 10px;
++  height: 10px;
++  box-sizing: border-box;
++  background: transparent;
++  border: 2px solid currentColor;
++  border-right-color: transparent;
++  animation: status-rotate 900ms linear infinite;
++}
++@keyframes status-rotate { to { transform: rotate(360deg); } }
++@media (prefers-reduced-motion: reduce) {
++  .status-badge__indicator--busy { animation: none; }
++}
++</style>
+diff --git a/master-frontend/src/simlab-ui/contracts/appearance-cases.json b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
+diff --git a/master-frontend/src/simlab-ui/contracts/appearance.ts b/master-frontend/src/simlab-ui/contracts/appearance.ts
+new file mode 100644
+index 0000000..bea1803
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/contracts/appearance.ts
+@@ -0,0 +1,50 @@
++export type Theme = 'system' | 'light' | 'dark'
++export type Language = 'auto' | 'zh-CN' | 'en'
++export type ResolvedLocale = Exclude<Language, 'auto'>
++
++export interface AppearanceV1 {
++  schemaVersion: 1
++  theme: Theme
++  language: Language
++}
++
++export interface AppearanceReader {
++  readAppearance(): Promise<AppearanceV1>
++}
++
++export const DEFAULT_APPEARANCE: Readonly<AppearanceV1> = Object.freeze({
++  schemaVersion: 1,
++  theme: 'system',
++  language: 'en',
++})
++
++export class AppearanceContractError extends Error {
++  readonly code: 'invalid_response' | 'unsupported_version'
++
++  constructor(code: 'invalid_response' | 'unsupported_version') {
++    super(code === 'unsupported_version'
++      ? 'Unsupported appearance interface version; repair the complete suite.'
++      : 'The appearance adapter returned an invalid response.')
++    this.name = 'AppearanceContractError'
++    this.code = code
++  }
++}
++
++/** Validate the native response without returning unrelated settings. */
++export function parseAppearance(value: unknown): AppearanceV1 {
++  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++    throw new AppearanceContractError('invalid_response')
++  }
++  const input = value as Record<string, unknown>
++  if (input.schemaVersion !== 1) throw new AppearanceContractError('unsupported_version')
++  return {
++    schemaVersion: 1,
++    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
++    language: input.language === 'auto' || input.language === 'zh-CN' ? input.language : 'en',
++  }
++}
++
++export function resolveLanguage(language: Language, systemLanguage: string): ResolvedLocale {
++  if (language !== 'auto') return language
++  return systemLanguage.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 +}
 diff --git a/master-frontend/src/simlab-ui/theme.ts b/master-frontend/src/simlab-ui/theme.ts
 new file mode 100644

@@ -28,6 +28,8 @@ import { backend } from "./bridge";
 import { locale, resolveLocale, roleLabel, t } from "./i18n";
 import { PRODUCT_NAME, PRODUCT_SHORT_NAME, PRODUCT_REPOSITORY, PRODUCT_SUMMARY_EN, PRODUCT_SUMMARY_ZH } from "./product";
 import type { Language, Preferences, RoleState, Snapshot } from "./types";
+import StatusBadge from "../../ui/components/StatusBadge.vue";
+import ErrorNotice from "../../ui/components/ErrorNotice.vue";
 
 const protocols = [
   {
@@ -58,7 +60,7 @@ const busy = ref(new Set<string>());
 const favoriteBusy = ref(new Set<string>());
 const error = ref("");
 const notice = ref("");
-const errorButton = ref<HTMLButtonElement | null>(null);
+const errorPanel = ref<HTMLElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -218,13 +220,13 @@ watch(error, async (value) => {
   if (value) {
     previousFocus = document.activeElement as HTMLElement | null;
     await nextTick();
-    errorButton.value?.focus();
+    errorPanel.value?.querySelector<HTMLButtonElement>("button")?.focus();
   } else if (previousFocus?.isConnected) previousFocus.focus();
 });
 function trapErrorFocus(event: KeyboardEvent) {
   if (event.key === "Tab") {
     event.preventDefault();
-    errorButton.value?.focus();
+    errorPanel.value?.querySelector<HTMLButtonElement>("button")?.focus();
   }
 }
 onBeforeUnmount(() => clearTimeout(noticeTimer));
@@ -332,7 +334,7 @@ onMounted(refresh);
                     :class="{ unavailable: !role.ready }"
                     @click="launch(role)"
                   >
-                    <span class="role-identity"><strong>{{ roleLabel(role.name) }}</strong><span class="role-status" :class="{ 'status-ready': role.ready && !busy.has(role.id) }">{{ roleStatus(role) }}</span></span
+                    <span class="role-identity"><strong>{{ roleLabel(role.name) }}</strong><StatusBadge class="role-status" :label="roleStatus(role)" :tone="role.ready ? 'neutral' : 'danger'" :busy="busy.has(role.id)" /></span
                     ><span class="launch-action"
                       ><span>{{ busy.has(role.id) ? t('role.launching') : role.ready ? t('role.open') : t('role.details') }}</span><LoaderCircle
                         v-if="busy.has(role.id)"
@@ -377,7 +379,7 @@ onMounted(refresh);
         <h1>{{ t("about.title") }}</h1>
         <p class="about-description"><span lang="en">{{ PRODUCT_SUMMARY_EN }}</span><span lang="zh-CN">{{ PRODUCT_SUMMARY_ZH }}</span></p>
         <p class="about-meta">
-          {{ t("about.suite") }} · v{{ snapshot?.version ?? "0.1.0" }} ·
+          {{ t("about.suite") }} · v{{ snapshot?.version ?? "0.1.1" }} ·
           {{ platformName }} / {{ snapshot?.architecture ?? "—" }} ·
           {{
             t("about.protocols", {
@@ -448,6 +450,7 @@ onMounted(refresh);
       @keydown="trapErrorFocus"
     >
       <section
+        ref="errorPanel"
         class="error-dialog"
         role="alertdialog"
         aria-modal="true"
@@ -455,11 +458,8 @@ onMounted(refresh);
       >
         <div class="error-icon"><Info :size="22" aria-hidden="true" /></div>
         <h2 id="error-title">{{ t("error.title") }}</h2>
-        <p>{{ error }}</p>
+        <ErrorNotice :message="error" :close-label="t('error.dismiss')" @close="error = ''" />
         <p class="error-help">{{ t("error.help") }}</p>
-        <button ref="errorButton" @click="error = ''">
-          {{ t("error.dismiss") }}
-        </button>
       </section>
     </div>
   </div>

@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import type { Language } from "./types";
+import { resolveLanguage } from "../../ui/contracts/appearance";
 
 export type Locale = "zh-CN" | "en";
 
@@ -154,6 +155,5 @@ export function roleLabel(name: string): string {
 }
 
 export function resolveLocale(language: Language): Locale {
-  if (language !== "auto") return language;
-  return navigator.language?.toLowerCase().startsWith("zh") ? "zh-CN" : "en";
+  return resolveLanguage(language, navigator.languages?.[0] || navigator.language || "");
 }

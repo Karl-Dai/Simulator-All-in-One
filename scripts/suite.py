@@ -16,7 +16,12 @@ import sys
 import tarfile
 import tempfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sync_ui
+import toolchain
+
 ROOT = Path(__file__).resolve().parents[1]
+BUILD_TOOLS = ("node", "npm", "python", "go", "rust", "wails")
 EXPECTED_IDS = {
     "iec104.master", "iec104.slave", "modbus.master", "modbus.slave",
     "pmu.master", "pmu.sub", "opcua.master", "opcua.server",
@@ -95,7 +100,7 @@ def tree_digest(snapshot):
 
 
 def launcher_source_fingerprint(root):
-    files = [root / name for name in ("main.go", "app.go", "go.mod", "go.sum", "wails.json")]
+    files = [root / name for name in ("main.go", "app.go", "go.mod", "go.sum", "wails.json", "toolchain.lock.json")]
     for directory in (root / "internal", root / "assets", root / "frontend/src", root / "ui", root / "build/darwin"):
         if directory.is_dir():
             files += [path for path in directory.rglob("*") if path.is_file()]
@@ -210,37 +215,140 @@ def bootstrap(workspace, root=ROOT):
         record_state(workspace, repo, root)
 
 
-def wails():
+def wails(root=ROOT):
     binary = shutil.which("wails")
     if not binary:
         binary = str(Path(run(["go", "env", "GOPATH"], capture=True).split(os.pathsep)[0]) / "bin" / ("wails.exe" if os.name == "nt" else "wails"))
-    if not Path(binary).is_file() or run([binary, "version"], capture=True).splitlines()[0] != "v2.14.0":
-        raise SuiteError("Install the pinned CLI: go install github.com/wailsapp/wails/v2/cmd/wails@v2.14.0")
+    version = toolchain.load_lock(root / "toolchain.lock.json")["tools"]["wails"]["version"]
+    if not Path(binary).is_file() or run([binary, "version"], capture=True).splitlines()[0] != "v" + version:
+        raise SuiteError(f"Install the pinned CLI: go install github.com/wailsapp/wails/v2/cmd/wails@v{version}")
     return binary
 
 
 def verify_shared_ui(workspace, root=ROOT):
-    lock = read_lock(root)
-    repos = {r["id"]: workspace / r["directory"] for r in lock["repositories"]}
-    paths = []
-    for component in lock["components"]:
-        for name in ("tokens.css", "components.css", "theme.ts", "Icon.vue"):
-            paths.append((root / "ui" / name, repos[component["repository"]] / component["frontend"] / "src/simlab-ui" / name))
-    for identity, repo in repos.items():
-        name, target = ("preferences.go", "go/internal/suitehost/appearance.go") if identity == "modbus" else ("preferences.rs", "crates/shared/simlab_preferences.rs")
-        paths.append((root / "ui" / name, repo / target))
-    for source, target in paths:
-        if not source.is_file() or not target.is_file() or source.read_bytes() != target.read_bytes():
-            raise SuiteError(f"Stale shared UI asset: {target}; refresh suite patches with scripts/sync_ui.py --write")
+    try:
+        sync_ui.check(workspace, root)
+    except (ValueError, OSError) as error:
+        raise SuiteError(str(error)) from error
+
+
+def build_tool_names(target):
+    return BUILD_TOOLS + (("nsis",) if target == "windows" else ())
+
+
+def native_version_probe(argv, first_line=False):
+    """Capture bounded diagnostic version output, without changing the host."""
+    result = {"command": list(argv)}
+    executable = shutil.which(argv[0])
+    if executable is None:
+        result["error"] = f"{argv[0]} is not installed or not on PATH"
+        return result
+    # Keep proxy entry names such as cargo -> rustup intact for argv[0] dispatch.
+    result["path"] = executable
+    try:
+        process = subprocess.run(
+            [executable, *argv[1:]], shell=False, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            encoding="utf-8", errors="replace", timeout=10, check=False,
+        )
+    except subprocess.TimeoutExpired:
+        result["error"] = f"{argv[0]} timed out after 10 seconds"
+        return result
+    except OSError as error:
+        result["error"] = f"Cannot run {argv[0]}: {error}"
+        return result
+    result["returncode"] = process.returncode
+    # MSVC's compiler version banner is written to stderr, before stdout help.
+    streams = (process.stderr, process.stdout) if argv[0] == "cl" else (process.stdout, process.stderr)
+    lines = [line.strip() for output in streams for line in output.splitlines() if line.strip()]
+    result["value"] = "\n".join(lines[:1] if first_line else lines[:6])[:1500]
+    if process.returncode:
+        result["error"] = f"{argv[0]} exited with status {process.returncode}"
+    elif not lines:
+        result["error"] = f"{argv[0]} returned no version output"
+    return result
+
+
+def inspect_native_environment(target):
+    """Record optional native versions; missing diagnostics do not block builds."""
+    record = {"os": host_platform.system(), "release": host_platform.release(),
+              "machine": host_platform.machine(), "target": target,
+              "cargo": native_version_probe(["cargo", "--version"], first_line=True)}
+    if target == "darwin":
+        record["sdk"] = native_version_probe(["xcrun", "--show-sdk-version"], first_line=True)
+        record["xcode"] = native_version_probe(["xcodebuild", "-version"])
+        record["clang"] = native_version_probe(["clang", "--version"], first_line=True)
+    elif target == "linux":
+        record["gtk"] = native_version_probe(["pkg-config", "--modversion", "gtk+-3.0"], first_line=True)
+        record["webkitgtk"] = native_version_probe(["pkg-config", "--modversion", "webkit2gtk-4.1"], first_line=True)
+    elif target == "windows":
+        record["msvc"] = native_version_probe(["cl", "/?"], first_line=True)
+        for field, variable in (("sdk", "WindowsSDKVersion"), ("ucrt", "UCRTVersion")):
+            version = os.environ.get(variable, "").strip().rstrip("\\/")
+            record[field] = {"source": variable}
+            if version and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", version):
+                record[field]["value"] = version
+            else:
+                record[field]["error"] = f"{variable} is missing or is not a numeric SDK version"
+    return record
+
+
+def inspect_build_toolchain(root, target, arch):
+    path = root / "toolchain.lock.json"
+    try:
+        locked = toolchain.load_lock(path)
+        observed = toolchain.check_tools(locked, names=build_tool_names(target), platform=target)
+        return {"schemaVersion": 1, "lockSha256": toolchain.lock_digest(path),
+                "platform": target, "architecture": arch, "tools": observed,
+                "nativeEnvironment": inspect_native_environment(target)}
+    except toolchain.ToolchainError as error:
+        raise SuiteError(str(error)) from error
+
+
+def validate_build_toolchain(record, root, target, arch):
+    """Validate saved evidence without invoking or requiring installed compilers."""
+    path = root / "toolchain.lock.json"
+    try:
+        locked = toolchain.load_lock(path)
+        expected_digest = toolchain.lock_digest(path)
+    except toolchain.ToolchainError as error:
+        raise SuiteError(str(error)) from error
+    if (not isinstance(record, dict) or record.get("schemaVersion") != 1
+            or record.get("lockSha256") != expected_digest
+            or record.get("platform") != target or record.get("architecture") != arch):
+        raise SuiteError("Missing or stale build toolchain record; rebuild with the locked tools")
+    observed = record.get("tools")
+    if not isinstance(observed, list) or any(not isinstance(item, dict) for item in observed):
+        raise SuiteError("Invalid build toolchain observations")
+    names = [item.get("tool") for item in observed]
+    if (any(not isinstance(name, str) for name in names)
+            or len(names) != len(set(names)) or set(names) != set(build_tool_names(target))
+            or any(name not in locked["tools"] for name in names)):
+        raise SuiteError("Incomplete build toolchain observations")
+    for item in observed:
+        version = locked["tools"][item["tool"]]["version"]
+        actual = item.get("actual")
+        same_version = actual == version or (item["tool"] == "nsis" and isinstance(actual, str) and actual + ".0" == version)
+        if (item.get("expected") != version or not same_version
+                or item.get("matches") is not True or item.get("error")
+                or not isinstance(item.get("path"), str) or not item["path"]):
+            raise SuiteError(f"Invalid build toolchain observation: {item['tool']}")
+    return record
+
+
+def build_toolchain_digest(record):
+    return hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def build(workspace, target, arch, root=ROOT):
     native_target(target, arch)
+    tool_record = inspect_build_toolchain(root, target, arch)
+    tool_digest = build_toolchain_digest(tool_record)
     verify_shared_ui(workspace, root)
     lock = read_lock(root)
     for tool in ("git", "npm", "go", "cargo", "rustc"):
         require(tool)
-    wails_binary = wails()
+    wails_binary = wails(root)
     env = os.environ.copy()
     env["VITE_SIMLAB_SUITE"] = "1"
     if target == "darwin":
@@ -284,6 +392,7 @@ def build(workspace, target, arch, root=ROOT):
                 "commit": repo["commit"], "patchSha256": digest(root / repo["patch"]),
                 "platform": target, "architecture": arch, "sha256": digest(source_exe), "suiteBuild": True,
                 "payloadTreeSha256": source_payload_digest(source, component, target, arch),
+                "toolchainSha256": tool_digest,
             })
         # Record only changes made by the explicit tool invocations above;
         # subsequent unrecorded source edits cause the next build to fail.
@@ -295,7 +404,8 @@ def build(workspace, target, arch, root=ROOT):
     if target == "windows":
         args += ["-webview2", "error"]
     run(args, cwd=root, env=env)
-    write_json(workspace / ".state/launcher.build.json", launcher_receipt(root, lock, target, arch))
+    write_json(workspace / ".state/launcher.build.json", launcher_receipt(root, lock, target, arch, tool_record))
+    write_json(workspace / ".state/toolchain.build.json", tool_record)
 
 
 def app_entry(app):
@@ -422,7 +532,7 @@ def copy_launcher(root, target, destination):
     return destination / name
 
 
-def launcher_receipt(root, lock, target, arch):
+def launcher_receipt(root, lock, target, arch, tool_record):
     config = json.loads((root / "wails.json").read_text(encoding="utf-8"))
     if config["info"]["productVersion"] != lock["suiteVersion"]:
         raise SuiteError("Launcher source version does not match the suite lock")
@@ -437,7 +547,8 @@ def launcher_receipt(root, lock, target, arch):
     entry = root / "build/bin/Simulator All-in-One.app/Contents/MacOS/SAIO" if target == "darwin" else root / "build/bin" / ("SAIO.exe" if target == "windows" else "SAIO")
     return {"suiteVersion": lock["suiteVersion"], "platform": target, "architecture": arch,
             "sourceFingerprint": launcher_source_fingerprint(root), "sha256": digest(entry),
-            "payloadTreeSha256": tree_digest(snapshot)}
+            "payloadTreeSha256": tree_digest(snapshot),
+            "toolchainSha256": build_toolchain_digest(tool_record)}
 
 
 def assert_architecture(executable, target, arch):
@@ -466,9 +577,14 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
     repos = {item["id"]: item for item in lock["repositories"]}
     for repo in repos.values():
         assert_source(workspace, repo, root, allow_adopt=adopt)
+    tool_record = None
     if not (adopt and target == "darwin"):
+        tool_stamp = workspace / ".state/toolchain.build.json"
+        if not tool_stamp.is_file():
+            raise SuiteError("Missing build toolchain record; run a complete native build")
+        tool_record = validate_build_toolchain(json.loads(tool_stamp.read_text(encoding="utf-8")), root, target, arch)
         stamp = workspace / ".state/launcher.build.json"
-        if not stamp.is_file() or json.loads(stamp.read_text(encoding="utf-8")) != launcher_receipt(root, lock, target, arch):
+        if not stamp.is_file() or json.loads(stamp.read_text(encoding="utf-8")) != launcher_receipt(root, lock, target, arch, tool_record):
             raise SuiteError("Missing or stale launcher source/version/payload receipt")
     output = root / "dist/staging" / f"{target}-{arch}"
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -504,7 +620,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             assert_architecture(original, target, arch)
             receipt = workspace / ".state" / (component["id"] + ".build.json")
             if not (adopt and target == "darwin"):
-                expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "payloadTreeSha256": source_payload_digest(source, component, target, arch)}
+                expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "payloadTreeSha256": source_payload_digest(source, component, target, arch), "toolchainSha256": build_toolchain_digest(tool_record)}
                 if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != expected:
                     raise SuiteError(f"Missing or stale suite-build receipt: {component['id']}")
             if target == "darwin":
@@ -525,6 +641,8 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
         assert_tree_links(suite_root)
         manifest = suite_root / ("Resources/suite-manifest.json" if target == "darwin" else "suite-manifest.json")
         manifest_value = {"schemaVersion": 1, "suiteVersion": lock["suiteVersion"], "platform": target, "architecture": arch, "components": entries}
+        if tool_record is not None:
+            manifest_value["buildToolchain"] = tool_record
         if launcher_files is not None:
             manifest_value["launcherFiles"] = launcher_files
         write_json(manifest, manifest_value)
@@ -532,7 +650,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             # Child hashes are final; only sign the outer app now.
             run(["codesign", "--force", "--sign", identity, app])
             run(["codesign", "--verify", "--deep", "--strict", app])
-        verify_manifest(suite_root, lock)
+        verify_manifest(suite_root, lock, root=root)
         previous = output.with_name(".previous-" + temporary.name)
         if output.exists():
             output.rename(previous)
@@ -548,7 +666,7 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
     return output
 
 
-def verify_manifest(suite_root, lock=None):
+def verify_manifest(suite_root, lock=None, root=ROOT):
     manifest_path = suite_root / ("Resources/suite-manifest.json" if suite_root.name == "Contents" else "suite-manifest.json")
     value = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = value.get("components", [])
@@ -560,6 +678,8 @@ def verify_manifest(suite_root, lock=None):
         raise SuiteError("Unsupported manifest target")
     if lock and value.get("suiteVersion") != lock["suiteVersion"]:
         raise SuiteError("Suite version mismatch")
+    if "buildToolchain" in value:
+        validate_build_toolchain(value["buildToolchain"], root, value["platform"], value["architecture"])
     for relative, expected_file in value.get("launcherFiles", {}).items():
         file = safe_path(suite_root, relative)
         if not file.is_file() or digest(file) != expected_file["sha256"]:
@@ -593,7 +713,9 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
     lock = read_lock(root)
     stage = root / "dist/staging" / f"{target}-{arch}"
     suite_root = suite_root_for(root, target, arch)
-    verify_manifest(suite_root, lock)
+    manifest = verify_manifest(suite_root, lock, root=root)
+    if manifest["platform"] != target or manifest["architecture"] != arch:
+        raise SuiteError("Package target does not match the staged manifest")
     output = root / "dist/packages"
     output.mkdir(parents=True, exist_ok=True)
     name = f"SAIO_{lock['suiteVersion']}_{target}-{arch}"
@@ -612,6 +734,10 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
             run(["hdiutil", "create", "-ov", "-format", "UDZO", "-volname", "SAIO", "-srcfolder", image_root, destination])
         run(["hdiutil", "verify", destination])
     elif target == "windows":
+        try:
+            toolchain.check_tools(toolchain.load_lock(root / "toolchain.lock.json"), names=("nsis",), platform=target)
+        except toolchain.ToolchainError as error:
+            raise SuiteError(str(error)) from error
         makensis = require("makensis")
         if webview2 is None and webview2_sha256 is None:
             runtime_lock = json.loads((root / "packaging/windows/webview2.lock.json").read_text(encoding="utf-8"))

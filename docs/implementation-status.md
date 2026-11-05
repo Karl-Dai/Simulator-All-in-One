@@ -92,3 +92,52 @@ Linux 离线复验使用同一个 `bca65d6` 原包，SHA256 为 `b21d26a101639f0
 - 12 项前端测试、前端生产构建、Go 套件测试与 macOS ARM 入口构建通过。真实 Chromium 使用明确的 Wails fixture，在 2048×972、1440×900、960×680、900×680、899×680、760×560、680×560、375×812 检查布局及控件可达性，并验证双语、深浅主题、收藏、启动反馈、键盘与减少动态效果，共 101 项断言通过。
 - 真实 macOS 入口使用独立 `SIMLAB_DATA_DIR` 和现有套件 payload 启动，显示 8/8 就绪；验证默认窗口、窗口放大、收藏筛选和取消收藏后的空状态，从首页实际打开内置 ModbusMaster 并确认其界面渲染。本轮未重做协议互联测试。
 - 原始浏览器脚本、截图和测试数据位于 `.validation/responsive-20261030/`。本节覆盖入口源码与本地验收；未替换 `/Applications/SimLab.app`，未生成完整安装包。
+
+## 2026-11-04 共享基础试点（本地实现，验收未全部完成）
+
+代码基于 `56e433e` 的工作区改动，计划见[共享基础方案](brainstorm/2026-11-04-shared-foundation-design.md)。
+本次实现 P0/P1；P2 推广及 P3 的独立子项目尚未实施。
+
+- 工具链版本集中到 `toolchain.lock.json`；本地与手动 CI 读取同一配置。
+- 构建记录包含实际工具、原生环境与摘要，收集与打包会拒绝不匹配的工具链记录。
+- 公共外观接口、状态标签和错误提示接入入口、ModbusMaster、IEC104Master。
+- 套件语言采用临时覆盖；独立版配置继续由原设置流程保存。其余六端保留旧主题入口。
+- Wails 两种构建模式生成稳定的外观绑定，独立版原生方法拒绝读取套件配置。
+- 公共文件递归同步并记录摘要；原始源码、补丁、资源完整性和应用签名检查继续生效。
+
+OpenCode 编码验证：在 Rex 的 `OpenCode-Free-Coding` 标签中，使用 `opencode/deepseek-v4.1-flash-free` 编写工具链检查器。
+该任务完成了 33 项测试，并经过主代理与独立审查。
+审查发现的 Rustup 符号链接分派问题已修复，随后在真实 Rustup 环境复验通过。
+本次使用的是用户选择的 OpenCode 免费模型；未测试 CarlDai 服务的其他模型。
+
+| 验证层次 | 结果与边界 |
+| --- | --- |
+| Python | 最终 62 项测试通过，包含工具链、公共资源同步和打包记录校验 |
+| 入口前端 | 45 项测试、类型检查和生产构建通过 |
+| 试点前端 | Modbus 公共前端 115 项、IEC104Master 126 项通过；随后新增的会话回归分别通过 |
+| 旧端回归 | IEC104Slave 语言/更新 17 项通过；两个旧从站套件前端构建通过 |
+| 原生接口 | Go 外观测试及竞态检查通过；Rust 共享文件样例测试通过 |
+| 协议回归 | Modbus `internal/appstate` 的真实 TCP 相关测试及竞态检查通过 |
+| 独立版兼容 | 真正的 Wails Master 独立版与套件原生构建通过；两个角色的两种绑定模式测试通过 |
+| 完整套件 | 干净副本应用补丁后，macOS ARM 八个子程序及入口构建、资源清单和嵌套签名检查通过 |
+| 原生启动 | 生产 `Service.Snapshot/Launch` 路径验证 8/8 可启动，两个主站进程启动后继续存活 |
+| 窗口操作 | 原生控制工具两次返回 `Sky Computer Use native pipe startup failed`，本轮未完成真实点击、主题/语言切换及窗口内协议联调验收 |
+| 其余目标 | Windows、Linux、macOS Intel 尚未执行本轮原生构建与验收，工具链继续标为候选 |
+
+本地产物：`dist/packages/SAIO_0.1.0_darwin-arm64.dmg` 和同名 ZIP，附 SHA256 文件。
+DMG 镜像校验通过；产物仍采用 ad-hoc 签名。
+测试数据使用独立的 `.validation/runtime-data/`，未迁移用户原有工程或配置。
+
+证据位于 `.validation/`：`native-build-p1-final.log`、`collect-p1-final.log`、`package-p1.log`、`native-pilot-launch.json`、`python-tests-final.log`、`frontend-tests-final.log`、`rust-appearance-tests.log`、`modbus-protocol-tests.log`、`opencode-free-model.log`。
+当前改动和产物尚未提交、推送或发布。完整阶段验收仍需补齐窗口操作与其余三个原生目标。
+
+## 2026-11-05 首次公开发布准备
+
+用户授权将共享基础工作区改动纳入本次发布，并将仓库设为 public。
+套件版本升至 0.1.1，组件版本及上游提交保持锁定。
+新增手动 `release.yml`：版本 tag 校验、源码检查、四目标原生构建和现有平台验收依次执行，全部成功后校验六份安装归档及其 SHA256，生成双语说明并公开 Release。
+推送和 tag 本身仍不触发 CI。
+
+本地验证：66 项 Python 测试（包含缺包、损坏校验和版本不匹配的发布阻断检查）、45 项入口前端测试、生产构建、Go 套件与外观竞态检查、脚本语法及 actionlint 通过。
+Playwright 无头 Chromium 使用明确的 Wails fixture，在四个视口检查八个入口、横向溢出和启动交互；截图及脚本位于忽略跟踪的 `.validation/release-browser*`。
+这些浏览器检查不代表原生窗口或协议验收。四目标原生构建结果以本次 GitHub Actions 为准；此前记录的完整窗口操作、协议联调、最低系统版本和正式签名等未验收项继续保留。

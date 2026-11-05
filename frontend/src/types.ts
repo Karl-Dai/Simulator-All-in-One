@@ -1,7 +1,8 @@
-export type Language = "auto" | "zh-CN" | "en";
+import type { Language, Theme } from "../../ui/contracts/appearance";
+export type { Language } from "../../ui/contracts/appearance";
 export interface Preferences {
   schemaVersion: number;
-  theme: "system" | "light" | "dark";
+  theme: Theme;
   language: Language;
   favorites: string[];
   recent: Record<string, string>;

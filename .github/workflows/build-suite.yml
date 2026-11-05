@@ -1,5 +1,6 @@
 name: Build and validate complete suites
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       target:
@@ -50,16 +51,22 @@ jobs:
       WEBVIEW2_SHA256: ${{ matrix.platform == 'windows' && vars[matrix.webview_sha_var] || '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Read locked tool versions
+        id: toolchain
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/toolchain.py ci --output "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ steps.toolchain.outputs.python }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ steps.toolchain.outputs.node }}
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.27'
+          go-version: ${{ steps.toolchain.outputs.go }}
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ steps.toolchain.outputs.rust }}
       - uses: ilammy/msvc-dev-cmd@v1
         if: matrix.platform == 'windows'
         with:
@@ -80,7 +87,7 @@ jobs:
           }
           if (!$env:WEBVIEW2_URL -or $env:WEBVIEW2_SHA256 -notmatch '^[0-9a-f]{64}$') { throw 'WebView2 URL and SHA256 overrides must be provided together.' }
           "WEBVIEW2_SHA256=$env:WEBVIEW2_SHA256" | Out-File -FilePath $env:GITHUB_ENV -Append
-          choco install nsis --no-progress -y
+          choco install nsis --version=${{ steps.toolchain.outputs.nsis }} --allow-downgrade --no-progress -y
           'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
           $tokens = $null; $parseErrors = $null
           $null = [System.Management.Automation.Language.Parser]::ParseFile("$pwd/packaging/windows/check-payload.ps1", [ref]$tokens, [ref]$parseErrors)
@@ -89,7 +96,11 @@ jobs:
           $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
           if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'WebView2 runtime is not signed by Microsoft' }
       - name: Install pinned Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.14.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v${{ steps.toolchain.outputs.wails }}
+      - name: Install locked npm
+        run: npm install --global "npm@${{ steps.toolchain.outputs.npm }}"
+      - name: Check and record build tools
+        run: python scripts/toolchain.py record --output dist/toolchain-environment.json
       - name: Packaging tests
         run: python -m unittest discover -s scripts/tests -v
       - name: Clone exact commits and strictly apply suite patches
@@ -97,7 +108,7 @@ jobs:
       - name: Cache native Rust build outputs, including failed packaging runs
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('components.lock.json', 'patches/*.patch', 'packaging/locks/*.lock') }}
+          key: ${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('toolchain.lock.json', 'components.lock.json', 'patches/*.patch', 'packaging/locks/*.lock') }}
           workspaces: |
             .components/IEC60870-5-104-Simulator -> target
             .components/PmuSim -> target
@@ -141,6 +152,7 @@ jobs:
           name: SAIO-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
             dist/packages/*
+            dist/toolchain-environment.json
             dist/staging/**/suite-manifest.json
             dist/staging/**/closure.json
           if-no-files-found: error

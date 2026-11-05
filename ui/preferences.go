@@ -7,10 +7,64 @@ import (
 	"path/filepath"
 )
 
-// Appearance exposes only a read-only theme to the suite webview.
-type Appearance struct{}
+// Appearance exposes read-only display preferences to the suite webview.
+type Appearance struct{ suiteMode bool }
 
-func (*Appearance) Theme() (string, error) {
+// Both build modes expose stable bindings, but only a suite build may read its settings.
+func NewAppearance(suiteMode bool) *Appearance { return &Appearance{suiteMode: suiteMode} }
+
+// AppearanceV1 deliberately excludes private launcher and protocol state.
+type AppearanceV1 struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	Theme         string `json:"theme"`
+	Language      string `json:"language"`
+}
+
+func (a *Appearance) ReadAppearance() (AppearanceV1, error) {
+	result := AppearanceV1{SchemaVersion: 1, Theme: "system", Language: "en"}
+	if !a.suiteMode {
+		return result, fmt.Errorf("appearance is managed by the standalone application")
+	}
+	root := os.Getenv("SIMLAB_DATA_DIR")
+	if !filepath.IsAbs(root) {
+		return result, fmt.Errorf("SIMLAB_DATA_DIR must be absolute")
+	}
+	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
+	if os.IsNotExist(err) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return result, err
+	}
+	if fields == nil {
+		return result, fmt.Errorf("launcher preferences must be an object")
+	}
+	if raw, exists := fields["schemaVersion"]; exists {
+		var version int
+		if err := json.Unmarshal(raw, &version); err != nil || version != 1 {
+			return result, fmt.Errorf("unsupported launcher preferences version")
+		}
+	}
+	var theme, language string
+	_ = json.Unmarshal(fields["theme"], &theme)
+	_ = json.Unmarshal(fields["language"], &language)
+	if theme == "light" || theme == "dark" {
+		result.Theme = theme
+	}
+	if language == "auto" || language == "zh-CN" {
+		result.Language = language
+	}
+	return result, nil
+}
+
+func (a *Appearance) Theme() (string, error) {
+	if !a.suiteMode {
+		return "", fmt.Errorf("appearance is managed by the standalone application")
+	}
 	root := os.Getenv("SIMLAB_DATA_DIR")
 	if !filepath.IsAbs(root) {
 		return "", fmt.Errorf("SIMLAB_DATA_DIR must be absolute")

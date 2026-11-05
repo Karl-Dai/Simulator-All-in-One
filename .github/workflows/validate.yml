@@ -1,6 +1,7 @@
 name: Validate source and packaging
 # All repository workflows are manual-only; pushes and PRs must not start CI.
 on:
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,9 +10,13 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Read locked tool versions
+        id: toolchain
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/toolchain.py ci --output "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ steps.toolchain.outputs.python }}
       - name: Packaging tests and syntax
         run: |
           python -m py_compile scripts/*.py packaging/linux/runtime.py
@@ -19,9 +24,13 @@ jobs:
           sh -n packaging/linux/run-simlab.sh packaging/linux/self-extract.sh
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ steps.toolchain.outputs.node }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Install and check locked frontend tools
+        run: |
+          npm install --global "npm@${{ steps.toolchain.outputs.npm }}"
+          python scripts/toolchain.py --tools node,npm,python check
       - name: Launcher UI checks
         working-directory: frontend
         run: |
@@ -32,15 +41,23 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - name: Read locked tool versions
+        id: toolchain
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} scripts/toolchain.py ci --output "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ steps.toolchain.outputs.python }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ steps.toolchain.outputs.node }}
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.27'
+          go-version: ${{ steps.toolchain.outputs.go }}
+      - name: Install and check locked Modbus tools
+        run: |
+          npm install --global "npm@${{ steps.toolchain.outputs.npm }}"
+          python scripts/toolchain.py --tools node,npm,python,go check
       - name: Prepare the locked Modbus source and suite patch
         run: |
           python - <<'PY'

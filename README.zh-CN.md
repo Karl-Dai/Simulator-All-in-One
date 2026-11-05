@@ -15,11 +15,11 @@
 | PMU V2 / V3 | PmuSim、PmuSub | 0.13.2 |
 | OPC UA | OPCUAMaster、OPCUAServer | 0.8.0 |
 
-当前套件版本为 **0.1.0**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
+当前套件版本为 **0.1.1**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
 
 ## 安装与使用
 
-macOS 要求 **13.0+**。打开新构建的 `SAIO_0.1.0_darwin-arm64.dmg`，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。改名后的完整三平台安装包尚未重建。上一轮 2026-10-30 的双语入口完整重建基于 `b5371b8`，该轮四个原生目标的安装包和两个 macOS ZIP 汇总在本机 `dist/ci-packages/b5371b8/`；`SHA256SUMS`、`.sha256.json` 和 `provenance.json` 提供校验值、来源提交、CI 与验收记录。旧包保留在 `dist/ci-packages/`。GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
+macOS 要求 **13.0+**。打开新构建的 `SAIO_0.1.1_darwin-arm64.dmg`，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。改名后的完整三平台安装包尚未重建。上一轮 2026-10-30 的双语入口完整重建基于 `b5371b8`，该轮四个原生目标的安装包和两个 macOS ZIP 汇总在本机 `dist/ci-packages/b5371b8/`；`SHA256SUMS`、`.sha256.json` 和 `provenance.json` 提供校验值、来源提交、CI 与验收记录。旧包保留在 `dist/ci-packages/`。GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
 
 Windows 使用一个 NSIS 安装包，内置八个免安装 payload，并携带一份对应架构的 WebView2 离线 Standalone Installer。安装器检测已有 WebView2，仅在缺少时安装；不会逐一启动八个子安装器。套件运行中禁止替换，完整新目录先准备并校验，再切换，切换失败保留或恢复旧目录。非空目标目录必须有 SimLab 所有权标记及可识别文件清单，未知文件会阻止覆盖；声明内程序缺失或损坏可以重装修复。该流程已在原生 Windows CI 通过安装、修复、目录保护、活动实例检查、入口与八角色启动和卸载；runner 可能预装 WebView2，尚未验证无 WebView2 的干净 Windows 断网首次安装。
 
@@ -33,6 +33,20 @@ Linux 目标基线为 **Ubuntu 22.04 x64**，产物为一个 `.run` 自解压包
 
 ## 源码锁与可重复构建
 
+构建工具版本集中在 [工具链配置](toolchain.lock.json)。先使用配置指定的 Python 解释器检查本机环境：
+
+```sh
+python scripts/toolchain.py check
+```
+
+检查器会说明缺少或不匹配的工具，不修改本机安装。CI 读取同一份版本配置，继续保持手动触发。
+构建记录与套件清单保存实际工具版本、原生环境和配置摘要。工具链改变后需要重新进行原生构建。
+当前统一版本仍是候选配置，四个原生目标全部重新验收后才能标为已验证。
+
+公共外观接口与 Vue 组件维护在 `ui/`。首批接入的是 ModbusMaster 和 IEC104Master，其余角色继续使用旧主题入口。
+套件语言只覆盖当前会话，不写回独立版原有语言偏好。
+`scripts/sync_ui.py` 负责导出和检查公共文件；修改公共源后，重新生成已审阅的套件补丁。
+
 `components.lock.json` 锁定四个上游提交、组件版本、角色、构建位置及补丁：
 
 | 上游 | 锁定提交 |
@@ -44,7 +58,8 @@ Linux 目标基线为 **Ubuntu 22.04 x64**，产物为一个 `.run` 自解压包
 
 三个 Rust workspace 的依赖锁快照位于 `packaging/locks/`，校验值写入组件锁；构建使用 `--locked`。前端使用各仓库的 npm lockfile 和 `npm ci`。Wails CLI 固定为 **v2.14.0**。构建步骤可重复执行，未承诺不同编译器或系统镜像之间的产物字节完全相同。
 
-需要 Python 3.10+、Git、Node.js 22、Go 1.27+、Rust/Cargo，以及对应平台的原生构建工具。macOS 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 工具、Git Bash、NSIS 和已校验的 WebView2 离线安装器；Linux 需要 GTK3 / WebKitGTK 4.1 开发包和运行时资源。
+构建时使用 `toolchain.lock.json` 中的精确工具版本；引导脚本本身要求 Python 3.10+。
+另外需要 Git 和对应平台的原生工具。macOS 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 工具、Git Bash、NSIS 和已校验的 WebView2 离线安装器；Linux 需要 GTK3 / WebKitGTK 4.1 开发包和运行时资源。
 
 在全新检出中执行：
 
@@ -135,3 +150,7 @@ Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护
 用户数据目录 `SimLab`、`SIMLAB_*` 环境变量、`cloud.carldai.simlab*` 应用标识、`simlab-suite` 构建特性、Windows 的安装目录/卸载注册表键及 `.simlab-owned` 标记保持兼容；现有工程、证书、收藏和语言选择会继续使用。Windows 校验器兼容旧 `SimLab.exe` 与新 `SAIO.exe`，新安装器会替换旧快捷方式。
 
 历史构建和验收记录继续使用当时的名称与文件名，旧的 `SimLab_*` 安装包不包含此次改名。
+
+## 更新记录
+
+见 [CHANGELOG.md](CHANGELOG.md) 和 [GitHub Releases](https://github.com/Karl-Dai/Simulator-All-in-One/releases)。推送版本 tag 后，手动在该 tag 上运行 `release.yml`，通过源码检查与四目标构建后自动发布。

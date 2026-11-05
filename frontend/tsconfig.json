@@ -4,6 +4,9 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Node",
+    "paths": {
+      "vue": ["./node_modules/vue"]
+    },
     "strict": true,
     "jsx": "preserve",
     "sourceMap": true,

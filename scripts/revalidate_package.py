@@ -13,6 +13,10 @@ import suite
 
 
 def allowed_change(path):
+    # Compiler versions and their verifier affect binary provenance, even if
+    # the source code of the applications did not change.
+    if path in {"toolchain.lock.json", "scripts/toolchain.py"}:
+        return False
     return path in {
         "README.md", "scripts/smoke.py", "scripts/revalidate_package.py",
         "scripts/test-windows-installer.ps1", "scripts/test-windows-checker.ps1",
@@ -133,6 +137,9 @@ def main():
         shutil.copy2(package, output / package.name)
         shutil.copy2(receipt, output / receipt.name)
     manifest = suite.verify_manifest(stage, lock)
+    original_toolchain = manifest.get("buildToolchain")
+    if original_toolchain is not None:
+        suite.validate_build_toolchain(original_toolchain, suite.ROOT, args.platform, "amd64")
     entries = [stage / ("SAIO.exe" if args.platform == "windows" else "SAIO")]
     entries += [stage / item["executable"] for item in manifest["components"]]
     for entry in entries:
@@ -144,6 +151,9 @@ def main():
         "validationHead": suite.run(["git", "rev-parse", "HEAD"], capture=True),
         "platform": args.platform, "roles": 8,
         "originalInstallerSha256": suite.digest(package),
+        # Preserve the original build evidence. Old packages without a record
+        # remain explicitly unrecorded; validation never invents one.
+        "buildToolchain": original_toolchain,
     })
     print(f"Verified original native payloads: 8/8 for {args.platform}/amd64", flush=True)
 

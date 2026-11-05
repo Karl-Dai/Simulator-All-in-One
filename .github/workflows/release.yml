@@ -1,0 +1,48 @@
+name: Release complete suite
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the matching version tag
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          version = json.load(open('components.lock.json'))['suiteVersion']
+          assert os.environ['RELEASE_REF'] == 'refs/tags/v' + version, 'Run this workflow on the matching version tag'
+          assert json.load(open('wails.json'))['info']['productVersion'] == version
+          assert json.load(open('frontend/package.json'))['version'] == version
+          assert f'## [{version}] - ' in open('CHANGELOG.md').read()
+          PY
+  validate:
+    needs: check
+    uses: ./.github/workflows/validate.yml
+  build:
+    needs: [check, validate]
+    uses: ./.github/workflows/build-suite.yml
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: SAIO-*
+          path: artifacts
+      - name: Verify packages and render release notes
+        run: python3 scripts/prepare_release.py "$GITHUB_REF_NAME" artifacts release-assets
+      - name: Publish complete verified suite
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Simulator All-in-One $GITHUB_REF_NAME" --notes-file release-assets/RELEASE_BODY.md release-assets/SAIO_* release-assets/SHA256SUMS

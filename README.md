@@ -22,18 +22,18 @@ Repository: [Karl-Dai/Simulator-All-in-One](https://github.com/Karl-Dai/Simulato
 - English by default on new installations, with Simplified Chinese and system-language options. Existing language choices are preserved.
 - Separate suite data directories for each role, including OPC UA PKI and configuration.
 - Manifest, SHA256, architecture and complete resource-tree checks before packaging.
-- Suite-owned updates: bundled simulators do not independently update themselves. Automatic replacement of the complete suite is not implemented in version 0.1.0.
+- Suite-owned updates: bundled simulators do not independently update themselves. Automatic replacement of the complete suite is not implemented in version 0.1.1.
 
 ## Installation and current status
 
-The suite version remains **0.1.0**. New builds use these names:
+The suite version remains **0.1.1**. New builds use these names:
 
 | Target | Installer | Launcher |
 | --- | --- | --- |
-| macOS Apple Silicon, 13.0+ | `SAIO_0.1.0_darwin-arm64.dmg` | `Simulator All-in-One.app` |
-| macOS Intel, 13.0+ | `SAIO_0.1.0_darwin-amd64.dmg` | `Simulator All-in-One.app` |
-| Windows x64 | `SAIO_0.1.0_windows-amd64-setup.exe` | `SAIO.exe` |
-| Ubuntu 22.04 x64 baseline | `SAIO_0.1.0_linux-amd64.run` | `SAIO` |
+| macOS Apple Silicon, 13.0+ | `SAIO_0.1.1_darwin-arm64.dmg` | `Simulator All-in-One.app` |
+| macOS Intel, 13.0+ | `SAIO_0.1.1_darwin-amd64.dmg` | `Simulator All-in-One.app` |
+| Windows x64 | `SAIO_0.1.1_windows-amd64-setup.exe` | `SAIO.exe` |
+| Ubuntu 22.04 x64 baseline | `SAIO_0.1.1_linux-amd64.run` | `SAIO` |
 
 The complete four-target installers have **not been rebuilt with this rename**. The previous complete build, commit `b5371b8`, is available locally in `dist/ci-packages/b5371b8/` with its original `SimLab_*` filenames, checksums and provenance. Those packages do not contain the new name. No tag or GitHub Release has been created.
 
@@ -55,7 +55,17 @@ Historical records and existing artifacts retain their original names. Original 
 
 ## Build from source
 
-Use Python 3.10+, Node.js 22, Go 1.27+, Rust/Cargo and native platform tools. macOS requires Xcode Command Line Tools; Windows requires Visual Studio C++ tools, Git Bash and NSIS; Linux requires GTK3/WebKitGTK 4.1 development packages. The Wails CLI is pinned to **v2.14.0**.
+Build tools are pinned in [`toolchain.lock.json`](toolchain.lock.json). Use the selected Python interpreter to check your environment before building:
+
+```sh
+python scripts/toolchain.py check
+```
+
+The checker reports missing or mismatched tools without changing your installation. CI reads the same version file and remains manual-only. Build receipts and the suite manifest retain the observed tool versions, native environment details and configuration digest; a changed toolchain requires a new native build. The selected versions are a unified candidate until all four native targets have been revalidated.
+
+Shared appearance contracts and Vue components live in `ui/`. ModbusMaster and IEC104Master are the initial integration targets; the remaining roles retain the legacy theme entry point. Suite language changes apply to the current session without overwriting standalone language preferences. Shared files are exported and checked by `scripts/sync_ui.py`; edit the source in `ui/` and regenerate the reviewed suite patches rather than editing generated copies.
+
+Use the exact build-tool versions in `toolchain.lock.json`; the bootstrap scripts themselves require Python 3.10+. macOS requires Xcode Command Line Tools; Windows requires Visual Studio C++ tools, Git Bash and NSIS; Linux requires GTK3/WebKitGTK 4.1 development packages. The Wails CLI remains pinned to **v2.14.0**.
 
 ```sh
 git clone https://github.com/Karl-Dai/Simulator-All-in-One.git
@@ -112,8 +122,12 @@ npm test
 npm run build
 ```
 
-All three workflows are manual-only (`workflow_dispatch`). Pushes, pull requests, tags and schedules do not start CI. Run a workflow explicitly from GitHub Actions when needed.
+All workflows are started manually (`workflow_dispatch`); validation and native builds can also be called by the release workflow. Pushes, pull requests, tags and schedules do not start CI. After pushing an annotated version tag, run `release.yml` on that tag to validate, build all four targets and publish their packages.
 
 `validate.yml` checks the launcher and packaging. `build-suite.yml` builds macOS ARM/Intel, Windows x64 and Ubuntu 22.04 x64, verifies complete bundles, uploads artifacts and runs available native startup/installer checks. `validate-package.yml` only reuses trusted compatible packages; changes to compiled inputs require a full rebuild. An uploaded artifact or surviving process alone does not prove complete GUI or protocol acceptance.
 
 See [implementation and acceptance evidence](docs/implementation-status.md) and the [Chinese build and packaging guide](README.zh-CN.md) for detailed platform constraints, pinned offline WebView2 distribution and runtime closure handling.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) and [GitHub Releases](https://github.com/Karl-Dai/Simulator-All-in-One/releases).

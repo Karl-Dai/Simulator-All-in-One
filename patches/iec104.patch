@@ -36,7 +36,7 @@ index 31c806f..fac3c50 100644
      let Some(content) = store
          .get(WORKSPACE_STORE_KEY)
 diff --git a/crates/iec104master-app/src/lib.rs b/crates/iec104master-app/src/lib.rs
-index ff2ff1c..d2f9475 100644
+index ff2ff1c..1c225d6 100644
 --- a/crates/iec104master-app/src/lib.rs
 +++ b/crates/iec104master-app/src/lib.rs
 @@ -1,6 +1,11 @@
@@ -64,15 +64,16 @@ index ff2ff1c..d2f9475 100644
          .plugin(tauri_plugin_process::init())
          .plugin(tauri_plugin_store::Builder::new().build())
          .plugin(tauri_plugin_dialog::init())
-@@ -19,6 +26,7 @@ pub fn run() {
+@@ -19,6 +26,8 @@ pub fn run() {
          .manage(AppState::new())
          .manage(update::UpdateState::default())
          .invoke_handler(tauri::generate_handler![
 +            simlab_preferences::simlab_theme,
++            simlab_preferences::simlab_appearance,
              tls_file_dialog::choose_tls_file,
              // Connection commands
              commands::create_connection,
-@@ -60,6 +68,8 @@ pub fn run() {
+@@ -60,6 +69,8 @@ pub fn run() {
              update::schedule_update_on_next_launch,
          ])
          .setup(|app| {
@@ -81,7 +82,7 @@ index ff2ff1c..d2f9475 100644
              if cfg!(debug_assertions) {
                  app.handle().plugin(
                      tauri_plugin_log::Builder::default()
-@@ -75,6 +85,7 @@ pub fn run() {
+@@ -75,6 +86,7 @@ pub fn run() {
                      log::warn!("failed to restore persisted master workspace: {error}");
                  }
                  app_handle.state::<AppState>().mark_workspace_ready();
@@ -345,13 +346,100 @@ index 0000000..6edd4a9
 +    }
 +  }
 +}
+diff --git a/crates/shared/contracts/appearance-cases.json b/crates/shared/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/crates/shared/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
 diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
 new file mode 100644
-index 0000000..970489f
+index 0000000..795c0c1
 --- /dev/null
 +++ b/crates/shared/simlab_preferences.rs
-@@ -0,0 +1,24 @@
-+/// Read only the suite appearance preference, never expose the full settings.
+@@ -0,0 +1,104 @@
++#[derive(Debug, serde::Serialize, PartialEq)]
++#[serde(rename_all = "camelCase")]
++pub(crate) struct AppearanceV1 {
++    schema_version: u32,
++    theme: String,
++    language: String,
++}
++
++fn read_appearance(root: &std::path::Path) -> Result<AppearanceV1, String> {
++    if !root.is_absolute() {
++        return Err("SIMLAB_DATA_DIR must be absolute".into());
++    }
++    let mut result = AppearanceV1 {
++        schema_version: 1,
++        theme: "system".into(),
++        language: "en".into(),
++    };
++    let data = match std::fs::read(root.join("launcher.json")) {
++        Ok(data) => data,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
++        Err(error) => return Err(error.to_string()),
++    };
++    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
++    if !value.is_object()
++        || value.get("schemaVersion").is_some_and(|v| v.as_u64() != Some(1))
++    {
++        return Err("unsupported launcher preferences version".into());
++    }
++    if let Some(theme @ ("light" | "dark")) = value["theme"].as_str() {
++        result.theme = theme.into();
++    }
++    if let Some(language @ ("auto" | "zh-CN")) = value["language"].as_str() {
++        result.language = language.into();
++    }
++    Ok(result)
++}
++
++#[tauri::command]
++pub(crate) fn simlab_appearance() -> Result<AppearanceV1, String> {
++    if !cfg!(feature = "simlab-suite") {
++        return Err("Appearance is managed by the standalone application".into());
++    }
++    let root = std::env::var_os("SIMLAB_DATA_DIR")
++        .map(std::path::PathBuf::from)
++        .ok_or("SIMLAB_DATA_DIR is not configured")?;
++    read_appearance(&root)
++}
++
++/// Legacy theme behavior remains unchanged for components not yet migrated.
 +#[tauri::command]
 +pub(crate) fn simlab_theme() -> Result<String, String> {
 +    if !cfg!(feature = "simlab-suite") {
@@ -373,6 +461,38 @@ index 0000000..970489f
 +        Some("light") => Ok("light".into()),
 +        Some("dark") => Ok("dark".into()),
 +        _ => Ok("system".into()),
++    }
++}
++
++#[cfg(test)]
++mod appearance_tests {
++    use super::*;
++
++    #[test]
++    fn shared_file_contract_and_read_only_behavior() {
++        let cases: serde_json::Value = serde_json::from_str(include_str!("contracts/appearance-cases.json")).unwrap();
++        let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
++        let root = std::env::temp_dir().join(format!("saio-appearance-{}-{unique}", std::process::id()));
++        std::fs::create_dir_all(&root).unwrap();
++        let path = root.join("launcher.json");
++        for case in cases["fileCases"].as_array().unwrap() {
++            if let Some(contents) = case["contents"].as_str() {
++                std::fs::write(&path, contents).unwrap();
++            } else if path.exists() {
++                std::fs::remove_file(&path).unwrap();
++            }
++            let got = read_appearance(&root);
++            if case.get("error").is_some() {
++                assert!(got.is_err(), "{}", case["name"]);
++            } else {
++                assert_eq!(serde_json::to_value(got.unwrap()).unwrap(), case["appearance"], "{}", case["name"]);
++            }
++            if let Some(contents) = case["contents"].as_str() {
++                assert_eq!(std::fs::read_to_string(&path).unwrap(), contents);
++            }
++        }
++        std::fs::remove_dir_all(root).unwrap();
++        assert!(read_appearance(std::path::Path::new("relative")).is_err());
 +    }
 +}
 diff --git a/crates/shared/suite.rs b/crates/shared/suite.rs
@@ -564,6 +684,27 @@ index f92e854..fd4080f 100644
  
 +if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
  createApp(App).mount('#app')
+diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
+new file mode 100644
+index 0000000..e9d3045
+--- /dev/null
++++ b/frontend/src/simlab-ui/.source.json
+@@ -0,0 +1,15 @@
++{
++  "schemaVersion": 1,
++  "sourceSha256": "7483f5daaeb6c59bb158144059e5a7d02201677c2ed6716217cfc069d5a9e25f",
++  "files": {
++    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
++    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
++    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
++    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
++    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
++    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
++    "theme.ts": "366fa8ca2fbb8d7f550ae81ac43e448b0f720de0e36a2a06d49ee8e027b3b4b1",
++    "tokens.css": "88683597fbabfd1157e883df269e413088d4d89df77a54a25bfc10f56b8490a0"
++  }
++}
 diff --git a/frontend/src/simlab-ui/Icon.vue b/frontend/src/simlab-ui/Icon.vue
 new file mode 100644
 index 0000000..183ddc1
@@ -602,6 +743,137 @@ index 0000000..183ddc1
 +<style scoped>
 +.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
 +</style>
+diff --git a/frontend/src/simlab-ui/appearance.ts b/frontend/src/simlab-ui/appearance.ts
+new file mode 100644
+index 0000000..c2186fb
+--- /dev/null
++++ b/frontend/src/simlab-ui/appearance.ts
+@@ -0,0 +1,125 @@
++import {
++  DEFAULT_APPEARANCE,
++  parseAppearance,
++  resolveLanguage,
++  type AppearanceReader,
++  type AppearanceV1,
++  type ResolvedLocale,
++} from './contracts/appearance'
++
++export interface AppearanceSyncOptions {
++  /** The application must apply this override without saving its local preference. */
++  onLocale(locale: ResolvedLocale): void
++  /** A null value clears the previous synchronization error. */
++  onError(error: Error | null): void
++  /** Standalone readers must use their application's own settings source. */
++  mode?: 'suite' | 'standalone'
++}
++
++export interface AppearanceSync {
++  refresh(): Promise<void>
++  dispose(): void
++}
++
++const activeSyncs = new WeakMap<Document, () => void>()
++
++/** Synchronize only the injected preferences; never access a host bridge or storage. */
++export function startAppearanceSync(
++  reader: AppearanceReader,
++  options: AppearanceSyncOptions,
++): AppearanceSync {
++  activeSyncs.get(document)?.()
++  const root = document.documentElement
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let current: AppearanceV1 = { ...DEFAULT_APPEARANCE }
++  let lastLocale: ResolvedLocale | undefined
++  let lastError: string | undefined
++  let stopped = false
++  let requestId = 0
++  let pending: Promise<void> | undefined
++  let timer: ReturnType<typeof setTimeout> | undefined
++
++  function apply() {
++    if (stopped) return
++    const theme = current.theme === 'system' ? (media.matches ? 'dark' : 'light') : current.theme
++    if (options.mode !== 'standalone') {
++      root.dataset.simlab = 'component'
++      root.dataset.simlabTheme = theme
++    }
++    root.dataset.theme = theme
++    root.style.colorScheme = theme
++    const locale = resolveLanguage(current.language, navigator.languages?.[0] || navigator.language)
++    root.lang = locale
++    if (locale !== lastLocale) {
++      options.onLocale(locale)
++      lastLocale = locale
++    }
++  }
++
++  function report(error: Error | null) {
++    if (stopped) return
++    const signature = error ? `${error.name}: ${error.message}` : undefined
++    if (signature === lastError) return
++    lastError = signature
++    options.onError(error)
++  }
++
++  function refresh(): Promise<void> {
++    clearTimeout(timer)
++    if (stopped || document.hidden) return Promise.resolve()
++    if (pending) return pending
++    const id = ++requestId
++    pending = Promise.resolve().then(async () => {
++      try {
++        if (stopped || id !== requestId || document.hidden) return
++        const value = parseAppearance(await reader.readAppearance())
++        if (stopped || id !== requestId || document.hidden) return
++        current = value
++        apply()
++        report(null)
++      } catch (cause) {
++        if (stopped || id !== requestId || document.hidden) return
++        report(cause instanceof Error ? cause : new Error(String(cause)))
++      } finally {
++        if (!stopped && id === requestId) {
++          pending = undefined
++          if (!document.hidden) timer = setTimeout(() => { void refresh() }, 1500)
++        }
++      }
++    })
++    return pending
++  }
++
++  function visibility() {
++    clearTimeout(timer)
++    if (document.hidden) {
++      // Native calls cannot be cancelled; invalidate their results and let a
++      // restored window read immediately even if an earlier call is still slow.
++      requestId++
++      pending = undefined
++    } else {
++      void refresh()
++    }
++  }
++
++  function dispose() {
++    if (stopped) return
++    stopped = true
++    requestId++
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('languagechange', apply)
++    window.removeEventListener('pagehide', dispose)
++    if (activeSyncs.get(document) === dispose) activeSyncs.delete(document)
++  }
++
++  activeSyncs.set(document, dispose)
++  apply()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('languagechange', apply)
++  window.addEventListener('pagehide', dispose)
++  void refresh()
++  return { refresh, dispose }
++}
 diff --git a/frontend/src/simlab-ui/components.css b/frontend/src/simlab-ui/components.css
 new file mode 100644
 index 0000000..dbd4181
@@ -747,6 +1019,232 @@ index 0000000..dbd4181
 +  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
 +    animation: none !important; transition: none !important; scroll-behavior: auto !important;
 +  }
++}
+diff --git a/frontend/src/simlab-ui/components/ErrorNotice.vue b/frontend/src/simlab-ui/components/ErrorNotice.vue
+new file mode 100644
+index 0000000..41b34bc
+--- /dev/null
++++ b/frontend/src/simlab-ui/components/ErrorNotice.vue
+@@ -0,0 +1,67 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  message: string
++  details?: string
++  detailsLabel?: string
++  closeLabel: string
++  retryLabel?: string
++  busy?: boolean
++}>(), { details: '', detailsLabel: '', retryLabel: '', busy: false })
++
++const emit = defineEmits<{
++  close: []
++  retry: []
++}>()
++</script>
++
++<template>
++  <section class="error-notice" :aria-busy="busy">
++    <p class="error-notice__message" role="status" aria-live="polite" aria-atomic="true">{{ message }}</p>
++    <details v-if="details && detailsLabel" class="error-notice__details">
++      <summary>{{ detailsLabel }}</summary>
++      <pre>{{ details }}</pre>
++    </details>
++    <div class="error-notice__actions">
++      <button v-if="retryLabel" type="button" :disabled="busy" @click="emit('retry')">{{ retryLabel }}</button>
++      <button type="button" @click="emit('close')">{{ closeLabel }}</button>
++    </div>
++  </section>
++</template>
++
++<style scoped>
++.error-notice {
++  padding: 12px;
++  border: 1px solid var(--danger, #b93737);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  font-size: 13px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.error-notice__message { margin: 0; }
++.error-notice__details { margin-top: 8px; }
++.error-notice__details summary { cursor: pointer; }
++.error-notice__details pre {
++  margin: 8px 0 0;
++  max-height: 160px;
++  overflow: auto;
++  white-space: pre-wrap;
++  font-size: 12px;
++}
++.error-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
++.error-notice__actions button {
++  padding: 4px 10px;
++  min-height: 30px;
++  border: 1px solid var(--c-surface1, #b9c1cc);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  cursor: pointer;
++}
++.error-notice__actions button:hover:not(:disabled) { background: var(--hover, #eef1f5); }
++.error-notice__actions button:disabled { cursor: wait; opacity: .6; }
++.error-notice :is(button, summary):focus-visible { outline: 2px solid var(--focus, #245ccc); outline-offset: 2px; }
++</style>
+diff --git a/frontend/src/simlab-ui/components/StatusBadge.vue b/frontend/src/simlab-ui/components/StatusBadge.vue
+new file mode 100644
+index 0000000..add4070
+--- /dev/null
++++ b/frontend/src/simlab-ui/components/StatusBadge.vue
+@@ -0,0 +1,52 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  label: string
++  tone?: 'neutral' | 'success' | 'warning' | 'danger'
++  busy?: boolean
++}>(), { tone: 'neutral', busy: false })
++</script>
++
++<template>
++  <span class="status-badge" :class="`status-badge--${tone}`" role="status" aria-live="polite" aria-atomic="true" :aria-busy="busy">
++    <span class="status-badge__indicator" :class="{ 'status-badge__indicator--busy': busy }" aria-hidden="true" />
++    <span>{{ label }}</span>
++  </span>
++</template>
++
++<style scoped>
++.status-badge {
++  --status-color: var(--muted, #596579);
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  max-width: 100%;
++  color: var(--status-color);
++  font: inherit;
++  font-size: 12px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.status-badge--success { --status-color: var(--success, #26744b); }
++.status-badge--warning { --status-color: var(--warning, #946000); }
++.status-badge--danger { --status-color: var(--danger, #b93737); }
++.status-badge__indicator {
++  width: 7px;
++  height: 7px;
++  flex: none;
++  border-radius: 50%;
++  background: currentColor;
++}
++.status-badge__indicator--busy {
++  width: 10px;
++  height: 10px;
++  box-sizing: border-box;
++  background: transparent;
++  border: 2px solid currentColor;
++  border-right-color: transparent;
++  animation: status-rotate 900ms linear infinite;
++}
++@keyframes status-rotate { to { transform: rotate(360deg); } }
++@media (prefers-reduced-motion: reduce) {
++  .status-badge__indicator--busy { animation: none; }
++}
++</style>
+diff --git a/frontend/src/simlab-ui/contracts/appearance-cases.json b/frontend/src/simlab-ui/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/frontend/src/simlab-ui/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
+diff --git a/frontend/src/simlab-ui/contracts/appearance.ts b/frontend/src/simlab-ui/contracts/appearance.ts
+new file mode 100644
+index 0000000..bea1803
+--- /dev/null
++++ b/frontend/src/simlab-ui/contracts/appearance.ts
+@@ -0,0 +1,50 @@
++export type Theme = 'system' | 'light' | 'dark'
++export type Language = 'auto' | 'zh-CN' | 'en'
++export type ResolvedLocale = Exclude<Language, 'auto'>
++
++export interface AppearanceV1 {
++  schemaVersion: 1
++  theme: Theme
++  language: Language
++}
++
++export interface AppearanceReader {
++  readAppearance(): Promise<AppearanceV1>
++}
++
++export const DEFAULT_APPEARANCE: Readonly<AppearanceV1> = Object.freeze({
++  schemaVersion: 1,
++  theme: 'system',
++  language: 'en',
++})
++
++export class AppearanceContractError extends Error {
++  readonly code: 'invalid_response' | 'unsupported_version'
++
++  constructor(code: 'invalid_response' | 'unsupported_version') {
++    super(code === 'unsupported_version'
++      ? 'Unsupported appearance interface version; repair the complete suite.'
++      : 'The appearance adapter returned an invalid response.')
++    this.name = 'AppearanceContractError'
++    this.code = code
++  }
++}
++
++/** Validate the native response without returning unrelated settings. */
++export function parseAppearance(value: unknown): AppearanceV1 {
++  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++    throw new AppearanceContractError('invalid_response')
++  }
++  const input = value as Record<string, unknown>
++  if (input.schemaVersion !== 1) throw new AppearanceContractError('unsupported_version')
++  return {
++    schemaVersion: 1,
++    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
++    language: input.language === 'auto' || input.language === 'zh-CN' ? input.language : 'en',
++  }
++}
++
++export function resolveLanguage(language: Language, systemLanguage: string): ResolvedLocale {
++  if (language !== 'auto') return language
++  return systemLanguage.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 +}
 diff --git a/frontend/src/simlab-ui/theme.ts b/frontend/src/simlab-ui/theme.ts
 new file mode 100644
@@ -997,10 +1495,20 @@ index 0000000..b52b5a6
 +  })
 +})
 diff --git a/master-frontend/src/App.vue b/master-frontend/src/App.vue
-index 37d162e..16a006c 100644
+index 37d162e..03e9357 100644
 --- a/master-frontend/src/App.vue
 +++ b/master-frontend/src/App.vue
-@@ -9,6 +9,7 @@ import ValuePanel from './components/ValuePanel.vue'
+@@ -1,5 +1,8 @@
+ <script setup lang="ts">
+-import { ref, shallowRef, computed, provide, onMounted, onUnmounted, watch } from 'vue'
++import StatusBadge from './simlab-ui/components/StatusBadge.vue'
++import ErrorNotice from './simlab-ui/components/ErrorNotice.vue'
++import { suiteAppearanceKey } from './suiteAppearance'
++import { ref, shallowRef, computed, provide, inject, onMounted, onUnmounted, watch } from 'vue'
+ import { listen } from '@tauri-apps/api/event'
+ import { invoke } from '@tauri-apps/api/core'
+ import Toolbar from './components/Toolbar.vue'
+@@ -9,6 +12,7 @@ import ValuePanel from './components/ValuePanel.vue'
  import LogPanel from './components/LogPanel.vue'
  import AppDialog from '@shared/components/AppDialog.vue'
  import UpdateDialog from '@shared/components/UpdateDialog.vue'
@@ -1008,7 +1516,27 @@ index 37d162e..16a006c 100644
  import ParseFrameDialog from '@shared/components/ParseFrameDialog.vue'
  import Splitter from '@shared/components/Splitter.vue'
  import { showAlert, showConfirm, showPrompt, dialogKey } from '@shared/composables/useDialog'
-@@ -165,9 +166,11 @@ onMounted(async () => {
+@@ -19,6 +23,19 @@ import type { ReceivedDataPointInfo, ChangedCategoriesMap, CategoryCountsMap } f
+ // Shared state
+ const selectedConnectionId = ref<string | null>(null)
+ const selectedConnectionState = ref<string>('Disconnected')
++const appearance = inject(suiteAppearanceKey, null)
++const connectionStatus = computed(() => {
++  const state = selectedConnectionState.value
++  const keys: Record<string, string> = {
++    Connected: 'connected', Disconnected: 'disconnected',
++    Connecting: 'connecting', Reconnecting: 'reconnecting',
++  }
++  return {
++    label: t(`suiteAppearance.${selectedConnectionId.value ? (keys[state] ?? 'unknown') : 'noConnection'}`, { state }),
++    tone: (selectedConnectionId.value && state === 'Connected' ? 'success' : 'neutral') as 'success' | 'neutral',
++    busy: !!selectedConnectionId.value && (state === 'Connecting' || state === 'Reconnecting'),
++  }
++})
+ // Multi-CA: which Common Address inside the selected connection is the user
+ // looking at? `null` means "all CAs combined" (legacy single-CA behaviour).
+ const selectedCA = ref<number | null>(null)
+@@ -165,12 +182,15 @@ onMounted(async () => {
        refreshTree()
      },
    )
@@ -1023,7 +1551,11 @@ index 37d162e..16a006c 100644
  })
  
  onUnmounted(() => {
-@@ -219,6 +222,7 @@ const updateMeta = ref<{ version: string; notes: string; pub_date?: string | nul
++  appearance?.dispose()
+   unlistenConnState?.()
+   unlistenTimingCorrected?.()
+   unlistenCasUpdated?.()
+@@ -219,6 +239,7 @@ const updateMeta = ref<{ version: string; notes: string; pub_date?: string | nul
  const updateVisible = ref(false)
  
  async function checkUpdate(force = false): Promise<{ version: string; notes: string; pub_date?: string | null } | null> {
@@ -1031,7 +1563,23 @@ index 37d162e..16a006c 100644
    const meta = await invoke<{ version: string; notes: string; pub_date?: string | null } | null>('check_for_update', { force })
    if (meta) {
      updateMeta.value = meta
-@@ -306,6 +310,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
+@@ -252,6 +273,15 @@ provide('resetWorkspaceView', resetWorkspaceView)
+   >
+     <header class="toolbar-area">
+       <Toolbar ref="toolbarRef" />
++      <div class="suite-foundation">
++        <StatusBadge :label="connectionStatus.label" :tone="connectionStatus.tone" :busy="connectionStatus.busy"
++          :aria-label="`${t('suiteAppearance.selectedConnection')}: ${connectionStatus.label}`" />
++        <ErrorNotice v-if="appearance?.visible.value"
++          :message="t('suiteAppearance.readFailed')" :details="t('suiteAppearance.repairHint')"
++          :details-label="t('suiteAppearance.details')" :close-label="t('suiteAppearance.close')"
++          :retry-label="t('suiteAppearance.retry')" :busy="appearance.busy.value"
++          @close="appearance.dismiss()" @retry="appearance.retry()" />
++      </div>
+     </header>
+ 
+     <aside class="tree-area">
+@@ -306,6 +336,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
        @close="parseFrameVisible = false"
      />
      <UpdateDialog
@@ -1039,6 +1587,23 @@ index 37d162e..16a006c 100644
        :visible="updateVisible"
        :version="updateMeta?.version ?? ''"
        :notes="updateMeta?.notes ?? ''"
+@@ -315,6 +346,16 @@ provide('resetWorkspaceView', resetWorkspaceView)
+ </template>
+ 
+ <style>
++.suite-foundation {
++  --surface: var(--c-base);
++  --text: var(--c-text);
++  --muted: var(--c-subtext0);
++  --success: var(--c-green);
++  --warning: var(--c-yellow);
++  --danger: var(--c-red);
++  padding: 4px 12px;
++}
++.suite-foundation > .error-notice { margin-top: 6px; max-height: 180px; overflow: auto; }
+ /* Reset, body, scrollbars and focus ring live in shared-frontend/styles/base.css. */
+ .app-layout {
+   display: grid;
 diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
 index ae050d8..4be70e3 100644
 --- a/master-frontend/src/components/Toolbar.vue
@@ -1068,23 +1633,122 @@ index ae050d8..4be70e3 100644
    { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
  ])
  function menuHeading(id: string) {
+diff --git a/master-frontend/src/i18n/locales/en-US.ts b/master-frontend/src/i18n/locales/en-US.ts
+index 63158ec..c5947a8 100644
+--- a/master-frontend/src/i18n/locales/en-US.ts
++++ b/master-frontend/src/i18n/locales/en-US.ts
+@@ -1,6 +1,21 @@
+ import type { DictShape } from './zh-CN'
+ 
+ const dict: DictShape = {
++  suiteAppearance: {
++    managed: 'Managed by suite settings',
++    readFailed: 'Cannot read suite appearance settings. Keeping the current theme and language.',
++    repairHint: 'Retry reading settings. If the problem continues, check suite settings or repair the complete suite.',
++    retry: 'Retry',
++    details: 'Suggested action',
++    close: 'Close',
++    selectedConnection: 'Selected connection status',
++    noConnection: 'No connection selected',
++    connected: 'Connected',
++    connecting: 'Connecting',
++    reconnecting: 'Reconnecting',
++    disconnected: 'Disconnected',
++    unknown: 'State: {state}',
++  },
+   common: {
+     confirm: 'Confirm',
+     cancel: 'Cancel',
+diff --git a/master-frontend/src/i18n/locales/zh-CN.ts b/master-frontend/src/i18n/locales/zh-CN.ts
+index 102889a..eb5e954 100644
+--- a/master-frontend/src/i18n/locales/zh-CN.ts
++++ b/master-frontend/src/i18n/locales/zh-CN.ts
+@@ -1,4 +1,19 @@
+ export type DictShape = {
++  suiteAppearance: {
++    managed: string
++    readFailed: string
++    repairHint: string
++    retry: string
++    details: string
++    close: string
++    selectedConnection: string
++    noConnection: string
++    connected: string
++    connecting: string
++    reconnecting: string
++    disconnected: string
++    unknown: string
++  }
+   common: {
+     confirm: string
+     cancel: string
+@@ -382,6 +397,21 @@ export type DictShape = {
+ }
+ 
+ const dict: DictShape = {
++  suiteAppearance: {
++    managed: '由套件设置管理',
++    readFailed: '无法读取套件外观设置，暂时保留当前主题和语言。',
++    repairHint: '可重试读取；若持续失败，请检查套件设置或修复完整套件。',
++    retry: '重试',
++    details: '处理建议',
++    close: '关闭',
++    selectedConnection: '当前连接状态',
++    noConnection: '未选择连接',
++    connected: '已连接',
++    connecting: '连接中',
++    reconnecting: '重新连接中',
++    disconnected: '未连接',
++    unknown: '状态：{state}',
++  },
+   common: {
+     confirm: '确认',
+     cancel: '取消',
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
-index f92e854..fd4080f 100644
+index f92e854..792fb46 100644
 --- a/master-frontend/src/main.ts
 +++ b/master-frontend/src/main.ts
-@@ -1,3 +1,6 @@
+@@ -1,3 +1,8 @@
 +import './simlab-ui/tokens.css'
 +import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
++import { createSuiteAppearance, suiteAppearanceKey } from './suiteAppearance'
++import { invoke } from '@tauri-apps/api/core'
++import { parseAppearance } from './simlab-ui/contracts/appearance'
  import { createApp } from 'vue'
  import '@shared/styles/tokens.css'
  import '@shared/styles/base.css'
-@@ -6,4 +9,5 @@ import '@shared/styles/toolbar.css'
+@@ -6,4 +11,8 @@ import '@shared/styles/toolbar.css'
  import '@shared/composables/useTheme'
  import App from './App.vue'
  
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).mount('#app')
+-createApp(App).mount('#app')
++const appearance = createSuiteAppearance(import.meta.env.VITE_SIMLAB_SUITE === '1', {
++  readAppearance: async () => parseAppearance(await invoke('simlab_appearance')),
++})
++createApp(App).provide(suiteAppearanceKey, appearance).mount('#app')
++if (import.meta.hot) import.meta.hot.dispose(() => appearance?.dispose())
+diff --git a/master-frontend/src/simlab-ui/.source.json b/master-frontend/src/simlab-ui/.source.json
+new file mode 100644
+index 0000000..e9d3045
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/.source.json
+@@ -0,0 +1,15 @@
++{
++  "schemaVersion": 1,
++  "sourceSha256": "7483f5daaeb6c59bb158144059e5a7d02201677c2ed6716217cfc069d5a9e25f",
++  "files": {
++    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
++    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
++    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
++    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
++    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
++    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
++    "theme.ts": "366fa8ca2fbb8d7f550ae81ac43e448b0f720de0e36a2a06d49ee8e027b3b4b1",
++    "tokens.css": "88683597fbabfd1157e883df269e413088d4d89df77a54a25bfc10f56b8490a0"
++  }
++}
 diff --git a/master-frontend/src/simlab-ui/Icon.vue b/master-frontend/src/simlab-ui/Icon.vue
 new file mode 100644
 index 0000000..183ddc1
@@ -1123,6 +1787,137 @@ index 0000000..183ddc1
 +<style scoped>
 +.simlab-icon { display: inline-block; flex: none; vertical-align: middle; }
 +</style>
+diff --git a/master-frontend/src/simlab-ui/appearance.ts b/master-frontend/src/simlab-ui/appearance.ts
+new file mode 100644
+index 0000000..c2186fb
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/appearance.ts
+@@ -0,0 +1,125 @@
++import {
++  DEFAULT_APPEARANCE,
++  parseAppearance,
++  resolveLanguage,
++  type AppearanceReader,
++  type AppearanceV1,
++  type ResolvedLocale,
++} from './contracts/appearance'
++
++export interface AppearanceSyncOptions {
++  /** The application must apply this override without saving its local preference. */
++  onLocale(locale: ResolvedLocale): void
++  /** A null value clears the previous synchronization error. */
++  onError(error: Error | null): void
++  /** Standalone readers must use their application's own settings source. */
++  mode?: 'suite' | 'standalone'
++}
++
++export interface AppearanceSync {
++  refresh(): Promise<void>
++  dispose(): void
++}
++
++const activeSyncs = new WeakMap<Document, () => void>()
++
++/** Synchronize only the injected preferences; never access a host bridge or storage. */
++export function startAppearanceSync(
++  reader: AppearanceReader,
++  options: AppearanceSyncOptions,
++): AppearanceSync {
++  activeSyncs.get(document)?.()
++  const root = document.documentElement
++  const media = window.matchMedia('(prefers-color-scheme: dark)')
++  let current: AppearanceV1 = { ...DEFAULT_APPEARANCE }
++  let lastLocale: ResolvedLocale | undefined
++  let lastError: string | undefined
++  let stopped = false
++  let requestId = 0
++  let pending: Promise<void> | undefined
++  let timer: ReturnType<typeof setTimeout> | undefined
++
++  function apply() {
++    if (stopped) return
++    const theme = current.theme === 'system' ? (media.matches ? 'dark' : 'light') : current.theme
++    if (options.mode !== 'standalone') {
++      root.dataset.simlab = 'component'
++      root.dataset.simlabTheme = theme
++    }
++    root.dataset.theme = theme
++    root.style.colorScheme = theme
++    const locale = resolveLanguage(current.language, navigator.languages?.[0] || navigator.language)
++    root.lang = locale
++    if (locale !== lastLocale) {
++      options.onLocale(locale)
++      lastLocale = locale
++    }
++  }
++
++  function report(error: Error | null) {
++    if (stopped) return
++    const signature = error ? `${error.name}: ${error.message}` : undefined
++    if (signature === lastError) return
++    lastError = signature
++    options.onError(error)
++  }
++
++  function refresh(): Promise<void> {
++    clearTimeout(timer)
++    if (stopped || document.hidden) return Promise.resolve()
++    if (pending) return pending
++    const id = ++requestId
++    pending = Promise.resolve().then(async () => {
++      try {
++        if (stopped || id !== requestId || document.hidden) return
++        const value = parseAppearance(await reader.readAppearance())
++        if (stopped || id !== requestId || document.hidden) return
++        current = value
++        apply()
++        report(null)
++      } catch (cause) {
++        if (stopped || id !== requestId || document.hidden) return
++        report(cause instanceof Error ? cause : new Error(String(cause)))
++      } finally {
++        if (!stopped && id === requestId) {
++          pending = undefined
++          if (!document.hidden) timer = setTimeout(() => { void refresh() }, 1500)
++        }
++      }
++    })
++    return pending
++  }
++
++  function visibility() {
++    clearTimeout(timer)
++    if (document.hidden) {
++      // Native calls cannot be cancelled; invalidate their results and let a
++      // restored window read immediately even if an earlier call is still slow.
++      requestId++
++      pending = undefined
++    } else {
++      void refresh()
++    }
++  }
++
++  function dispose() {
++    if (stopped) return
++    stopped = true
++    requestId++
++    clearTimeout(timer)
++    media.removeEventListener('change', apply)
++    document.removeEventListener('visibilitychange', visibility)
++    window.removeEventListener('languagechange', apply)
++    window.removeEventListener('pagehide', dispose)
++    if (activeSyncs.get(document) === dispose) activeSyncs.delete(document)
++  }
++
++  activeSyncs.set(document, dispose)
++  apply()
++  media.addEventListener('change', apply)
++  document.addEventListener('visibilitychange', visibility)
++  window.addEventListener('languagechange', apply)
++  window.addEventListener('pagehide', dispose)
++  void refresh()
++  return { refresh, dispose }
++}
 diff --git a/master-frontend/src/simlab-ui/components.css b/master-frontend/src/simlab-ui/components.css
 new file mode 100644
 index 0000000..dbd4181
@@ -1268,6 +2063,232 @@ index 0000000..dbd4181
 +  :root[data-simlab][data-simlab-theme] *, :root[data-simlab][data-simlab-theme] *::before, :root[data-simlab][data-simlab-theme] *::after {
 +    animation: none !important; transition: none !important; scroll-behavior: auto !important;
 +  }
++}
+diff --git a/master-frontend/src/simlab-ui/components/ErrorNotice.vue b/master-frontend/src/simlab-ui/components/ErrorNotice.vue
+new file mode 100644
+index 0000000..41b34bc
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/components/ErrorNotice.vue
+@@ -0,0 +1,67 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  message: string
++  details?: string
++  detailsLabel?: string
++  closeLabel: string
++  retryLabel?: string
++  busy?: boolean
++}>(), { details: '', detailsLabel: '', retryLabel: '', busy: false })
++
++const emit = defineEmits<{
++  close: []
++  retry: []
++}>()
++</script>
++
++<template>
++  <section class="error-notice" :aria-busy="busy">
++    <p class="error-notice__message" role="status" aria-live="polite" aria-atomic="true">{{ message }}</p>
++    <details v-if="details && detailsLabel" class="error-notice__details">
++      <summary>{{ detailsLabel }}</summary>
++      <pre>{{ details }}</pre>
++    </details>
++    <div class="error-notice__actions">
++      <button v-if="retryLabel" type="button" :disabled="busy" @click="emit('retry')">{{ retryLabel }}</button>
++      <button type="button" @click="emit('close')">{{ closeLabel }}</button>
++    </div>
++  </section>
++</template>
++
++<style scoped>
++.error-notice {
++  padding: 12px;
++  border: 1px solid var(--danger, #b93737);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  font-size: 13px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.error-notice__message { margin: 0; }
++.error-notice__details { margin-top: 8px; }
++.error-notice__details summary { cursor: pointer; }
++.error-notice__details pre {
++  margin: 8px 0 0;
++  max-height: 160px;
++  overflow: auto;
++  white-space: pre-wrap;
++  font-size: 12px;
++}
++.error-notice__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
++.error-notice__actions button {
++  padding: 4px 10px;
++  min-height: 30px;
++  border: 1px solid var(--c-surface1, #b9c1cc);
++  border-radius: var(--radius-md, 6px);
++  background: var(--surface, #ffffff);
++  color: var(--text, #202631);
++  font: inherit;
++  cursor: pointer;
++}
++.error-notice__actions button:hover:not(:disabled) { background: var(--hover, #eef1f5); }
++.error-notice__actions button:disabled { cursor: wait; opacity: .6; }
++.error-notice :is(button, summary):focus-visible { outline: 2px solid var(--focus, #245ccc); outline-offset: 2px; }
++</style>
+diff --git a/master-frontend/src/simlab-ui/components/StatusBadge.vue b/master-frontend/src/simlab-ui/components/StatusBadge.vue
+new file mode 100644
+index 0000000..add4070
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/components/StatusBadge.vue
+@@ -0,0 +1,52 @@
++<script setup lang="ts">
++withDefaults(defineProps<{
++  label: string
++  tone?: 'neutral' | 'success' | 'warning' | 'danger'
++  busy?: boolean
++}>(), { tone: 'neutral', busy: false })
++</script>
++
++<template>
++  <span class="status-badge" :class="`status-badge--${tone}`" role="status" aria-live="polite" aria-atomic="true" :aria-busy="busy">
++    <span class="status-badge__indicator" :class="{ 'status-badge__indicator--busy': busy }" aria-hidden="true" />
++    <span>{{ label }}</span>
++  </span>
++</template>
++
++<style scoped>
++.status-badge {
++  --status-color: var(--muted, #596579);
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  max-width: 100%;
++  color: var(--status-color);
++  font: inherit;
++  font-size: 12px;
++  line-height: 1.5;
++  overflow-wrap: anywhere;
++}
++.status-badge--success { --status-color: var(--success, #26744b); }
++.status-badge--warning { --status-color: var(--warning, #946000); }
++.status-badge--danger { --status-color: var(--danger, #b93737); }
++.status-badge__indicator {
++  width: 7px;
++  height: 7px;
++  flex: none;
++  border-radius: 50%;
++  background: currentColor;
++}
++.status-badge__indicator--busy {
++  width: 10px;
++  height: 10px;
++  box-sizing: border-box;
++  background: transparent;
++  border: 2px solid currentColor;
++  border-right-color: transparent;
++  animation: status-rotate 900ms linear infinite;
++}
++@keyframes status-rotate { to { transform: rotate(360deg); } }
++@media (prefers-reduced-motion: reduce) {
++  .status-badge__indicator--busy { animation: none; }
++}
++</style>
+diff --git a/master-frontend/src/simlab-ui/contracts/appearance-cases.json b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
+new file mode 100644
+index 0000000..8bdaa34
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
+@@ -0,0 +1,33 @@
++{
++  "fileCases": [
++    { "name": "missing file", "contents": null, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "legacy missing fields", "contents": "{}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "saved preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"dark\",\"language\":\"zh-CN\",\"favorites\":[\"iec104.master\"]}", "appearance": { "schemaVersion": 1, "theme": "dark", "language": "zh-CN" } },
++    { "name": "system preferences", "contents": "{\"schemaVersion\":1,\"theme\":\"system\",\"language\":\"auto\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "auto" } },
++    { "name": "invalid preference values", "contents": "{\"schemaVersion\":1,\"theme\":\"sepia\",\"language\":\"fr\"}", "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "malformed JSON", "contents": "{", "error": "invalid_json" },
++    { "name": "non-object JSON", "contents": "[]", "error": "invalid_file" },
++    { "name": "null JSON", "contents": "null", "error": "invalid_file" },
++    { "name": "unknown file version", "contents": "{\"schemaVersion\":2,\"theme\":\"dark\"}", "error": "unsupported_file_version" }
++  ],
++  "interfaceCases": [
++    { "name": "defaults for missing fields", "input": { "schemaVersion": 1 }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "explicit preferences", "input": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" }, "appearance": { "schemaVersion": 1, "theme": "light", "language": "zh-CN" } },
++    { "name": "automatic language", "input": { "schemaVersion": 1, "theme": "dark", "language": "auto" }, "appearance": { "schemaVersion": 1, "theme": "dark", "language": "auto" } },
++    { "name": "invalid field values", "input": { "schemaVersion": 1, "theme": 5, "language": false }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "omit unrelated settings", "input": { "schemaVersion": 1, "theme": "system", "language": "en", "favorites": ["modbus.master"] }, "appearance": { "schemaVersion": 1, "theme": "system", "language": "en" } },
++    { "name": "missing interface version", "input": {}, "error": "unsupported_version" },
++    { "name": "unknown interface version", "input": { "schemaVersion": 2 }, "error": "unsupported_version" },
++    { "name": "string interface version", "input": { "schemaVersion": "1" }, "error": "unsupported_version" },
++    { "name": "null response", "input": null, "error": "invalid_response" },
++    { "name": "array response", "input": [], "error": "invalid_response" }
++  ],
++  "languageCases": [
++    { "language": "auto", "systemLanguage": "zh-TW", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "ZH-cn", "locale": "zh-CN" },
++    { "language": "auto", "systemLanguage": "de-DE", "locale": "en" },
++    { "language": "auto", "systemLanguage": "", "locale": "en" },
++    { "language": "en", "systemLanguage": "zh-CN", "locale": "en" },
++    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
++  ]
++}
+diff --git a/master-frontend/src/simlab-ui/contracts/appearance.ts b/master-frontend/src/simlab-ui/contracts/appearance.ts
+new file mode 100644
+index 0000000..bea1803
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/contracts/appearance.ts
+@@ -0,0 +1,50 @@
++export type Theme = 'system' | 'light' | 'dark'
++export type Language = 'auto' | 'zh-CN' | 'en'
++export type ResolvedLocale = Exclude<Language, 'auto'>
++
++export interface AppearanceV1 {
++  schemaVersion: 1
++  theme: Theme
++  language: Language
++}
++
++export interface AppearanceReader {
++  readAppearance(): Promise<AppearanceV1>
++}
++
++export const DEFAULT_APPEARANCE: Readonly<AppearanceV1> = Object.freeze({
++  schemaVersion: 1,
++  theme: 'system',
++  language: 'en',
++})
++
++export class AppearanceContractError extends Error {
++  readonly code: 'invalid_response' | 'unsupported_version'
++
++  constructor(code: 'invalid_response' | 'unsupported_version') {
++    super(code === 'unsupported_version'
++      ? 'Unsupported appearance interface version; repair the complete suite.'
++      : 'The appearance adapter returned an invalid response.')
++    this.name = 'AppearanceContractError'
++    this.code = code
++  }
++}
++
++/** Validate the native response without returning unrelated settings. */
++export function parseAppearance(value: unknown): AppearanceV1 {
++  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
++    throw new AppearanceContractError('invalid_response')
++  }
++  const input = value as Record<string, unknown>
++  if (input.schemaVersion !== 1) throw new AppearanceContractError('unsupported_version')
++  return {
++    schemaVersion: 1,
++    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
++    language: input.language === 'auto' || input.language === 'zh-CN' ? input.language : 'en',
++  }
++}
++
++export function resolveLanguage(language: Language, systemLanguage: string): ResolvedLocale {
++  if (language !== 'auto') return language
++  return systemLanguage.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 +}
 diff --git a/master-frontend/src/simlab-ui/theme.ts b/master-frontend/src/simlab-ui/theme.ts
 new file mode 100644
@@ -1480,6 +2501,205 @@ index 0000000..836c3f7
 +  --text-dim: var(--secondary); --text-faint: var(--muted);
 +  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
 +}
+diff --git a/master-frontend/src/suiteAppearance.ts b/master-frontend/src/suiteAppearance.ts
+new file mode 100644
+index 0000000..1e81d62
+--- /dev/null
++++ b/master-frontend/src/suiteAppearance.ts
+@@ -0,0 +1,51 @@
++import { computed, ref, shallowRef, type InjectionKey } from 'vue'
++import { useI18n } from '@shared/i18n'
++import { startAppearanceSync } from './simlab-ui/appearance'
++import type { AppearanceReader } from './simlab-ui/contracts/appearance'
++
++let activeSession: { dispose(): void } | null = null
++
++export function createSuiteAppearance(enabled: boolean, reader: AppearanceReader) {
++  if (!enabled) return null
++  activeSession?.dispose()
++  const { setEffectiveLocale } = useI18n()
++  const error = shallowRef<Error | null>(null)
++  const dismissed = ref(false)
++  const busy = ref(false)
++  const sync = startAppearanceSync(reader, {
++    mode: 'suite',
++    onLocale: locale => setEffectiveLocale(locale === 'en' ? 'en-US' : 'zh-CN'),
++    onError: next => {
++      error.value = next
++      dismissed.value = false
++      // Do not include native error payloads, paths or user configuration in logs.
++      if (next) console.warn('Suite appearance settings could not be read')
++    },
++  })
++  let disposed = false
++  const controller = {
++    visible: computed(() => error.value !== null && !dismissed.value),
++    busy,
++    dismiss: () => { dismissed.value = true },
++    async retry() {
++      if (disposed || busy.value) return
++      dismissed.value = false
++      busy.value = true
++      try { await sync.refresh() } finally { busy.value = false }
++    },
++    dispose() {
++      if (disposed) return
++      disposed = true
++      sync.dispose()
++      if (activeSession === controller) {
++        activeSession = null
++        setEffectiveLocale(null)
++      }
++    },
++  }
++  activeSession = controller
++  return controller
++}
++
++export type SuiteAppearance = ReturnType<typeof createSuiteAppearance>
++export const suiteAppearanceKey: InjectionKey<SuiteAppearance> = Symbol('suite-appearance')
+diff --git a/master-frontend/tests/suiteAppearance.spec.ts b/master-frontend/tests/suiteAppearance.spec.ts
+new file mode 100644
+index 0000000..0c34d1f
+--- /dev/null
++++ b/master-frontend/tests/suiteAppearance.spec.ts
+@@ -0,0 +1,136 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { nextTick } from 'vue'
++import { shallowMount, mount } from '@vue/test-utils'
++import { useI18n } from '@shared/i18n'
++import { createSuiteAppearance, suiteAppearanceKey, type SuiteAppearance } from '../src/suiteAppearance'
++import LangControl from '@shared/components/LangSwitch.vue'
++import App from '../src/App.vue'
++import StatusBadge from '../src/simlab-ui/components/StatusBadge.vue'
++import ErrorNotice from '../src/simlab-ui/components/ErrorNotice.vue'
++import en from '../src/i18n/locales/en-US'
++import zh from '../src/i18n/locales/zh-CN'
++
++vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(() => Promise.resolve([])) }))
++
++const savedLocaleKey = 'iec104.locale'
++let session: SuiteAppearance = null
++const mounted: Array<{ unmount(): void }> = []
++
++beforeEach(() => {
++  vi.useFakeTimers()
++  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
++  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
++  vi.spyOn(console, 'warn').mockImplementation(() => {})
++  localStorage.clear()
++  const i18n = useI18n()
++  i18n.setEffectiveLocale(null)
++  i18n.setLocale('en-US')
++})
++
++afterEach(() => {
++  mounted.splice(0).forEach(wrapper => wrapper.unmount())
++  session?.dispose()
++  session = null
++  useI18n().setEffectiveLocale(null)
++  vi.restoreAllMocks()
++  vi.unstubAllGlobals()
++  vi.useRealTimers()
++})
++
++describe('master shared appearance integration', () => {
++  it('keeps standalone mode local and preserves language writes', async () => {
++    const reader = { readAppearance: vi.fn() }
++    session = createSuiteAppearance(false, reader)
++    expect(session).toBeNull()
++    await vi.advanceTimersByTimeAsync(3000)
++    expect(reader.readAppearance).not.toHaveBeenCalled()
++    const i18n = useI18n()
++    expect(i18n.languageManaged.value).toBe(false)
++    i18n.setLocale('zh-CN')
++    expect(localStorage.getItem(savedLocaleKey)).toBe('zh-CN')
++  })
++
++  it('applies suite language transiently and disables the local language control', async () => {
++    session = createSuiteAppearance(true, {
++      readAppearance: vi.fn().mockResolvedValue({ schemaVersion: 1, theme: 'dark', language: 'zh-CN' }),
++    })
++    await vi.advanceTimersByTimeAsync(0)
++    const i18n = useI18n()
++    expect(i18n.locale.value).toBe('zh-CN')
++    expect(i18n.languageManaged.value).toBe(true)
++    expect(localStorage.getItem(savedLocaleKey)).toBe('en-US')
++    const wrapper = mount(LangControl)
++    mounted.push(wrapper)
++    expect(wrapper.text()).toContain(zh.suiteAppearance.managed)
++    expect(wrapper.findAll('button').every(button => button.attributes('disabled') !== undefined)).toBe(true)
++    i18n.setLocale('en-US')
++    expect(i18n.locale.value).toBe('zh-CN')
++    expect(localStorage.getItem(savedLocaleKey)).toBe('en-US')
++    session?.dispose()
++    await nextTick()
++    expect(i18n.locale.value).toBe('en-US')
++    expect(wrapper.findAll('button').every(button => button.attributes('disabled') === undefined)).toBe(true)
++  })
++
++  it('does not let an older session release the newer locale override', async () => {
++    const first = createSuiteAppearance(true, {
++      readAppearance: vi.fn().mockResolvedValue({ schemaVersion: 1, theme: 'light', language: 'en' }),
++    })
++    await vi.advanceTimersByTimeAsync(0)
++    session = createSuiteAppearance(true, {
++      readAppearance: vi.fn().mockResolvedValue({ schemaVersion: 1, theme: 'dark', language: 'zh-CN' }),
++    })
++    await vi.advanceTimersByTimeAsync(0)
++    first?.dispose()
++    expect(useI18n().languageManaged.value).toBe(true)
++    expect(useI18n().locale.value).toBe('zh-CN')
++    expect(localStorage.getItem(savedLocaleKey)).toBe('en-US')
++  })
++
++  it('provides matching translated suite messages in both dictionaries', () => {
++    expect(Object.keys(en.suiteAppearance).sort()).toEqual(Object.keys(zh.suiteAppearance).sort())
++    const i18n = useI18n()
++    i18n.setEffectiveLocale('zh-CN')
++    expect(i18n.t('suiteAppearance.readFailed')).toBe(zh.suiteAppearance.readFailed)
++    i18n.setEffectiveLocale('en-US')
++    expect(i18n.t('suiteAppearance.readFailed')).toBe(en.suiteAppearance.readFailed)
++    expect(localStorage.getItem(savedLocaleKey)).toBe('en-US')
++  })
++
++  it('shows real selected state and an actionable appearance error without exposing native details', async () => {
++    const readAppearance = vi.fn().mockRejectedValue(new Error('private configuration payload'))
++    session = createSuiteAppearance(true, { readAppearance })
++    const wrapper = shallowMount(App, {
++      global: { provide: { [suiteAppearanceKey as symbol]: session }, stubs: { StatusBadge: false, ErrorNotice: false } },
++    })
++    mounted.push(wrapper)
++    await vi.advanceTimersByTimeAsync(0)
++    await nextTick()
++    expect(wrapper.getComponent(StatusBadge).text()).toBe(en.suiteAppearance.noConnection)
++    const vm = wrapper.vm as unknown as { handleConnectionSelect(id: string, state: string): void }
++    vm.handleConnectionSelect('test-connection', 'Connected')
++    await nextTick()
++    expect(wrapper.getComponent(StatusBadge).text()).toBe(en.suiteAppearance.connected)
++    expect(wrapper.getComponent(ErrorNotice).text()).toContain(en.suiteAppearance.readFailed)
++    expect(wrapper.text()).not.toContain('private configuration payload')
++    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain('private configuration payload')
++    readAppearance.mockResolvedValue({ schemaVersion: 1, theme: 'light', language: 'en' })
++    await wrapper.getComponent(ErrorNotice).findAll('button')[0].trigger('click')
++    await vi.advanceTimersByTimeAsync(0)
++    expect(wrapper.findComponent(ErrorNotice).exists()).toBe(false)
++    readAppearance.mockRejectedValue(new Error('another read failure'))
++    await vi.advanceTimersByTimeAsync(1500)
++    await nextTick()
++    await wrapper.getComponent(ErrorNotice).findAll('button')[1].trigger('click')
++    expect(wrapper.findComponent(ErrorNotice).exists()).toBe(false)
++    await vi.advanceTimersByTimeAsync(3000)
++    expect(wrapper.findComponent(ErrorNotice).exists()).toBe(false)
++    const callsBeforeUnmount = readAppearance.mock.calls.length
++    wrapper.unmount()
++    mounted.pop()
++    await vi.advanceTimersByTimeAsync(3000)
++    expect(readAppearance).toHaveBeenCalledTimes(callsBeforeUnmount)
++    expect(useI18n().languageManaged.value).toBe(false)
++  })
++})
 diff --git a/master-frontend/tests/suiteUpdate.spec.ts b/master-frontend/tests/suiteUpdate.spec.ts
 new file mode 100644
 index 0000000..b52b5a6
@@ -1542,6 +2762,88 @@ index f32445e..81df5d7 100644
              <span v-if="copied" class="about-toast">{{ copied }}</span>
            </div>
          </div>
+diff --git a/shared-frontend/components/LangSwitch.vue b/shared-frontend/components/LangSwitch.vue
+index a4e69fc..0b0bc51 100644
+--- a/shared-frontend/components/LangSwitch.vue
++++ b/shared-frontend/components/LangSwitch.vue
+@@ -1,7 +1,7 @@
+ <script setup lang="ts">
+ import { useI18n } from '../i18n'
+ 
+-const { locale, setLocale } = useI18n()
++const { t, locale, setLocale, languageManaged } = useI18n()
+ 
+ function toggle() {
+   setLocale(locale.value === 'zh-CN' ? 'en-US' : 'zh-CN')
+@@ -9,10 +9,13 @@ function toggle() {
+ </script>
+ 
+ <template>
+-  <button class="lang-switch" :title="locale === 'zh-CN' ? 'Switch to English' : '切换到中文'" @click="toggle">
++  <button class="lang-switch" type="button" :disabled="languageManaged"
++    :title="languageManaged ? t('suiteAppearance.managed') : (locale === 'zh-CN' ? 'Switch to English' : '切换到中文')"
++    @click="toggle">
+     <span :class="['seg', { active: locale === 'zh-CN' }]">中</span>
+     <span class="sep">/</span>
+     <span :class="['seg', { active: locale === 'en-US' }]">EN</span>
++    <span v-if="languageManaged" class="managed-label">{{ t('suiteAppearance.managed') }}</span>
+   </button>
+ </template>
+ 
+@@ -35,4 +38,6 @@ function toggle() {
+ .seg { padding: 0 2px; }
+ .seg.active { color: var(--c-text); font-weight: 600; }
+ .sep { color: var(--c-surface1); }
++.managed-label { align-self: center; padding-inline: 5px; font-size: 11px; white-space: nowrap; }
++button:disabled { cursor: default; }
+ </style>
+diff --git a/shared-frontend/i18n/index.ts b/shared-frontend/i18n/index.ts
+index af20765..16f4150 100644
+--- a/shared-frontend/i18n/index.ts
++++ b/shared-frontend/i18n/index.ts
+@@ -1,4 +1,4 @@
+-import { ref, computed } from 'vue'
++import { ref, computed, readonly } from 'vue'
+ import type { Locale } from './types'
+ import { SUPPORTED_LOCALES, STORAGE_KEY } from './types'
+ import { detectSystemLocale } from './detect'
+@@ -22,6 +22,7 @@ function initialLocale(): Locale {
+ }
+ 
+ export const locale = ref<Locale>(initialLocale())
++const languageManaged = ref(false)
+ 
+ function lookup(dict: DictShape, key: string): string | undefined {
+   const parts = key.split('.')
+@@ -53,19 +54,27 @@ function translate(key: string, params?: Record<string, unknown>): string {
+ }
+ 
+ function setLocale(next: Locale) {
++  if (languageManaged.value) return
+   if (!(SUPPORTED_LOCALES as readonly string[]).includes(next)) return
+   locale.value = next
+   try { localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
+ }
+ 
++function setEffectiveLocale(next: Locale | null) {
++  if (next !== null && !(SUPPORTED_LOCALES as readonly string[]).includes(next)) return
++  languageManaged.value = next !== null
++  locale.value = next ?? initialLocale()
++}
++
+ const localeRef = computed(() => locale.value)
+ 
+ export function useI18n() {
+-  return { t: translate, locale: localeRef, setLocale }
++  return { t: translate, locale: localeRef, setLocale, setEffectiveLocale, languageManaged: readonly(languageManaged) }
+ }
+ 
+ // Test-only: re-runs initial locale detection. Don't use in production code.
+ export function __resetForTests() {
++  languageManaged.value = false
+   locale.value = initialLocale()
+ }
+ 
 diff --git a/shared-frontend/suite.ts b/shared-frontend/suite.ts
 new file mode 100644
 index 0000000..4ec7695
