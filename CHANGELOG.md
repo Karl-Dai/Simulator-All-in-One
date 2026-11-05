@@ -24,6 +24,8 @@ Notable changes are documented in English and Chinese, following Keep a Changelo
 
 ### Fixed / 修复
 
+- Use Python 3.12.10 across native CI targets and a short Windows dependency workspace to avoid OpenSSL compiler path limits. / 原生 CI 统一使用 Python 3.12.10，Windows 依赖使用短路径目录，避免 OpenSSL 编译路径超限。
+
 - Windows native menu integration and Modbus initial slave point address areas. / 修复 Windows 原生菜单集成和 Modbus 从站初始点位地址区配置。
 - Appearance bindings remain available in both standalone and suite Wails builds; standalone methods reject suite configuration access. / Wails 独立版和套件构建均生成稳定的外观绑定，独立版拒绝访问套件配置。
 
