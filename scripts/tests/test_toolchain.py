@@ -622,7 +622,7 @@ class ToolchainTests(unittest.TestCase):
         record = records[0]
         self.assertTrue(record["matches"], record)
         self.assertEqual(record["actual"], "1.99.0")
-        self.assertEqual(record["path"], os.path.abspath(link))
+        self.assertEqual(os.path.normcase(record["path"]), os.path.normcase(os.path.abspath(link)))
         self.assertNotEqual(record["path"], os.path.abspath(target))
         self.assertTrue(os.path.samefile(record["path"], target))
 
