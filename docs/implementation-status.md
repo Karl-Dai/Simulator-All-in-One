@@ -147,3 +147,12 @@ Playwright 无头 Chromium 使用明确的 Wails fixture，在四个视口检查
 候选版本改为 0.1.3；按 Actions 官方版本清单统一使用 Python 3.12.10，先完成 main 原生候选构建，再为同一提交创建 tag。发布工作流可接收完全匹配提交的成功 main 构建记录，避免再次编译相同源码。
 
 四目标候选构建发现 Windows 路径大小写测试差异及 OpenSSL 生成文件路径过长：测试按平台规范比较大小写，Windows 子项目目录缩短为 `D:/s`。修复保持依赖和功能源码不变，随后重新验证原生构建。
+
+## 2026-11-05 公开发布 v0.1.3
+
+- 仓库已设置为 public，[正式 Release](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3) 已公开，非草稿、非预发布。
+- tag 指向 `b0d5bd8a9d9c7344c6d21b6cbba9e764240ea465`；[四目标构建](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41967403951) 全部成功。
+- macOS ARM/Intel 原生编译、后端测试、完整清单、签名及 DMG/ZIP 打包通过；Windows NSIS 安装、修复、保护、九进程启动和卸载通过；Linux 运行时闭包、打包和断网容器启动通过。
+- [发布任务](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41974642759) 核对候选构建来源与 tag 提交一致，重新执行源码检查，并验证六份安装归档的 SHA256 后公开发布。Release 包含六份归档、六份校验 JSON 和总表 `SHA256SUMS`，共 13 项资产；发布说明包含双语更新记录和下载表。
+- 本轮没有补齐全平台完整窗口及协议互联、无 WebView2 的干净 Windows 断网首装、macOS 13 实机、Developer ID 签名及 Apple 公证；这些项目继续列为未验收。历史窗口或协议结果不作为本次发布的完整验收结论。
+- 发布后的 README 更新仅调整下载入口与验收状态，不改变 tag 或编译产物。

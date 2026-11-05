@@ -26,7 +26,7 @@ Repository: [Karl-Dai/Simulator-All-in-One](https://github.com/Karl-Dai/Simulato
 
 ## Installation and current status
 
-The suite version remains **0.1.3**. New builds use these names:
+Download **v0.1.3** from [GitHub Releases](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3). Packages use these names:
 
 | Target | Installer | Launcher |
 | --- | --- | --- |
@@ -35,9 +35,9 @@ The suite version remains **0.1.3**. New builds use these names:
 | Windows x64 | `SAIO_0.1.3_windows-amd64-setup.exe` | `SAIO.exe` |
 | Ubuntu 22.04 x64 baseline | `SAIO_0.1.3_linux-amd64.run` | `SAIO` |
 
-The complete four-target installers have **not been rebuilt with this rename**. The previous complete build, commit `b5371b8`, is available locally in `dist/ci-packages/b5371b8/` with its original `SimLab_*` filenames, checksums and provenance. Those packages do not contain the new name. No tag or GitHub Release has been created.
+The public release contains six archives built from the same commit: two macOS DMGs, two macOS ZIPs, one Windows installer and one Linux archive. Verify downloads against `SHA256SUMS` or the adjacent `.sha256.json` files. [Four-target build and checks](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41967403951) passed; [publication](https://github.com/Karl-Dai/Simulator-All-in-One/actions/runs/41974642759) verifies source provenance and all package checksums before release.
 
-The previous build passed native compilation and packaging for all four targets, Windows installation/repair/startup/uninstall checks, and Linux offline container startup. macOS Apple Silicon also received actual window and launcher interaction checks. Full Windows/Linux/Intel GUI and protocol acceptance, a fresh Windows offline installation without WebView2, and macOS 13 hardware validation remain open. See the [dated implementation and acceptance record](docs/implementation-status.md).
+This release passed native compilation and packaging for all four targets, Windows installation/repair/startup/uninstall checks, and Linux offline container startup. Earlier macOS Apple Silicon builds received actual window and launcher interaction checks; those historical checks do not establish complete GUI or protocol acceptance for this release. Full Windows/Linux/Intel GUI and protocol acceptance, a fresh Windows offline installation without WebView2, and macOS 13 hardware validation remain open. See the [dated implementation and acceptance record](docs/implementation-status.md).
 
 On macOS, drag `Simulator All-in-One.app` from the new DMG into Applications. Current packaging supports ad-hoc signing or an existing signing identity; Developer ID distribution and Apple notarization remain pending.
 

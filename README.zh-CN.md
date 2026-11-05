@@ -15,11 +15,11 @@
 | PMU V2 / V3 | PmuSim、PmuSub | 0.13.2 |
 | OPC UA | OPCUAMaster、OPCUAServer | 0.8.0 |
 
-当前套件版本为 **0.1.3**。macOS Apple Silicon 和 Intel 的完整 DMG / ZIP 已通过原生 CI 构建、八个组件清单、资源树、嵌套签名及镜像校验；Apple Silicon 还完成了本机窗口与协议互联验收。Windows 已通过真实安装、修复、保护、九个进程启动及卸载检查；Linux 已通过干净容器离线启动检查。完整证据和验收边界见[实施记录](docs/implementation-status.md)。当前 macOS 产物使用 ad-hoc 签名，未完成 Developer ID 签名或 Apple 公证。
+当前公开版本为 [**v0.1.3**](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3)。同一提交的四个原生目标已通过编译、打包和资源清单检查；Windows 安装、修复、保护、九进程启动及卸载检查通过，Linux 干净容器断网启动检查通过。六份安装归档和 SHA256 校验值已发布。历史窗口及协议验收与本轮自动检查的区别见[实施记录](docs/implementation-status.md)。macOS 产物使用 ad-hoc 签名，尚未完成 Developer ID 签名和 Apple 公证。
 
 ## 安装与使用
 
-macOS 要求 **13.0+**。打开新构建的 `SAIO_0.1.3_darwin-arm64.dmg`，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。改名后的完整三平台安装包尚未重建。上一轮 2026-10-30 的双语入口完整重建基于 `b5371b8`，该轮四个原生目标的安装包和两个 macOS ZIP 汇总在本机 `dist/ci-packages/b5371b8/`；`SHA256SUMS`、`.sha256.json` 和 `provenance.json` 提供校验值、来源提交、CI 与验收记录。旧包保留在 `dist/ci-packages/`。GitHub Actions 的下载链接见实施记录。这些产物尚未发布到 GitHub Releases。
+macOS 要求 **13.0+**。从 [v0.1.3 发布页](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.3) 下载对应 Apple Silicon 或 Intel 的 DMG，将 `Simulator All-in-One.app` 拖入“应用程序”。第一次打开若被系统拦截，可在“系统设置 → 隐私与安全性”确认打开。发布页同时提供两个 macOS ZIP、Windows 安装器和 Linux 自解压包，使用 `SHA256SUMS` 或各包对应的 `.sha256.json` 核对下载文件。旧本地产物继续保留。
 
 Windows 使用一个 NSIS 安装包，内置八个免安装 payload，并携带一份对应架构的 WebView2 离线 Standalone Installer。安装器检测已有 WebView2，仅在缺少时安装；不会逐一启动八个子安装器。套件运行中禁止替换，完整新目录先准备并校验，再切换，切换失败保留或恢复旧目录。非空目标目录必须有 SimLab 所有权标记及可识别文件清单，未知文件会阻止覆盖；声明内程序缺失或损坏可以重装修复。该流程已在原生 Windows CI 通过安装、修复、目录保护、活动实例检查、入口与八角色启动和卸载；runner 可能预装 WebView2，尚未验证无 WebView2 的干净 Windows 断网首次安装。
 
@@ -133,7 +133,7 @@ actionlint .github/workflows/*.yml
 
 本机已通过 16 项打包与检查脚本测试，覆盖脏源码保护、缺角色保留旧 stage、签名/哈希顺序、完整资源树、manifest 路径与哈希、Wails plist、自解压缺文件修复和旧目录保留、Windows 明确选择 Git Bash、cp1252 环境下的中文配置与资源收集，独立日志游标和有界读取、Wayland UI 依赖收集，以及原生包复用的来源与文件边界。macOS DMG 已通过 `hdiutil verify`，整套 `.app` 已通过 `codesign --verify --deep --strict`。
 
-三个工作流均仅保留手动触发（`workflow_dispatch`）。推送、PR、标签和定时任务都不会自动启动 CI；需要时在 GitHub Actions 中明确运行对应工作流。
+所有工作流均由手动触发（`workflow_dispatch`）；发布流程也可调用源码检查和原生构建。推送、PR、标签和定时任务都不会自动启动 CI；需要时在 GitHub Actions 中明确运行对应工作流。
 
 `validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
 
