@@ -14,10 +14,139 @@ index a66daa2..ec8c4e7 100644
  name = "iec104master_app_lib"
  crate-type = ["staticlib", "cdylib", "rlib"]
 diff --git a/crates/iec104master-app/src/commands.rs b/crates/iec104master-app/src/commands.rs
-index 31c806f..fac3c50 100644
+index 31c806f..dd630ea 100644
 --- a/crates/iec104master-app/src/commands.rs
 +++ b/crates/iec104master-app/src/commands.rs
-@@ -1460,7 +1460,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
+@@ -3,7 +3,7 @@ use iec104sim_core::config::{MasterConfigFile, MasterSnapshotPoint};
+ use iec104sim_core::log_collector::LogCollector;
+ use iec104sim_core::log_entry::LogEntry;
+ use iec104sim_core::master::{
+-    ControlResult, ControlStep, MasterConfig, MasterConnection, Socks5Config, TlsConfig,
++    ControlResult, MasterConfig, MasterConnection, Socks5Config, TlsConfig,
+     TlsVersionPolicy,
+ };
+ use serde::{Deserialize, Serialize};
+@@ -839,7 +839,7 @@ pub struct RawApduRequest {
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ enum ControlMode {
+-    /// 仅执行:单发一条 S/E=0 的执行帧,发完即返回(默认,等同旧"直接执行")。
++    /// 仅执行:单发一条 S/E=0 的执行帧,激活时等待执行确认。
+     Execute,
+     /// 仅选择:单发一条 S/E=1 的选择帧,不自动跟发执行帧(供调试用)。
+     Select,
+@@ -904,44 +904,41 @@ pub async fn send_control_command(
+         request.command_type, ioa, ca, mode, t_lock.as_millis()
+     );
+ 
+-    // 仅执行 / 仅选择: 发一条命令并立即返回(不阻塞等待 ACT_CON)。
+-    // sel 决定 S/E 位: 仅选择→true(S/E=1), 仅执行→false(S/E=0)。
++    // Single-frame modes never add another command. Activation/deactivation
++    // waits for the peer confirmation; custom causes report only "sent".
+     if mode != ControlMode::Sbo {
++        use iec104sim_core::log_entry::{DetailEvent, FrameLabel};
+         let sel = mode == ControlMode::Select;
+-        let start = std::time::Instant::now();
+-        match request.command_type.as_str() {
++        let (frame, label, kind, value) = match request.command_type.as_str() {
+             "single" => {
+                 let value = parse_bool(&request.value)?;
+-                conn.connection.send_single_command(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                (build_control_frames_single(ca, ioa, value, sel, qu, cot), FrameLabel::SingleCommand,
++                 "single_command", serde_json::json!(value))
+             }
+             "double" => {
+-                let value = request.value.parse::<u8>().map_err(|e| format!("{}", e))?;
+-                conn.connection.send_double_command(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                let value = request.value.parse::<u8>().map_err(|e| e.to_string())?;
++                (build_control_frames_double(ca, ioa, value, sel, qu, cot), FrameLabel::DoubleCommand,
++                 "double_command", serde_json::json!(value))
+             }
+             "step" => {
+-                let value = request.value.parse::<u8>().map_err(|e| format!("{}", e))?;
+-                conn.connection.send_step_command(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                let value = request.value.parse::<u8>().map_err(|e| e.to_string())?;
++                (build_control_frames_step(ca, ioa, value, sel, qu, cot), FrameLabel::StepCommand,
++                 "step_command", serde_json::json!(value))
+             }
+             "setpoint_normalized" => {
+-                // NVA 直传:value 为原始 16 位 NVA 整数;sel 透传 S/E 位(支持仅选择)。
+-                let value = request.value.parse::<i16>().map_err(|e| format!("{}", e))?;
+-                conn.connection.send_setpoint_normalized(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                let value = request.value.parse::<i16>().map_err(|e| e.to_string())?;
++                (build_control_frames_setpoint_norm(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointNormalized,
++                 "setpoint_normalized", serde_json::json!(value))
+             }
+             "setpoint_scaled" => {
+-                let value = request.value.parse::<i16>().map_err(|e| format!("{}", e))?;
+-                conn.connection.send_setpoint_scaled(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                let value = request.value.parse::<i16>().map_err(|e| e.to_string())?;
++                (build_control_frames_setpoint_scaled(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointScaled,
++                 "setpoint_scaled", serde_json::json!(value))
+             }
+             "setpoint_float" => {
+-                let value = request.value.parse::<f32>().map_err(|e| format!("{}", e))?;
+-                let t_send = std::time::Instant::now();
+-                conn.connection.send_setpoint_float(ioa, value, sel, ca, qu, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
+-                eprintln!("[send_control_command] setpoint_float send_frame={}ms", t_send.elapsed().as_millis());
++                let value = request.value.parse::<f32>().map_err(|e| e.to_string())?;
++                (build_control_frames_setpoint_float(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointFloat,
++                 "setpoint_float", serde_json::json!(value))
+             }
+             "bitstring" => {
+                 if sel {
+@@ -950,19 +947,18 @@ pub async fn send_control_command(
+                 let value = request.bitstring
+                     .or_else(|| parse_u32_value(&request.value))
+                     .ok_or_else(|| "bitstring 命令需要提供 32 位数值 (bitstring 字段或 value)".to_string())?;
+-                conn.connection.send_bitstring_command(ioa, value, ca, cot).await
+-                    .map_err(|e| format!("failed to send command: {}", e))?;
++                (build_control_frame_bitstring(ca, ioa, value, cot), FrameLabel::Bitstring,
++                 "bitstring_command", serde_json::json!(value))
+             }
+             _ => return Err(format!("unknown command type: {}", request.command_type)),
+-        }
+-        let action = if sel { "select_sent" } else { "execute_sent" };
+-        return Ok(ControlResult {
+-            steps: vec![ControlStep {
+-                action: action.to_string(),
+-                timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+-            }],
+-            duration_ms: start.elapsed().as_millis() as u64,
+-        });
++        };
++        let detail = format!("{} IOA={} val={} sel={} COT={}", request.command_type, ioa, value, sel, cot);
++        let event = DetailEvent {
++            kind: kind.to_string(),
++            payload: serde_json::json!({ "ioa": ioa, "val": value, "select": sel, "qu": qu, "ql": qu, "cot": cot }),
++        };
++        return conn.connection.send_control_frame_with_confirmation(frame, &detail, label, ca, Some(event))
++            .await.map_err(|e| e.to_string());
+     }
+ 
+     // SbO mode: delegate to send_control_with_sbo_event
+@@ -1214,6 +1210,14 @@ fn build_control_frames_setpoint_float(ca: u16, ioa: u32, value: f32, select: bo
+          val_bytes[0], val_bytes[1], val_bytes[2], val_bytes[3], qos]
+ }
+ 
++fn build_control_frame_bitstring(ca: u16, ioa: u32, value: u32, cot: u8) -> Vec<u8> {
++    let mut frame = vec![0x68, 0x11, 0, 0, 0, 0, 51, 1, cot, 0];
++    frame.extend_from_slice(&ca.to_le_bytes());
++    frame.extend_from_slice(&ioa.to_le_bytes()[..3]);
++    frame.extend_from_slice(&value.to_le_bytes());
++    frame
++}
++
+ // ---------------------------------------------------------------------------
+ // Data Commands
+ // ---------------------------------------------------------------------------
+@@ -1460,7 +1464,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
      // snapshots can be large and remain an explicit Save Config feature.
      let json = serialize_workspace(state, false).await?;
      let store = app_handle
@@ -26,7 +155,7 @@ index 31c806f..fac3c50 100644
          .map_err(|error| format!("打开工作区存储失败: {error}"))?;
      store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
      store
-@@ -1470,7 +1470,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
+@@ -1470,7 +1474,7 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
  
  pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
      let store = app_handle
@@ -3392,6 +3521,485 @@ index 0000000..3ab5c52
 +    }
 +  }
 +}
+diff --git a/crates/iec104sim-core/src/master.rs b/crates/iec104sim-core/src/master.rs
+index cabd192..625e40b 100644
+--- a/crates/iec104sim-core/src/master.rs
++++ b/crates/iec104sim-core/src/master.rs
+@@ -41,6 +41,11 @@ pub struct ControlResponse {
+     pub asdu_type: u8,
+     pub cot: u8,
+     pub positive: bool,
++    pub common_address: u16,
++    pub originator: u8,
++    pub test: bool,
++    /// Echoed command value and qualifier, including the Select/Execute bit.
++    pub object_data: Vec<u8>,
+ }
+ 
+ /// Result of a control command execution.
+@@ -815,6 +820,8 @@ pub struct MasterConnection {
+     send_lock: Arc<tokio::sync::Mutex<()>>,
+     /// Broadcast channel for control command responses (COT=7, COT=10).
+     control_tx: tokio::sync::broadcast::Sender<ControlResponse>,
++    /// Only one acknowledged control transaction may be active per connection.
++    control_lock: tokio::sync::Mutex<()>,
+     /// commands 层注入:未知 CA 喂这里。
+     ca_inbox: Option<crate::ca_debouncer::CaInbox>,
+     /// commands 层注入并随广播 flush 更新。Arc 包裹便于克隆进 spawned 接收任务。
+@@ -846,6 +853,7 @@ impl MasterConnection {
+             ack_notify: Arc::new(tokio::sync::Notify::new()),
+             send_lock: Arc::new(tokio::sync::Mutex::new(())),
+             control_tx,
++            control_lock: tokio::sync::Mutex::new(()),
+             ca_inbox: None,
+             configured_cas: Arc::new(std::sync::RwLock::new(Vec::new())),
+         }
+@@ -1607,11 +1615,15 @@ impl MasterConnection {
+         ca: u16,
+         event: Option<crate::log_entry::DetailEvent>,
+     ) -> Result<ControlResult, MasterError> {
+-        use std::time::Instant;
+-        let start = Instant::now();
+-        let mut steps = Vec::new();
+-        let mut rx = self.control_tx.subscribe();
+-
++        let _control = self.control_lock.try_lock().map_err(|_| {
++            MasterError::SendError("本连接已有控制命令等待确认".to_string())
++        })?;
++        if select_frame.get(8).map(|cot| cot & 0x3f) != Some(6)
++            || execute_frame.get(8).map(|cot| cot & 0x3f) != Some(6)
++        {
++            return Err(MasterError::SendError("自动选择执行只支持激活原因 COT=6".to_string()));
++        }
++        let start = std::time::Instant::now();
+         let phase_event = |phase: &str| -> Option<crate::log_entry::DetailEvent> {
+             event.as_ref().map(|e| {
+                 let mut payload = e.payload.clone();
+@@ -1621,78 +1633,107 @@ impl MasterConnection {
+                 crate::log_entry::DetailEvent { kind: e.kind.clone(), payload }
+             })
+         };
++        // Each phase subscribes before writing its own frame. A queued Select
++        // confirmation cannot complete Execute, even when both share an IOA.
++        let mut steps = self.send_control_phase(
++            &select_frame, detail_prefix, label.clone(), ca, phase_event("select"),
++        ).await?;
++        steps.extend(self.send_control_phase(
++            &execute_frame, detail_prefix, label, ca, phase_event("execute"),
++        ).await?);
++        let _ = ioa; // The complete request identity is decoded from each frame.
++        Ok(ControlResult { steps, duration_ms: start.elapsed().as_millis() as u64 })
++    }
++
++    /// Send one control frame. Activation/deactivation waits for its matching
++    /// confirmation; other custom COT values deliberately report only "sent".
++    /// The low-level send_* methods remain available for raw protocol testing.
++    pub async fn send_control_frame_with_confirmation(
++        &self,
++        frame: Vec<u8>,
++        detail: &str,
++        label: FrameLabel,
++        ca: u16,
++        event: Option<crate::log_entry::DetailEvent>,
++    ) -> Result<ControlResult, MasterError> {
++        let _control = self.control_lock.try_lock().map_err(|_| {
++            MasterError::SendError("本连接已有控制命令等待确认".to_string())
++        })?;
++        let start = std::time::Instant::now();
++        let steps = self.send_control_phase(&frame, detail, label, ca, event).await?;
++        Ok(ControlResult { steps, duration_ms: start.elapsed().as_millis() as u64 })
++    }
+ 
+-        // Step 1: Send Select frame
+-        self.send_frame_with_event(&select_frame, &format!("{} (Select)", detail_prefix), label.clone(), ca, phase_event("select")).await?;
+-        steps.push(ControlStep {
+-            action: "select_sent".to_string(),
++    async fn send_control_phase(
++        &self,
++        frame: &[u8],
++        detail: &str,
++        label: FrameLabel,
++        ca: u16,
++        event: Option<crate::log_entry::DetailEvent>,
++    ) -> Result<Vec<ControlStep>, MasterError> {
++        if frame.len() < 16 || frame[7] != 1
++            || !AsduTypeId::from_u8(frame[6]).is_some_and(|t| t.is_control())
++        {
++            return Err(MasterError::SendError("无效的单点控制帧".to_string()));
++        }
++        let cot = frame[8] & 0x3f;
++        let expected_cot = match cot { 6 => Some(7), 8 => Some(9), _ => None };
++        let base_type = if frame[6] >= 58 { frame[6] - 13 } else { frame[6] };
++        let qualifier_index = match base_type { 45..=47 => Some(15), 48..=49 => Some(17), 50 => Some(19), _ => None };
++        let selected = qualifier_index.and_then(|i| frame.get(i)).is_some_and(|q| q & 0x80 != 0);
++        let phase = if cot == 8 { "deactivate" } else if selected { "select" } else { "execute" };
++        let step = |suffix: &str| ControlStep {
++            action: format!("{}_{}", phase, suffix),
+             timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+-        });
+-
+-        // Step 2: Wait for Select confirmation (COT=7)
+-        let select_confirmed = tokio::time::timeout(
+-            std::time::Duration::from_secs(5),
+-            Self::wait_for_response(&mut rx, ioa, 7),
+-        ).await;
+-
+-        match select_confirmed {
+-            Ok(Ok(resp)) => {
+-                if !resp.positive {
+-                    return Err(MasterError::SendError("选择被拒绝 (否定确认)".to_string()));
+-                }
+-                steps.push(ControlStep {
+-                    action: "select_confirmed".to_string(),
+-                    timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+-                });
++        };
++        let mut rx = self.control_tx.subscribe();
++        let mut state_rx = self.subscribe_state();
++        let operation = async {
++            if *state_rx.borrow() != MasterState::Connected {
++                return Err(MasterError::NotConnected);
+             }
+-            Ok(Err(e)) => return Err(MasterError::SendError(format!("等待选择确认失败: {}", e))),
+-            Err(_) => return Err(MasterError::SendError("选择确认超时 (5s)".to_string())),
+-        }
+-
+-        // Step 3: Send Execute frame
+-        self.send_frame_with_event(&execute_frame, &format!("{} (Execute)", detail_prefix), label, ca, phase_event("execute")).await?;
+-        steps.push(ControlStep {
+-            action: "execute_sent".to_string(),
+-            timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+-        });
+-
+-        // Step 4: Wait for Execute confirmation (COT=7)
+-        let exec_confirmed = tokio::time::timeout(
+-            std::time::Duration::from_secs(5),
+-            Self::wait_for_response(&mut rx, ioa, 7),
+-        ).await;
+-
+-        match exec_confirmed {
+-            Ok(Ok(resp)) => {
+-                if !resp.positive {
+-                    return Err(MasterError::SendError("执行被拒绝 (否定确认)".to_string()));
++            self.send_frame_with_event(frame, detail, label, ca, event).await?;
++            let mut steps = vec![step("sent")];
++            if let Some(expected_cot) = expected_cot {
++                loop {
++                    tokio::select! {
++                        response = rx.recv() => {
++                            let response = response.map_err(|e| MasterError::SendError(format!("控制确认接收失败: {}", e)))?;
++                            if !Self::response_matches_request(&response, frame) { continue; }
++                            if matches!(response.cot, 44..=47) {
++                                return Err(MasterError::SendError(format!("控制被拒绝 (COT={})", response.cot)));
++                            }
++                            if response.cot != expected_cot { continue; }
++                            if !response.positive {
++                                return Err(MasterError::SendError("控制被拒绝 (否定确认)".to_string()));
++                            }
++                            steps.push(step("confirmed"));
++                            return Ok(steps);
++                        }
++                        changed = state_rx.changed() => {
++                            if changed.is_err() || *state_rx.borrow() != MasterState::Connected {
++                                return Err(MasterError::SendError("等待控制确认时连接已断开".to_string()));
++                            }
++                        }
++                    }
+                 }
+-                steps.push(ControlStep {
+-                    action: "execute_confirmed".to_string(),
+-                    timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+-                });
+             }
+-            Ok(Err(e)) => return Err(MasterError::SendError(format!("等待执行确认失败: {}", e))),
+-            Err(_) => return Err(MasterError::SendError("执行确认超时 (5s)".to_string())),
+-        }
+-
+-        let duration_ms = start.elapsed().as_millis() as u64;
+-        Ok(ControlResult { steps, duration_ms })
++            Ok(steps)
++        };
++        // One deadline covers sending plus all unrelated responses; a noisy
++        // peer cannot extend a pending command indefinitely.
++        tokio::time::timeout(std::time::Duration::from_secs(5), operation).await
++            .map_err(|_| MasterError::SendError("控制确认超时 (5s)".to_string()))?
+     }
+ 
+-    /// Wait for a ControlResponse matching the given IOA and COT.
+-    async fn wait_for_response(
+-        rx: &mut tokio::sync::broadcast::Receiver<ControlResponse>,
+-        ioa: u32,
+-        expected_cot: u8,
+-    ) -> Result<ControlResponse, String> {
+-        loop {
+-            match rx.recv().await {
+-                Ok(resp) if resp.ioa == ioa && resp.cot == expected_cot => return Ok(resp),
+-                Ok(_) => continue, // Not our response, keep waiting
+-                Err(e) => return Err(format!("broadcast recv error: {}", e)),
+-            }
+-        }
++    fn response_matches_request(response: &ControlResponse, frame: &[u8]) -> bool {
++        response.asdu_type == frame[6]
++            && response.common_address == u16::from_le_bytes([frame[10], frame[11]])
++            && response.ioa == u32::from_le_bytes([frame[12], frame[13], frame[14], 0])
++            && response.originator == frame[9]
++            && response.test == (frame[8] & 0x80 != 0)
++            && response.object_data == frame[15..]
+     }
+ 
+     async fn send_frame(&self, frame: &[u8], detail: &str, label: FrameLabel, ca: u16) -> Result<(), MasterError> {
+@@ -2391,6 +2432,10 @@ fn parse_and_store_asdu(
+                 asdu_type,
+                 cot,
+                 positive,
++                common_address: ca,
++                originator: data[9],
++                test: cause & 0x80 != 0,
++                object_data: data[15..].to_vec(),
+             });
+         }
+         return;
+diff --git a/crates/iec104sim-core/tests/control_confirmation.rs b/crates/iec104sim-core/tests/control_confirmation.rs
+new file mode 100644
+index 0000000..3fb3bfc
+--- /dev/null
++++ b/crates/iec104sim-core/tests/control_confirmation.rs
+@@ -0,0 +1,235 @@
++//! Confirmed single-frame controls use real TCP replies, not send completion.
++use iec104sim_core::log_entry::FrameLabel;
++use iec104sim_core::master::{MasterConfig, MasterConnection};
++use std::time::{Duration, Instant};
++use tokio::io::{AsyncReadExt, AsyncWriteExt};
++use tokio::net::{TcpListener, TcpStream};
++
++struct Peer {
++    stream: TcpStream,
++    send_sequence: u16,
++    received_sequence: u16,
++}
++
++async fn read_frame(stream: &mut TcpStream) -> Vec<u8> {
++    let mut header = [0; 2];
++    stream.read_exact(&mut header).await.unwrap();
++    assert_eq!(header[0], 0x68);
++    let mut frame = vec![0; header[1] as usize + 2];
++    frame[..2].copy_from_slice(&header);
++    stream.read_exact(&mut frame[2..]).await.unwrap();
++    frame
++}
++
++impl Peer {
++    async fn command(&mut self) -> Vec<u8> {
++        loop {
++            let frame = read_frame(&mut self.stream).await;
++            if frame[2] & 1 == 0 {
++                self.received_sequence = u16::from_le_bytes([frame[2], frame[3]]) >> 1;
++                return frame;
++            }
++            if frame[2] == 0x43 {
++                self.stream.write_all(&[0x68, 4, 0x83, 0, 0, 0]).await.unwrap();
++            }
++        }
++    }
++
++    async fn response(&mut self, mut frame: Vec<u8>, cause: u8) {
++        frame[2..4].copy_from_slice(&(self.send_sequence << 1).to_le_bytes());
++        frame[4..6].copy_from_slice(&((self.received_sequence + 1) << 1).to_le_bytes());
++        frame[8] = cause;
++        self.send_sequence += 1;
++        self.stream.write_all(&frame).await.unwrap();
++    }
++}
++
++async fn connected() -> (MasterConnection, Peer) {
++    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
++    let port = listener.local_addr().unwrap().port();
++    let accept = tokio::spawn(async move {
++        let (mut stream, _) = listener.accept().await.unwrap();
++        stream.set_nodelay(true).unwrap();
++        assert_eq!(read_frame(&mut stream).await, vec![0x68, 4, 7, 0, 0, 0]);
++        stream.write_all(&[0x68, 4, 0x0b, 0, 0, 0]).await.unwrap();
++        Peer { stream, send_sequence: 0, received_sequence: 0 }
++    });
++    let mut master = MasterConnection::new(MasterConfig {
++        target_address: "127.0.0.1".to_string(), port,
++        interrogate_period_s: 0, counter_interrogate_period_s: 0,
++        t1: 15, t2: 10, t3: 20,
++        ..Default::default()
++    });
++    master.connect().await.unwrap();
++    (master, accept.await.unwrap())
++}
++
++fn float_command(selected: bool, cause: u8) -> Vec<u8> {
++    let mut frame = vec![0x68, 18, 0, 0, 0, 0, 50, 1, cause, 0, 2, 0, 1, 98, 0];
++    frame.extend_from_slice(&44.25_f32.to_le_bytes());
++    frame.push(if selected { 0x80 } else { 0 });
++    frame
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn direct_execute_waits_for_delayed_ack_and_reports_elapsed_time() {
++    let (mut master, mut peer) = connected().await;
++    let frame = float_command(false, 6);
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(frame.clone(), "test", FrameLabel::SetpointFloat, 2, None),
++        async {
++            let request = peer.command().await;
++            assert_eq!(&request[6..], &frame[6..]);
++            tokio::time::sleep(Duration::from_millis(220)).await;
++            peer.response(request, 7).await;
++        }
++    );
++    let result = result.unwrap();
++    assert_eq!(result.steps.iter().map(|s| s.action.as_str()).collect::<Vec<_>>(), ["execute_sent", "execute_confirmed"]);
++    assert!(result.duration_ms >= 200, "must include reply latency: {}", result.duration_ms);
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn select_only_confirms_without_sending_execute() {
++    let (mut master, mut peer) = connected().await;
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(true, 6), "test", FrameLabel::SetpointFloat, 2, None),
++        async {
++            let request = peer.command().await;
++            assert_eq!(request[19] & 0x80, 0x80);
++            peer.response(request, 7).await;
++            assert!(tokio::time::timeout(Duration::from_millis(200), peer.command()).await.is_err(), "select-only sent a second command");
++        }
++    );
++    assert_eq!(result.unwrap().steps.last().unwrap().action, "select_confirmed");
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn negative_and_protocol_error_responses_are_failures() {
++    for cause in [0x47, 44, 45, 46, 47] {
++        let (mut master, mut peer) = connected().await;
++        let (result, _) = tokio::join!(
++            master.send_control_frame_with_confirmation(float_command(false, 6), "test", FrameLabel::SetpointFloat, 2, None),
++            async {
++                let request = peer.command().await;
++                peer.response(request, cause).await;
++            }
++        );
++        assert!(result.unwrap_err().to_string().contains("拒绝"), "cause {cause}");
++        master.disconnect().await.unwrap();
++    }
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn unrelated_ca_type_ioa_value_and_select_replies_cannot_confirm_execute() {
++    let (mut master, mut peer) = connected().await;
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(false, 6), "test", FrameLabel::SetpointFloat, 2, None),
++        async {
++            let request = peer.command().await;
++            // Same IOA alone is insufficient: exercise each identity dimension.
++            for index in [10, 6, 12, 15, 19, 9] {
++                let mut unrelated = request.clone();
++                unrelated[index] ^= if index == 19 { 0x80 } else { 1 };
++                peer.response(unrelated, 7).await;
++            }
++            peer.response(request.clone(), 7 | 0x80).await; // Test flag differs.
++            peer.response(request.clone(), 10).await; // ACTTERM is not ACTCON.
++            tokio::time::sleep(Duration::from_millis(220)).await;
++            peer.response(request, 7).await;
++        }
++    );
++    assert!(result.unwrap().duration_ms >= 200);
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn irrelevant_replies_do_not_extend_five_second_deadline() {
++    let (mut master, mut peer) = connected().await;
++    let start = Instant::now();
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(false, 6), "test", FrameLabel::SetpointFloat, 2, None),
++        async {
++            let mut unrelated = peer.command().await;
++            unrelated[10] = 99;
++            for _ in 0..27 {
++                peer.response(unrelated.clone(), 7).await;
++                tokio::time::sleep(Duration::from_millis(200)).await;
++            }
++        }
++    );
++    assert!(result.unwrap_err().to_string().contains("超时"));
++    assert!(start.elapsed() < Duration::from_secs(7));
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn remote_disconnect_fails_before_confirmation_timeout() {
++    let (mut master, mut peer) = connected().await;
++    let start = Instant::now();
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(false, 6), "test", FrameLabel::SetpointFloat, 2, None),
++        async move { peer.command().await; drop(peer); }
++    );
++    assert!(result.unwrap_err().to_string().contains("断开"));
++    assert!(start.elapsed() < Duration::from_secs(2));
++    // The peer already closed the socket; explicit teardown reports that state.
++    assert!(matches!(master.disconnect().await, Err(iec104sim_core::master::MasterError::NotConnected)));
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn concurrent_control_is_rejected_without_an_extra_frame() {
++    let (mut master, mut peer) = connected().await;
++    let (first, second) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(false, 6), "first", FrameLabel::SetpointFloat, 2, None),
++        async {
++            let request = peer.command().await;
++            let error = master.send_control_frame_with_confirmation(float_command(false, 6), "second", FrameLabel::SetpointFloat, 2, None).await.unwrap_err();
++            assert!(error.to_string().contains("已有控制"));
++            peer.response(request, 7).await;
++            assert!(tokio::time::timeout(Duration::from_millis(150), peer.command()).await.is_err());
++        }
++    );
++    first.unwrap();
++    let _ = second;
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn deactivation_waits_for_cot9_and_custom_cause_reports_sent_only() {
++    let (mut master, mut peer) = connected().await;
++    let (result, _) = tokio::join!(
++        master.send_control_frame_with_confirmation(float_command(false, 8), "stop", FrameLabel::SetpointFloat, 2, None),
++        async { let request = peer.command().await; peer.response(request, 9).await; }
++    );
++    assert_eq!(result.unwrap().steps.last().unwrap().action, "deactivate_confirmed");
++    let result = master.send_control_frame_with_confirmation(float_command(false, 3), "custom", FrameLabel::SetpointFloat, 2, None).await.unwrap();
++    assert_eq!(result.steps.len(), 1);
++    assert_eq!(result.steps[0].action, "execute_sent");
++    assert_eq!(peer.command().await[8], 3);
++    master.disconnect().await.unwrap();
++}
++
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn sbo_ignores_duplicate_select_confirmation_during_execute() {
++    let (mut master, mut peer) = connected().await;
++    let (result, _) = tokio::join!(
++        master.send_control_with_sbo(float_command(true, 6), float_command(false, 6), 25089, "sbo", FrameLabel::SetpointFloat, 2),
++        async {
++            let select = peer.command().await;
++            peer.response(select.clone(), 7).await;
++            let execute = peer.command().await;
++            assert_eq!(execute[19] & 0x80, 0);
++            peer.response(select, 7).await;
++            tokio::time::sleep(Duration::from_millis(220)).await;
++            peer.response(execute, 7).await;
++        }
++    );
++    let result = result.unwrap();
++    assert_eq!(result.steps.len(), 4);
++    assert_eq!(result.steps.last().unwrap().action, "execute_confirmed");
++    assert!(result.duration_ms >= 200);
++    master.disconnect().await.unwrap();
++}
 diff --git a/crates/shared/contracts/appearance-cases.json b/crates/shared/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -5040,16 +5648,132 @@ index 37d162e..03e9357 100644
  .app-layout {
    display: grid;
 diff --git a/master-frontend/src/components/ControlDialog.vue b/master-frontend/src/components/ControlDialog.vue
-index 9ccae02..3ae8a3b 100644
+index 9ccae02..c130df2 100644
 --- a/master-frontend/src/components/ControlDialog.vue
 +++ b/master-frontend/src/components/ControlDialog.vue
-@@ -1,4 +1,5 @@
+@@ -1,10 +1,12 @@
  <script setup lang="ts">
+-import { ref, watch, computed } from 'vue'
 +import { vModal } from "@app/simlab-ui/modal"
- import { ref, watch, computed } from 'vue'
++import { ref, watch, computed, onBeforeUnmount } from 'vue'
  import { invoke } from '@tauri-apps/api/core'
  import type { CommandType, ControlResult } from '../types'
-@@ -226,9 +227,8 @@ async function send() {
+ import { useI18n } from '@shared/i18n'
+ import AppButton from '@shared/components/ui/AppButton.vue'
+ import AppSelect from '@shared/components/ui/AppSelect.vue'
++import { controlResultStatus } from '../utils/controlResult'
+ 
+ const { t } = useI18n()
+ 
+@@ -63,6 +65,24 @@ if (commandType.value === 'bitstring' && controlMode.value !== 'execute') {
+ const errorMsg = ref('')
+ const sending = ref(false)
+ const lastResult = ref<ControlResult | null>(null)
++const resultStatus = computed(() => lastResult.value ? controlResultStatus(lastResult.value) : null)
++const waitingForConfirmation = ref(false)
++let requestGeneration = 0
++
++function resetRequest() {
++  requestGeneration++
++  sending.value = false
++  waitingForConfirmation.value = false
++  lastResult.value = null
++  errorMsg.value = ''
++}
++
++function close() {
++  resetRequest()
++  emit('close')
++}
++
++onBeforeUnmount(resetRequest)
+ 
+ // Advanced parameters (intentionally not persisted — these are per-send
+ // tweaks the user usually wants to set deliberately each time)
+@@ -87,8 +107,8 @@ const scaledValue = ref(saved.scaledValue ?? '0')
+ const floatValue = ref(saved.floatValue ?? '0.0')
+ const bitstringValue = ref<number>(saved.bitstringValue ?? 0)
+ 
+-function savePersisted() {
+-  const data: Persisted = {
++function persistedValues(): Persisted {
++  return {
+     ca: ca.value,
+     ioa: ioa.value,
+     commandType: commandType.value,
+@@ -101,14 +121,11 @@ function savePersisted() {
+     floatValue: floatValue.value,
+     bitstringValue: bitstringValue.value,
+   }
+-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) } catch { /* ignore */ }
+ }
+ 
+-watch(() => props.visible, (v) => {
++watch(() => [props.visible, props.connectionId] as const, ([v]) => {
++  resetRequest()
+   if (v) {
+-    errorMsg.value = ''
+-    sending.value = false
+-    lastResult.value = null
+     qualifier.value = 0
+     cot.value = 6
+     showAdvanced.value = false
+@@ -119,7 +136,7 @@ watch(() => props.visible, (v) => {
+     if (props.prefillIoa != null) ioa.value = props.prefillIoa
+     if (props.prefillCommandType) commandType.value = props.prefillCommandType
+   }
+-})
++}, { flush: 'sync' })
+ 
+ watch(commandType, () => {
+   qualifier.value = 0
+@@ -190,14 +207,19 @@ const controlModeValue = computed({
+ })
+ 
+ async function send() {
+-  if (!props.connectionId) return
++  if (!props.visible || !props.connectionId || sending.value) return
++  const generation = ++requestGeneration
++  const connectionId = props.connectionId
++  const savedValues = persistedValues()
++  const isCurrentRequest = () => generation === requestGeneration && props.visible && props.connectionId === connectionId
+   errorMsg.value = ''
+   sending.value = true
++  waitingForConfirmation.value = controlMode.value === 'sbo' || [6, 8].includes(cot.value & 0x3f)
+   lastResult.value = null
+ 
+   try {
+     const payload: Record<string, unknown> = {
+-      connection_id: props.connectionId,
++      connection_id: connectionId,
+       ioa: ioa.value,
+       common_address: ca.value,
+       command_type: commandType.value,
+@@ -211,24 +233,25 @@ async function send() {
+       payload.bitstring = bitstringValue.value >>> 0
+     }
+     const result = await invoke<ControlResult>('send_control_command', { request: payload })
++    if (!isCurrentRequest()) return
+     lastResult.value = result
+-    sending.value = false
+-    // Persist on successful send so the user's last good CA / IOA / type /
+-    // value combo comes back next time. The dialog stays open so the user
+-    // can immediately tweak and send again — `lastResult` shows the OK
+-    // indicator beneath the form for confirmation.
+-    savePersisted()
++    // Save the values actually sent, even if the dialog's context later changes.
++    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedValues)) } catch { /* ignore */ }
+     emit('sent')
+   } catch (e) {
++    if (!isCurrentRequest()) return
+     errorMsg.value = String(e)
+-    sending.value = false
++  } finally {
++    if (isCurrentRequest()) {
++      sending.value = false
++      waitingForConfirmation.value = false
++    }
+   }
  }
  
  function handleKeydown(e: KeyboardEvent) {
@@ -5061,15 +5785,91 @@ index 9ccae02..3ae8a3b 100644
      send()
    }
  }
-@@ -277,7 +277,7 @@ const caSelectValue = computed<number>({
+@@ -277,10 +300,11 @@ const caSelectValue = computed<number>({
  <template>
    <Teleport to="body">
      <Transition name="dialog-pop">
 -    <div v-if="visible" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
-+    <div v-if="visible" v-modal="() => emit('close')" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
++    <div v-if="visible" v-modal="close" class="modal-backdrop dialog-blur" @mousedown.self="close" @keydown="handleKeydown">
        <div class="modal-box">
          <div class="modal-title">{{ t('control.title') }}</div>
          <div class="modal-body">
++          <fieldset class="form-fields" :disabled="sending">
+           <div class="form-row">
+             <label class="form-label form-label-half">
+               {{ t('control.targetCa') }}
+@@ -390,20 +414,25 @@ const caSelectValue = computed<number>({
+               </label>
+             </div>
+           </details>
++          </fieldset>
+ 
+-          <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
++          <div v-if="errorMsg" class="error-msg" role="alert">{{ errorMsg }}</div>
++
++          <div v-if="sending" class="result-indicator result-pending" role="status">
++            {{ waitingForConfirmation ? t('control.waitingForConfirmation') : t('control.sending') }}
++          </div>
+ 
+-          <div v-if="lastResult" class="result-indicator result-ok">
++          <div v-if="lastResult && resultStatus" :class="['result-indicator', resultStatus.confirmed ? 'result-ok' : 'result-unconfirmed']" role="status">
+             <span class="result-steps">
+               <span v-for="(step, i) in lastResult.steps" :key="i" class="step-dot" :title="step.action">&#9679;</span>
+             </span>
+-            <span class="result-text">OK {{ lastResult.duration_ms }}ms</span>
++            <span class="result-text">{{ t(resultStatus.label) }} · {{ t(resultStatus.duration, { ms: lastResult.duration_ms }) }}</span>
+           </div>
+         </div>
+         <div class="modal-footer">
+-          <AppButton @click="emit('close')">{{ t('common.close') }}</AppButton>
+-          <AppButton variant="primary" :disabled="sending" @click="send">
+-            {{ sending ? t('control.sending') : t('control.send') }}
++          <AppButton @click="close">{{ t('common.close') }}</AppButton>
++          <AppButton variant="primary" :disabled="sending || !connectionId" @click="send">
++            {{ sending ? (waitingForConfirmation ? t('control.waitingForConfirmation') : t('control.sending')) : t('control.send') }}
+           </AppButton>
+         </div>
+       </div>
+@@ -464,6 +493,16 @@ const caSelectValue = computed<number>({
+   margin-top: 20px;
+ }
+ 
++.form-fields {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  min-width: 0;
++  margin: 0;
++  padding: 0;
++  border: 0;
++}
++
+ .form-label {
+   display: flex;
+   flex-direction: column;
+@@ -639,6 +678,13 @@ const caSelectValue = computed<number>({
+   color: var(--success);
+ }
+ 
++.result-unconfirmed,
++.result-pending {
++  background: var(--bg-panel);
++  border: 1px solid var(--border-subtle);
++  color: var(--text-muted);
++}
++
+ .result-steps {
+   display: flex;
+   gap: 4px;
+@@ -646,7 +692,7 @@ const caSelectValue = computed<number>({
+ }
+ 
+ .step-dot {
+-  color: var(--success);
++  color: currentColor;
+ }
+ 
+ .result-text {
 diff --git a/master-frontend/src/components/NewConnectionModal.vue b/master-frontend/src/components/NewConnectionModal.vue
 index f49f0fa..28a778d 100644
 --- a/master-frontend/src/components/NewConnectionModal.vue
@@ -5193,8 +5993,130 @@ index ae050d8..4be70e3 100644
    { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
  ])
  function menuHeading(id: string) {
+diff --git a/master-frontend/src/components/ValuePanel.vue b/master-frontend/src/components/ValuePanel.vue
+index ac65bcb..00ae629 100644
+--- a/master-frontend/src/components/ValuePanel.vue
++++ b/master-frontend/src/components/ValuePanel.vue
+@@ -1,5 +1,5 @@
+ <script setup lang="ts">
+-import { inject, computed, ref, type Ref } from 'vue'
++import { inject, computed, ref, watch, onBeforeUnmount, type Ref } from 'vue'
+ import { invoke } from '@tauri-apps/api/core'
+ import type { ReceivedDataPointInfo, ControlResult } from '../types'
+ import { getControlConfig, asduHasTimestamp } from '../types'
+@@ -9,6 +9,7 @@ import { useI18n, localizeCategoryLabel } from '@shared/i18n'
+ import { formatDataPointValue, normalizeDoublePointCode } from '@shared/utils/dataPointValue'
+ import { formatAsduTypeWithId } from '@shared/utils/asduType'
+ import EmptyState from '@shared/components/EmptyState.vue'
++import { controlResultStatus } from '../utils/controlResult'
+ 
+ const { t } = useI18n()
+ const selectedConnectionId = inject<Ref<string | null>>('selectedConnectionId')!
+@@ -21,6 +22,17 @@ const firstPoint = computed(() => selectedPoints.value[0] ?? null)
+ const cmdSelect = ref(false)
+ const sending = ref(false)
+ const lastResult = ref<{ success: boolean; result?: ControlResult; error?: string } | null>(null)
++const resultStatus = computed(() => lastResult.value?.result ? controlResultStatus(lastResult.value.result) : null)
++let requestGeneration = 0
++
++function resetRequest() {
++  requestGeneration++
++  sending.value = false
++  lastResult.value = null
++}
++
++watch(() => [selectedConnectionId.value, firstPoint.value?.common_address, firstPoint.value?.ioa, firstPoint.value?.asdu_type], resetRequest, { flush: 'sync' })
++onBeforeUnmount(resetRequest)
+ 
+ // Setpoint input values
+ const setpointValue = ref('')
+@@ -35,7 +47,8 @@ const controlConfig = computed(() => {
+ const currentValue = computed(() => firstPoint.value?.value ?? '')
+ 
+ async function sendCommand(value: string | number | boolean) {
+-  if (!selectedConnectionId.value || !firstPoint.value || !controlConfig.value) return
++  if (!selectedConnectionId.value || !firstPoint.value || !controlConfig.value || sending.value) return
++  const generation = ++requestGeneration
+   sending.value = true
+   lastResult.value = null
+ 
+@@ -53,11 +66,11 @@ async function sendCommand(value: string | number | boolean) {
+         select: cmdSelect.value,
+       }
+     })
+-    lastResult.value = { success: true, result }
++    if (generation === requestGeneration) lastResult.value = { success: true, result }
+   } catch (e) {
+-    lastResult.value = { success: false, error: String(e) }
++    if (generation === requestGeneration) lastResult.value = { success: false, error: String(e) }
+   } finally {
+-    sending.value = false
++    if (generation === requestGeneration) sending.value = false
+   }
+ }
+ 
+@@ -90,15 +103,13 @@ const numericValue = computed(() => {
+ })
+ 
+ // Prefill setpoint when point changes
+-import { watch } from 'vue'
+ watch(firstPoint, (p) => {
+-  if (p && controlConfig.value) {
++  if (p && controlConfig.value && !sending.value) {
+     const w = controlConfig.value.widget
+     if (w === 'slider' || w === 'number_input') {
+       setpointValue.value = String(numericValue.value)
+     }
+   }
+-  lastResult.value = null
+ })
+ </script>
+ 
+@@ -256,8 +267,9 @@ watch(firstPoint, (p) => {
+           </div>
+ 
+           <!-- Control result indicator -->
+-          <div v-if="lastResult" :class="['result-indicator', lastResult.success ? 'result-ok' : 'result-err']">
+-            <template v-if="lastResult.success && lastResult.result">
++          <div v-if="sending" class="result-indicator result-unconfirmed" role="status">{{ t('control.waitingForConfirmation') }}</div>
++          <div v-if="lastResult" :class="['result-indicator', lastResult.success ? (resultStatus?.confirmed ? 'result-ok' : 'result-unconfirmed') : 'result-err']" role="status">
++            <template v-if="lastResult.success && lastResult.result && resultStatus">
+               <div class="result-steps">
+                 <span
+                   v-for="(step, i) in lastResult.result.steps"
+@@ -266,7 +278,7 @@ watch(firstPoint, (p) => {
+                   :title="step.action + ' ' + step.timestamp"
+                 >&#9679;</span>
+               </div>
+-              <span class="result-text">OK {{ lastResult.result.duration_ms }}ms</span>
++              <span class="result-text">{{ t(resultStatus.label) }} · {{ t(resultStatus.duration, { ms: lastResult.result.duration_ms }) }}</span>
+             </template>
+             <template v-else>
+               <span class="result-text">{{ lastResult.error }}</span>
+@@ -488,6 +500,12 @@ watch(firstPoint, (p) => {
+   color: var(--success);
+ }
+ 
++.result-unconfirmed {
++  background: var(--bg-panel);
++  border: 1px solid var(--border-subtle);
++  color: var(--text-muted);
++}
++
+ .result-err {
+   background: color-mix(in srgb, var(--danger) 15%, transparent);
+   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+@@ -501,7 +519,7 @@ watch(firstPoint, (p) => {
+ }
+ 
+ .step-dot {
+-  color: var(--success);
++  color: currentColor;
+ }
+ 
+ .result-text {
 diff --git a/master-frontend/src/i18n/locales/en-US.ts b/master-frontend/src/i18n/locales/en-US.ts
-index 63158ec..c5947a8 100644
+index 63158ec..bc75fea 100644
 --- a/master-frontend/src/i18n/locales/en-US.ts
 +++ b/master-frontend/src/i18n/locales/en-US.ts
 @@ -1,6 +1,21 @@
@@ -5219,8 +6141,24 @@ index 63158ec..c5947a8 100644
    common: {
      confirm: 'Confirm',
      cancel: 'Cancel',
+@@ -350,6 +365,15 @@ const dict: DictShape = {
+     cot9: '9 - Deactivation Confirmation',
+     cot10: '10 - Activation Termination',
+     sending: 'Sending...',
++    waitingForConfirmation: 'Waiting for confirmation…',
++    selectConfirmed: 'Selection confirmed',
++    executeConfirmed: 'Execution confirmed',
++    deactivateConfirmed: 'Deactivation confirmed',
++    sentUnconfirmed: 'Sent; confirmation not awaited',
++    resultUnconfirmed: 'Confirmation not verified',
++    confirmationDuration: 'confirmation {ms} ms',
++    sendDuration: 'send {ms} ms',
++    elapsedDuration: 'elapsed {ms} ms',
+     send: 'Send',
+   },
+   about: {
 diff --git a/master-frontend/src/i18n/locales/zh-CN.ts b/master-frontend/src/i18n/locales/zh-CN.ts
-index 102889a..eb5e954 100644
+index 102889a..e11637b 100644
 --- a/master-frontend/src/i18n/locales/zh-CN.ts
 +++ b/master-frontend/src/i18n/locales/zh-CN.ts
 @@ -1,4 +1,19 @@
@@ -5243,7 +6181,23 @@ index 102889a..eb5e954 100644
    common: {
      confirm: string
      cancel: string
-@@ -382,6 +397,21 @@ export type DictShape = {
+@@ -291,6 +306,15 @@ export type DictShape = {
+     cot9: string
+     cot10: string
+     sending: string
++    waitingForConfirmation: string
++    selectConfirmed: string
++    executeConfirmed: string
++    deactivateConfirmed: string
++    sentUnconfirmed: string
++    resultUnconfirmed: string
++    confirmationDuration: string
++    sendDuration: string
++    elapsedDuration: string
+     send: string
+   }
+   about: {
+@@ -382,6 +406,21 @@ export type DictShape = {
  }
  
  const dict: DictShape = {
@@ -5265,6 +6219,22 @@ index 102889a..eb5e954 100644
    common: {
      confirm: '确认',
      cancel: '取消',
+@@ -731,6 +770,15 @@ const dict: DictShape = {
+     cot9: '9 - 停止激活确认',
+     cot10: '10 - 激活终止',
+     sending: '发送中...',
++    waitingForConfirmation: '等待确认…',
++    selectConfirmed: '选择已确认',
++    executeConfirmed: '执行已确认',
++    deactivateConfirmed: '停止激活已确认',
++    sentUnconfirmed: '已发送，未等待确认',
++    resultUnconfirmed: '尚未核实确认结果',
++    confirmationDuration: '确认耗时 {ms} 毫秒',
++    sendDuration: '发送耗时 {ms} 毫秒',
++    elapsedDuration: '耗时 {ms} 毫秒',
+     send: '发送',
+   },
+   about: {
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
 index f92e854..792fb46 100644
 --- a/master-frontend/src/main.ts
@@ -6186,6 +7156,36 @@ index 0000000..1e81d62
 +
 +export type SuiteAppearance = ReturnType<typeof createSuiteAppearance>
 +export const suiteAppearanceKey: InjectionKey<SuiteAppearance> = Symbol('suite-appearance')
+diff --git a/master-frontend/src/utils/controlResult.ts b/master-frontend/src/utils/controlResult.ts
+new file mode 100644
+index 0000000..e42ff9a
+--- /dev/null
++++ b/master-frontend/src/utils/controlResult.ts
+@@ -0,0 +1,24 @@
++import type { ControlResult } from '../types'
++
++// A successful IPC send is not necessarily a positive protocol confirmation.
++export function controlResultStatus(result: ControlResult) {
++  const action = result.steps.at(-1)?.action
++  const confirmedLabel = {
++    select_confirmed: 'control.selectConfirmed',
++    execute_confirmed: 'control.executeConfirmed',
++    deactivate_confirmed: 'control.deactivateConfirmed',
++  } as const
++  if (action && action in confirmedLabel) {
++    return {
++      confirmed: true,
++      label: confirmedLabel[action as keyof typeof confirmedLabel],
++      duration: 'control.confirmationDuration' as const,
++    }
++  }
++  const sent = action === 'select_sent' || action === 'execute_sent' || action === 'deactivate_sent'
++  return {
++    confirmed: false,
++    label: sent ? 'control.sentUnconfirmed' as const : 'control.resultUnconfirmed' as const,
++    duration: sent ? 'control.sendDuration' as const : 'control.elapsedDuration' as const,
++  }
++}
 diff --git a/master-frontend/tests/controlDialogKeyboard.spec.ts b/master-frontend/tests/controlDialogKeyboard.spec.ts
 new file mode 100644
 index 0000000..086a12a
@@ -6208,6 +7208,248 @@ index 0000000..086a12a
 +    expect(vi.mocked(invoke).mock.calls.filter(([command]) => command === 'send_control_command')).toHaveLength(0)
 +    await wrapper.get('.modal-footer button').trigger('click')
 +    expect(wrapper.emitted('close')).toHaveLength(1)
++  })
++})
+diff --git a/master-frontend/tests/controlResults.spec.ts b/master-frontend/tests/controlResults.spec.ts
+new file mode 100644
+index 0000000..fbe4d9f
+--- /dev/null
++++ b/master-frontend/tests/controlResults.spec.ts
+@@ -0,0 +1,236 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
++import { nextTick, ref } from 'vue'
++import { invoke } from '@tauri-apps/api/core'
++import { useI18n } from '@shared/i18n'
++import ControlDialog from '../src/components/ControlDialog.vue'
++import ValuePanel from '../src/components/ValuePanel.vue'
++import type { ControlResult, ReceivedDataPointInfo } from '../src/types'
++
++vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
++
++function deferred<T>() {
++  let resolve!: (value: T) => void
++  let reject!: (error: unknown) => void
++  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
++  return { promise, resolve, reject }
++}
++
++function result(action: string, duration = 651): ControlResult {
++  return { steps: [{ action, timestamp: '12:00:00.651' }], duration_ms: duration }
++}
++
++const wrappers: VueWrapper[] = []
++let response: Promise<ControlResult>
++
++async function dialog() {
++  const wrapper = mount(ControlDialog, {
++    props: { visible: false, connectionId: 'conn-1', commonAddress: 1 },
++    global: { stubs: { Teleport: true, Transition: false } },
++  })
++  wrappers.push(wrapper)
++  await wrapper.setProps({ visible: true })
++  await flushPromises()
++  return wrapper
++}
++
++function sendButton(wrapper: VueWrapper) {
++  return wrapper.find('.modal-footer button.app-btn-primary')
++}
++
++function controlCalls() {
++  return vi.mocked(invoke).mock.calls.filter(([command]) => command === 'send_control_command')
++}
++
++beforeEach(() => {
++  vi.mocked(invoke).mockReset()
++  localStorage.clear()
++  useI18n().setLocale('en-US')
++  response = Promise.resolve(result('execute_confirmed'))
++  vi.mocked(invoke).mockImplementation((command) => {
++    if (command === 'list_connections') return Promise.resolve([{ id: 'conn-1', common_addresses: [1] }]) as never
++    if (command === 'send_control_command') return response as never
++    throw new Error(`Unexpected command ${command}`)
++  })
++})
++
++afterEach(() => {
++  for (const wrapper of wrappers.splice(0)) wrapper.unmount()
++})
++
++describe('ControlDialog protocol results', () => {
++  it('waits for confirmation, prevents repeat submits, and shows the confirmed duration', async () => {
++    const pending = deferred<ControlResult>()
++    response = pending.promise
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    expect(wrapper.find('.result-pending').text()).toBe('Waiting for confirmation…')
++    expect(sendButton(wrapper).attributes('disabled')).toBeDefined()
++    expect(wrapper.find('fieldset').attributes('disabled')).toBeDefined()
++    expect(wrapper.find('.result-ok').exists()).toBe(false)
++    await wrapper.find('input').trigger('keydown', { key: 'Enter' })
++    expect(controlCalls()).toHaveLength(1)
++
++    pending.resolve(result('execute_confirmed', 651))
++    await flushPromises()
++    expect(wrapper.find('.result-text').text()).toBe('Execution confirmed · confirmation 651 ms')
++    expect(wrapper.find('.result-pending').exists()).toBe(false)
++    expect(sendButton(wrapper).attributes('disabled')).toBeUndefined()
++    expect(wrapper.text()).not.toContain('OK')
++  })
++
++  it.each(['execute_sent', 'select_sent', 'deactivate_sent'])('never presents %s as confirmed', async (action) => {
++    response = Promise.resolve(result(action, 0))
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    await flushPromises()
++    expect(wrapper.find('.result-unconfirmed').text()).toContain('Sent; confirmation not awaited · send 0 ms')
++    expect(wrapper.find('.result-ok').exists()).toBe(false)
++    expect(wrapper.text()).not.toContain('OK')
++  })
++
++  it('does not treat an empty or unrecognized result as successful confirmation', async () => {
++    response = Promise.resolve({ steps: [], duration_ms: 0 })
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    await flushPromises()
++    expect(wrapper.find('.result-unconfirmed').text()).toContain('Confirmation not verified')
++    expect(wrapper.find('.result-ok').exists()).toBe(false)
++  })
++
++  it.each(['Control confirmation rejected (COT=7)', 'Control confirmation timed out (5s)'])('shows %s without a success result', async (error) => {
++    const pending = deferred<ControlResult>()
++    response = pending.promise
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    pending.reject(error)
++    await flushPromises()
++    expect(wrapper.find('[role="alert"]').text()).toBe(error)
++    expect(wrapper.find('.result-indicator').exists()).toBe(false)
++    expect(sendButton(wrapper).attributes('disabled')).toBeUndefined()
++  })
++
++  it('reports selection confirmation without implying that execution followed', async () => {
++    response = Promise.resolve(result('select_confirmed', 21))
++    const wrapper = await dialog()
++    await wrapper.find('.mode-select select').setValue('select')
++    await sendButton(wrapper).trigger('click')
++    await flushPromises()
++    expect(controlCalls()[0]?.[1]).toMatchObject({ request: { control_mode: 'select' } })
++    expect(wrapper.find('.result-text').text()).toBe('Selection confirmed · confirmation 21 ms')
++    expect(wrapper.find('.result-text').text()).not.toContain('Execution')
++    useI18n().setLocale('zh-CN')
++    await nextTick()
++    expect(wrapper.find('.result-text').text()).toBe('选择已确认 · 确认耗时 21 毫秒')
++  })
++
++  it('reports a deactivation confirmation separately', async () => {
++    response = Promise.resolve(result('deactivate_confirmed', 32))
++    const wrapper = await dialog()
++    await wrapper.find('.cot-input').setValue(8)
++    await sendButton(wrapper).trigger('click')
++    await flushPromises()
++    expect(wrapper.find('.result-text').text()).toBe('Deactivation confirmed · confirmation 32 ms')
++  })
++
++  it('shows sending rather than waiting for a custom non-request COT', async () => {
++    const pending = deferred<ControlResult>()
++    response = pending.promise
++    const wrapper = await dialog()
++    await wrapper.find('.cot-input').setValue(7)
++    await sendButton(wrapper).trigger('click')
++    expect(wrapper.find('.result-pending').text()).toBe('Sending...')
++    pending.resolve(result('execute_sent', 0))
++    await flushPromises()
++    expect(wrapper.find('.result-unconfirmed').exists()).toBe(true)
++  })
++
++  it('does not submit when Enter is used on a native mode select', async () => {
++    const wrapper = await dialog()
++    await wrapper.find('.mode-select select').trigger('keydown', { key: 'Enter' })
++    expect(controlCalls()).toHaveLength(0)
++  })
++
++  it('ignores a late result after closing and reopening while preserving the new pending request', async () => {
++    const old = deferred<ControlResult>()
++    response = old.promise
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    await wrapper.find('.modal-footer button').trigger('click')
++    await wrapper.setProps({ visible: false })
++    await wrapper.setProps({ visible: true })
++    const current = deferred<ControlResult>()
++    response = current.promise
++    await sendButton(wrapper).trigger('click')
++    old.resolve(result('execute_confirmed', 100))
++    await flushPromises()
++    expect(wrapper.find('.result-ok').exists()).toBe(false)
++    expect(wrapper.find('.result-pending').exists()).toBe(true)
++    expect(sendButton(wrapper).attributes('disabled')).toBeDefined()
++    expect(wrapper.emitted('sent')).toBeUndefined()
++    current.resolve(result('execute_confirmed', 700))
++    await flushPromises()
++    expect(wrapper.find('.result-text').text()).toContain('700 ms')
++    expect(wrapper.emitted('sent')).toHaveLength(1)
++  })
++
++  it('ignores a late error after the selected connection changes', async () => {
++    const old = deferred<ControlResult>()
++    response = old.promise
++    const wrapper = await dialog()
++    await sendButton(wrapper).trigger('click')
++    await wrapper.setProps({ connectionId: 'conn-2' })
++    old.reject('old connection timed out')
++    await flushPromises()
++    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
++    expect(wrapper.find('.result-indicator').exists()).toBe(false)
++    expect(sendButton(wrapper).attributes('disabled')).toBeUndefined()
++  })
++})
++
++describe('ValuePanel protocol results', () => {
++  function panel() {
++    const selectedConnectionId = ref('conn-1')
++    const selectedPoints = ref([{
++      ioa: 25089, common_address: 1, category: 'float_measured', value: '12.5',
++      asdu_type: 'M_ME_NC_1', quality: { invalid: false, not_topical: false, substituted: false, blocked: false, overflow: false },
++    } as ReceivedDataPointInfo])
++    const wrapper = mount(ValuePanel, {
++      global: { provide: { selectedConnectionId, selectedPoints } },
++    })
++    wrappers.push(wrapper)
++    return { wrapper, selectedConnectionId, selectedPoints }
++  }
++
++  it('uses the same confirmation status and measured duration for quick control', async () => {
++    const pending = deferred<ControlResult>()
++    response = pending.promise
++    const { wrapper } = panel()
++    await wrapper.find('.ctrl-btn-primary').trigger('click')
++    expect(wrapper.find('[role="status"]').text()).toBe('Waiting for confirmation…')
++    pending.resolve(result('execute_confirmed', 655))
++    await flushPromises()
++    expect(wrapper.find('.result-text').text()).toBe('Execution confirmed · confirmation 655 ms')
++  })
++
++  it('does not render a sent-only quick control result as successful confirmation', async () => {
++    response = Promise.resolve(result('execute_sent', 0))
++    const { wrapper } = panel()
++    await wrapper.find('.ctrl-btn-primary').trigger('click')
++    await flushPromises()
++    expect(wrapper.find('.result-unconfirmed').text()).toContain('Sent; confirmation not awaited')
++    expect(wrapper.find('.result-ok').exists()).toBe(false)
++  })
++
++  it('discards a result from the previously selected point', async () => {
++    const pending = deferred<ControlResult>()
++    response = pending.promise
++    const { wrapper, selectedPoints } = panel()
++    await wrapper.find('.ctrl-btn-primary').trigger('click')
++    selectedPoints.value = [{ ...selectedPoints.value[0]!, common_address: 2 }]
++    await nextTick()
++    pending.resolve(result('execute_confirmed'))
++    await flushPromises()
++    expect(wrapper.find('.result-indicator').exists()).toBe(false)
 +  })
 +})
 diff --git a/master-frontend/tests/dialogKeyboard.spec.ts b/master-frontend/tests/dialogKeyboard.spec.ts
