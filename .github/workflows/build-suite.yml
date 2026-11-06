@@ -84,6 +84,11 @@ jobs:
         run: python scripts/toolchain.py record --output dist/toolchain-environment.json
       - name: Packaging tests
         run: python -m unittest discover -s scripts/tests -v
+      - name: Verify headless binding generation skips WebView2 prompts
+        if: matrix.platform == 'windows'
+        env:
+          CGO_ENABLED: '0'
+        run: go test -tags bindings ./internal/webviewruntime
       - name: Clone exact commits and strictly apply suite patches
         run: python scripts/suite.py bootstrap --workspace "${{ env.SUITE_WORKSPACE }}"
       - name: Cache native Rust build outputs, including failed packaging runs
