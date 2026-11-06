@@ -89,6 +89,31 @@ index 0000000..7af294d
 +<use href="#mark" color="#0B2439" transform="translate(0 0.9)" opacity="0.18"/><use href="#mark" color="#F9FCFF"/>
 +<g id="protocol-label" aria-label="MODBUS"><path d="M50.762 109.867V94.133H52.928L55.823 102.464H55.867L58.74 94.133H60.928V109.867H58.674V100.298H58.63L56.398 107.061H55.271L53.061 100.298H53.016V109.867H50.762ZM62.917 97.845Q62.917 96.895 63.248 96.166Q63.58 95.436 64.132 94.95Q64.663 94.486 65.337 94.243Q66.011 94 66.696 94Q67.381 94 68.055 94.243Q68.729 94.486 69.282 94.95Q69.812 95.436 70.143 96.166Q70.475 96.895 70.475 97.845V106.155Q70.475 107.149 70.143 107.856Q69.812 108.564 69.282 109.028Q68.729 109.514 68.055 109.757Q67.381 110 66.696 110Q66.011 110 65.337 109.757Q64.663 109.514 64.132 109.028Q63.58 108.564 63.248 107.856Q62.917 107.149 62.917 106.155V97.845ZM65.171 106.155Q65.171 106.972 65.624 107.359Q66.077 107.746 66.696 107.746Q67.315 107.746 67.768 107.359Q68.221 106.972 68.221 106.155V97.845Q68.221 97.028 67.768 96.641Q67.315 96.254 66.696 96.254Q66.077 96.254 65.624 96.641Q65.171 97.028 65.171 97.845V106.155ZM72.464 109.867V94.133H75.801Q77.746 94.133 78.751 95.193Q79.757 96.254 79.757 98.199V105.558Q79.757 107.768 78.685 108.818Q77.613 109.867 75.602 109.867H72.464ZM74.718 96.254V107.746H75.757Q76.707 107.746 77.105 107.271Q77.503 106.796 77.503 105.779V98.199Q77.503 97.271 77.127 96.762Q76.751 96.254 75.757 96.254H74.718ZM81.878 109.867V94.133H85.171Q86.254 94.133 87.016 94.464Q87.779 94.796 88.265 95.348Q88.751 95.901 88.961 96.619Q89.171 97.337 89.171 98.11V98.685Q89.171 99.326 89.072 99.768Q88.972 100.21 88.773 100.541Q88.398 101.16 87.624 101.602Q88.42 101.978 88.795 102.707Q89.171 103.436 89.171 104.696V105.58Q89.171 107.657 88.166 108.762Q87.16 109.867 84.95 109.867H81.878ZM84.132 102.575V107.613H85.105Q85.79 107.613 86.177 107.414Q86.563 107.215 86.762 106.862Q86.961 106.508 87.005 106.022Q87.05 105.536 87.05 104.961Q87.05 104.365 86.983 103.923Q86.917 103.481 86.718 103.171Q86.497 102.862 86.121 102.718Q85.746 102.575 85.127 102.575H84.132ZM84.132 96.254V100.586H85.149Q86.276 100.586 86.663 100.022Q87.05 99.459 87.05 98.376Q87.05 97.315 86.619 96.785Q86.188 96.254 85.061 96.254H84.132ZM98.585 94.133V106.331Q98.585 107.105 98.309 107.757Q98.033 108.409 97.525 108.917Q97.016 109.425 96.353 109.713Q95.69 110 94.939 110Q94.188 110 93.536 109.713Q92.884 109.425 92.375 108.917Q91.867 108.409 91.58 107.757Q91.293 107.105 91.293 106.331V94.133H93.547V106.11Q93.547 106.95 93.945 107.348Q94.342 107.746 94.939 107.746Q95.536 107.746 95.933 107.348Q96.331 106.95 96.331 106.11V94.133H98.585ZM108 98.663H105.746V98.155Q105.746 97.381 105.381 96.818Q105.016 96.254 104.154 96.254Q103.69 96.254 103.403 96.431Q103.116 96.608 102.939 96.873Q102.762 97.16 102.696 97.525Q102.63 97.89 102.63 98.287Q102.63 98.751 102.663 99.061Q102.696 99.37 102.829 99.613Q102.961 99.856 103.215 100.033Q103.469 100.21 103.911 100.387L105.635 101.072Q106.387 101.359 106.851 101.746Q107.315 102.133 107.58 102.641Q107.823 103.171 107.911 103.845Q108 104.519 108 105.381Q108 106.376 107.801 107.227Q107.602 108.077 107.16 108.674Q106.696 109.293 105.945 109.646Q105.193 110 104.11 110Q103.293 110 102.585 109.713Q101.878 109.425 101.37 108.917Q100.862 108.409 100.563 107.735Q100.265 107.061 100.265 106.265V105.425H102.519V106.133Q102.519 106.751 102.884 107.249Q103.248 107.746 104.11 107.746Q104.685 107.746 105.005 107.58Q105.326 107.414 105.503 107.105Q105.679 106.796 105.712 106.365Q105.746 105.934 105.746 105.403Q105.746 104.785 105.701 104.387Q105.657 103.989 105.525 103.746Q105.37 103.503 105.116 103.348Q104.862 103.193 104.442 103.017L102.829 102.354Q101.37 101.757 100.873 100.773Q100.375 99.79 100.375 98.309Q100.375 97.425 100.619 96.63Q100.862 95.834 101.348 95.26Q101.812 94.685 102.53 94.343Q103.248 94 104.243 94Q105.083 94 105.779 94.309Q106.475 94.619 106.983 95.127Q108 96.188 108 97.558V98.663Z" fill="#F9FCFF" aria-label="MODBUS"/></g>
 +</svg>
+diff --git a/frontend/src/components/AboutDialog.vue b/frontend/src/components/AboutDialog.vue
+index 6bc572e..ee17a5e 100644
+--- a/frontend/src/components/AboutDialog.vue
++++ b/frontend/src/components/AboutDialog.vue
+@@ -6,6 +6,7 @@ import { ModalShell, useI18n, RELEASE_HIGHLIGHTS } from 'shared-frontend'
+ const emit = defineEmits<{ close: [] }>()
+ const { t, locale } = useI18n()
+ const version = ref('')
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
+ const error = ref('')
+ const busy = ref(false)
+ onMounted(async () => {
+@@ -18,9 +19,10 @@ async function openLink(path: string) {
+ }
+ </script>
+ <template>
+-  <ModalShell :title="t('toolbar.appTitleSlave')" :subtitle="version ? `v${version}` : '—'" :busy="busy" @close="emit('close')">
++  <ModalShell :title="t('toolbar.appTitleSlave')" :subtitle="version ? `${suiteBuild ? 'SAIO ' : ''}v${version}` : '—'" :busy="busy" @close="emit('close')">
+     <p class="hint">{{ t('parity.aboutDescription') }}</p>
+-    <ul class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
++    <p v-if="suiteBuild">{{ locale === 'zh-CN' ? '随 SAIO 统一更新。' : 'Updates are delivered with SAIO.' }}</p>
++    <ul v-else class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
+     <div class="links"><button @click="openLink(locale === 'zh-CN' ? '/blob/main/README_CN.md' : '/blob/main/README.md')">{{ t('parity.documentation') }}</button><button @click="openLink('/releases')">{{ t('parity.releases') }}</button><button @click="openLink('')">GitHub</button></div>
+ <p v-if="error" class="error" role="alert">{{ error }}</p>
+   </ModalShell>
 diff --git a/frontend/src/components/NewConnectionDialog.vue b/frontend/src/components/NewConnectionDialog.vue
 index ba2495b..9aabfad 100644
 --- a/frontend/src/components/NewConnectionDialog.vue
@@ -18341,14 +18366,15 @@ HcmV?d00001
 
 diff --git a/go/scripts/suite.sh b/go/scripts/suite.sh
 new file mode 100755
-index 0000000..5045a66
+index 0000000..23c551f
 --- /dev/null
 +++ b/go/scripts/suite.sh
-@@ -0,0 +1,91 @@
+@@ -0,0 +1,94 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +
 +repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
++: "${SAIO_VERSION:?Build through SAIO scripts/suite.py to supply the suite version}"
 +role="${1:-}"
 +case "$role" in
 +  master|slave) shift ;;
@@ -18408,6 +18434,8 @@ index 0000000..5045a66
 +const configPath = path.join(project, 'wails.json')
 +const base = JSON.parse(fs.readFileSync(configPath, 'utf8'))
 +const suite = JSON.parse(fs.readFileSync(path.join(project, 'wails.suite.json'), 'utf8'))
++if (!/^\d+\.\d+\.\d+$/.test(process.env.SAIO_VERSION || '')) throw new Error('invalid SAIO_VERSION')
++suite.info = { ...suite.info, productVersion: process.env.SAIO_VERSION }
 +fs.writeFileSync(configPath, JSON.stringify({ ...base, ...suite, info: { ...base.info, ...suite.info } }, null, 2) + '\n')
 +const plistPath = path.join(project, 'build/darwin/Info.plist')
 +const original = fs.readFileSync(plistPath, 'utf8')
@@ -18435,7 +18463,7 @@ index 0000000..5045a66
 +  if [[ "${wails_version%%$'\n'*}" == v2.14.0 ]]; then wails_command=("$wails_binary"); fi
 +fi
 +cd "$project_dir"
-+"${wails_command[@]}" build -tags "$tags" "$@"
++"${wails_command[@]}" build -tags "$tags" -ldflags "-X main.Version=$SAIO_VERSION" "$@"
 diff --git a/master-frontend/index.html b/master-frontend/index.html
 index 2017025..1137529 100644
 --- a/master-frontend/index.html
@@ -20626,6 +20654,39 @@ index 9b2dff0..a516e6b 100644
 +.managed-label { align-self: center; padding-inline: 5px; font-size: 11px; white-space: nowrap; }
 +button:disabled { cursor: default; }
  </style>
+diff --git a/shared-frontend/src/components/VersionBadge.vue b/shared-frontend/src/components/VersionBadge.vue
+index 59372da..f6dcc2d 100644
+--- a/shared-frontend/src/components/VersionBadge.vue
++++ b/shared-frontend/src/components/VersionBadge.vue
+@@ -9,6 +9,7 @@ const { t, locale } = useI18n()
+ 
+ const REPO_URL = 'https://github.com/Karl-Dai/ModbusSim'
+ const version = ref('')
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
+ const showPanel = ref(false)
+ onMounted(async () => {
+   try { version.value = await desktop?.getVersion() ?? '' } catch { version.value = '' }
+@@ -22,7 +23,7 @@ function openRepo() {
+ 
+ <template>
+   <div class="version-badge">
+-    <span v-if="version" class="version-text" :title="`v${version}`">v{{ version }}</span>
++    <span v-if="version" class="version-text" :title="`${suiteBuild ? 'SAIO ' : ''}v${version}`">{{ suiteBuild ? 'SAIO ' : '' }}v{{ version }}</span>
+     <button
+       type="button"
+       class="github-link"
+@@ -56,8 +57,9 @@ function openRepo() {
+     <template v-if="showPanel">
+       <div class="about-backdrop" @click="showPanel = false"></div>
+       <div class="about-panel" role="dialog" :aria-label="t('about.title')">
+-        <div class="about-title">ModbusSim<span v-if="version"> v{{ version }}</span></div>
+-        <ul class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
++        <div class="about-title">ModbusSim<span v-if="version"> {{ suiteBuild ? 'SAIO ' : '' }}v{{ version }}</span></div>
++        <p v-if="suiteBuild">{{ locale === 'zh-CN' ? '随 SAIO 统一更新。' : 'Updates are delivered with SAIO.' }}</p>
++        <ul v-else class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
+       </div>
+     </template>
+   </div>
 diff --git a/shared-frontend/src/composables/nativeWindowTheme.ts b/shared-frontend/src/composables/nativeWindowTheme.ts
 new file mode 100644
 index 0000000..19f8cbe

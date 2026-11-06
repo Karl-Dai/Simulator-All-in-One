@@ -34,6 +34,28 @@ class SuiteTests(unittest.TestCase):
         suite.write_json(self.root / "components.lock.json", self.lock)
         shutil.copyfile(suite.ROOT / "toolchain.lock.json", self.root / "toolchain.lock.json")
 
+    def test_tauri_version_override_preserves_standalone_source_and_suite_identity(self):
+        component = self.lock["components"][2]
+        project = self.workspace / component["project"]
+        project.mkdir(parents=True)
+        config = {"identifier": component["bundleId"], "bundle": {"createUpdaterArtifacts": False}}
+        path = project / "tauri.suite.conf.json"
+        suite.write_json(path, config)
+        original = path.read_bytes()
+        override = json.loads(suite.tauri_suite_config(self.workspace, component, "9.8.7"))
+        self.assertEqual(override, dict(config, version="9.8.7"))
+        self.assertEqual(path.read_bytes(), original)
+
+    def test_collect_rejects_previous_suite_version_receipts(self):
+        self.recorded_mac_fixture()
+        path = self.workspace / ".state/modbus.master.build.json"
+        receipt = json.loads(path.read_text())
+        receipt["suiteVersion"] = "0.0.1"
+        suite.write_json(path, receipt)
+        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"):
+            with self.assertRaisesRegex(suite.SuiteError, "stale suite-build receipt"):
+                suite.collect(self.workspace, "darwin", "arm64", root=self.root)
+
     def toolchain_fixture(self, target="darwin", arch="arm64"):
         locked = suite.toolchain.load_lock(self.root / "toolchain.lock.json")
         return {"schemaVersion": 1,
@@ -75,7 +97,7 @@ class SuiteTests(unittest.TestCase):
             suite.write_json(self.workspace / ".state" / (component["id"] + ".build.json"), {
                 "commit": repo["commit"], "patchSha256": suite.digest(self.root / repo["patch"]),
                 "platform": "darwin", "architecture": "arm64", "sha256": suite.digest(binary),
-                "suiteBuild": True, "payloadTreeSha256": suite.source_payload_digest(source, component, "darwin", "arm64"),
+                "suiteBuild": True, "suiteVersion": self.lock["suiteVersion"], "payloadTreeSha256": suite.source_payload_digest(source, component, "darwin", "arm64"),
                 "toolchainSha256": suite.build_toolchain_digest(record),
             })
         return record
@@ -189,7 +211,7 @@ class SuiteTests(unittest.TestCase):
         for component in self.lock["components"]:
             source = self.workspace / repos[component["repository"]]["directory"]
             parent = source / (component["project"] + "/build/bin" if component["repository"] == "modbus" else "target/release/bundle/macos")
-            self.make_app(parent / (component["product"] + ".app"), component["bundleId"], component["version"])
+            self.make_app(parent / (component["product"] + ".app"), component["bundleId"], self.lock["suiteVersion"])
 
     def test_collect_hashes_after_child_signing_and_before_outer_signing(self):
         self.mac_fixture()
@@ -206,19 +228,19 @@ class SuiteTests(unittest.TestCase):
                 manifest = app / "Contents/Resources/suite-manifest.json"
                 self.assertEqual(len(signed), 8)
                 self.assertTrue(manifest.is_file())
-                suite.verify_manifest(app / "Contents", self.lock)
+                suite.verify_manifest(app / "Contents", self.lock, root=self.root)
 
         with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), \
                 patch.object(suite, "sign_app", side_effect=sign_child), patch.object(suite, "run", side_effect=command):
             output = suite.collect(self.workspace, "darwin", "arm64", root=self.root, adopt=True)
         self.assertEqual(len(signed), 8)
-        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock)
+        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
         self.assertNotIn("buildToolchain", manifest, "adopting old binaries must not invent build evidence")
         self.assertTrue(all(item["sha256"] == __import__("hashlib").sha256(b"fixturesigned").hexdigest() for item in manifest["components"]))
         resource = output / "Simulator All-in-One.app/Contents/Helpers/ModbusMaster.app/Contents/unrecorded-resource"
         resource.write_text("unrecorded build output")
         with self.assertRaisesRegex(suite.SuiteError, "resource tree changed"):
-            suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock)
+            suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
 
     def test_missing_role_leaves_previous_complete_stage_untouched(self):
         self.mac_fixture()
@@ -239,14 +261,14 @@ class SuiteTests(unittest.TestCase):
             binary = self.root / "apps" / role / "payload"
             binary.parent.mkdir(parents=True)
             binary.write_bytes(role.encode())
-            entries.append({"id": role, "version": "1.0.0", "sourceCommit": "a" * 40,
+            entries.append({"id": role, "version": "0.1.0", "sourceCommit": "a" * 40,
                             "executable": binary.relative_to(self.root).as_posix(),
                             "sha256": suite.digest(binary), "suiteBuild": True})
         manifest = {"schemaVersion": 1, "suiteVersion": "0.1.0", "platform": "linux", "architecture": "amd64", "components": entries}
         target = self.root / "suite-manifest.json"
         suite.write_json(target, manifest)
         suite.verify_manifest(self.root)
-        for bad_entries in (entries[:-1], entries[:-1] + [entries[0]], [dict(entries[0], sha256="0" * 64)] + entries[1:], [dict(entries[0], executable="../outside")] + entries[1:]):
+        for bad_entries in ([dict(entries[0], version="99.0.0")] + entries[1:], entries[:-1], entries[:-1] + [entries[0]], [dict(entries[0], sha256="0" * 64)] + entries[1:], [dict(entries[0], executable="../outside")] + entries[1:]):
             with self.subTest(entries=bad_entries):
                 suite.write_json(target, dict(manifest, components=bad_entries))
                 with self.assertRaises(suite.SuiteError):

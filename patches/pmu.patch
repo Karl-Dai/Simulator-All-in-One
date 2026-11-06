@@ -14769,10 +14769,44 @@ index 0000000..a1ee4d5
 +<g id="protocol-label" aria-label="PMU"><path d="M79.186 109.866V94H82.596Q83.532 94 84.245 94.245Q84.958 94.49 85.537 95.114Q86.117 95.738 86.34 96.574Q86.562 97.409 86.562 98.836Q86.562 99.905 86.44 100.641Q86.317 101.376 85.916 102.022Q85.448 102.802 84.668 103.237Q83.888 103.671 82.618 103.671H81.459V109.866H79.186ZM81.459 96.139V101.532H82.551Q83.242 101.532 83.621 101.331Q84 101.131 84.178 100.774Q84.356 100.44 84.39 99.95Q84.423 99.46 84.423 98.858Q84.423 98.301 84.401 97.799Q84.379 97.298 84.2 96.919Q84.022 96.54 83.665 96.34Q83.309 96.139 82.64 96.139H81.459ZM88.256 109.866V94H90.44L93.359 102.401H93.404L96.301 94H98.507V109.866H96.234V100.217H96.189L93.938 107.036H92.802L90.574 100.217H90.529V109.866H88.256ZM108 94V106.301Q108 107.081 107.721 107.738Q107.443 108.396 106.93 108.908Q106.418 109.421 105.749 109.71Q105.08 110 104.323 110Q103.565 110 102.908 109.71Q102.25 109.421 101.738 108.908Q101.225 108.396 100.936 107.738Q100.646 107.081 100.646 106.301V94H102.919V106.078Q102.919 106.925 103.32 107.326Q103.721 107.727 104.323 107.727Q104.924 107.727 105.326 107.326Q105.727 106.925 105.727 106.078V94H108Z" fill="#F9FCFF" aria-label="PMU"/></g>
 +</svg>
 diff --git a/frontend-sub/src/App.vue b/frontend-sub/src/App.vue
-index a751c38..7eef99c 100644
+index a751c38..c623daa 100644
 --- a/frontend-sub/src/App.vue
 +++ b/frontend-sub/src/App.vue
-@@ -44,11 +44,17 @@ header h1 { font-size: 16px; margin: 0; }
+@@ -1,10 +1,17 @@
+ <script setup lang="ts">
++import { onMounted, ref } from "vue";
++import { getVersion } from "@tauri-apps/api/app";
+ import ConfigFormPanel from "./components/ConfigFormPanel.vue";
+ import DataGenPanel from "./components/DataGenPanel.vue";
+ import StatusLogPanel from "./components/StatusLogPanel.vue";
+ import SentDataPanel from "./components/SentDataPanel.vue";
+ import { useToast } from "./composables/useToast";
+ import { useI18n } from "./i18n";
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1";
++const appVersion = ref("");
++onMounted(async () => {
++  if (suiteBuild) appVersion.value = await getVersion();
++});
+ const { toasts, dismiss } = useToast();
+ const { t, locale, setLocale } = useI18n();
+ </script>
+@@ -12,7 +19,7 @@ const { t, locale, setLocale } = useI18n();
+ <template>
+   <div class="app">
+     <header>
+-      <h1>{{ t("app.title") }}</h1>
++      <h1>{{ t("app.title") }}<small v-if="appVersion" class="app-version"> · SAIO v{{ appVersion }}</small></h1>
+       <div class="lang-toggle" role="group" aria-label="Language">
+         <button :class="{ on: locale === 'zh' }" @click="setLocale('zh')">中</button>
+         <button :class="{ on: locale === 'en' }" @click="setLocale('en')">EN</button>
+@@ -38,17 +45,24 @@ const { t, locale, setLocale } = useI18n();
+ body { margin: 0; font-family: system-ui, sans-serif; }
+ .app { display: flex; flex-direction: column; height: 100vh; }
+ header { padding: 8px 16px; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; }
++.app-version { font-size: 11px; font-weight: normal; }
+ header h1 { font-size: 16px; margin: 0; }
+ .lang-toggle { display: flex; border: 1px solid #bbb; border-radius: 3px; overflow: hidden; }
+ .lang-toggle button { background: #f0f0f0; border: none; color: #333; font-size: 11px; font-weight: 600; padding: 2px 8px; cursor: pointer; }
  .lang-toggle button + button { border-left: 1px solid #bbb; }
  .lang-toggle button:hover { background: #e4e4e4; }
  .lang-toggle button.on { background: #2563a8; color: #fff; }
@@ -15881,7 +15915,7 @@ index 0000000..f67da42
 +<g id="protocol-label" aria-label="PMU"><path d="M79.186 109.866V94H82.596Q83.532 94 84.245 94.245Q84.958 94.49 85.537 95.114Q86.117 95.738 86.34 96.574Q86.562 97.409 86.562 98.836Q86.562 99.905 86.44 100.641Q86.317 101.376 85.916 102.022Q85.448 102.802 84.668 103.237Q83.888 103.671 82.618 103.671H81.459V109.866H79.186ZM81.459 96.139V101.532H82.551Q83.242 101.532 83.621 101.331Q84 101.131 84.178 100.774Q84.356 100.44 84.39 99.95Q84.423 99.46 84.423 98.858Q84.423 98.301 84.401 97.799Q84.379 97.298 84.2 96.919Q84.022 96.54 83.665 96.34Q83.309 96.139 82.64 96.139H81.459ZM88.256 109.866V94H90.44L93.359 102.401H93.404L96.301 94H98.507V109.866H96.234V100.217H96.189L93.938 107.036H92.802L90.574 100.217H90.529V109.866H88.256ZM108 94V106.301Q108 107.081 107.721 107.738Q107.443 108.396 106.93 108.908Q106.418 109.421 105.749 109.71Q105.08 110 104.323 110Q103.565 110 102.908 109.71Q102.25 109.421 101.738 108.908Q101.225 108.396 100.936 107.738Q100.646 107.081 100.646 106.301V94H102.919V106.078Q102.919 106.925 103.32 107.326Q103.721 107.727 104.323 107.727Q104.924 107.727 105.326 107.326Q105.727 106.925 105.727 106.078V94H108Z" fill="#F9FCFF" aria-label="PMU"/></g>
 +</svg>
 diff --git a/frontend/src/App.vue b/frontend/src/App.vue
-index 67e47ba..a1abbd2 100644
+index 67e47ba..d7d9357 100644
 --- a/frontend/src/App.vue
 +++ b/frontend/src/App.vue
 @@ -13,6 +13,8 @@ import { useI18n } from "./i18n";
@@ -15902,6 +15936,15 @@ index 67e47ba..a1abbd2 100644
    checking.value = true;
    try {
      const meta = await invoke<UpdateMeta | null>("check_for_update", { force });
+@@ -60,7 +62,7 @@ onMounted(async () => {
+ <template>
+   <div class="app">
+     <div class="title-bar">
+-      <span>{{ t("app.title") }}<span v-if="appVersion" class="app-version">v{{ appVersion }}</span></span>
++      <span>{{ t("app.title") }}<span v-if="appVersion" class="app-version">{{ suiteBuild ? 'SAIO ' : '' }}v{{ appVersion }}</span></span>
+       <div class="title-actions">
+         <div class="lang-toggle" role="group" aria-label="Language">
+           <button :class="{ on: locale === 'zh' }" @click="setLocale('zh')">中</button>
 @@ -71,7 +73,7 @@ onMounted(async () => {
              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
            </svg>

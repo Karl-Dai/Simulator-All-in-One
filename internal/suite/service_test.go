@@ -32,7 +32,7 @@ func fixture(t *testing.T, body string) (string, string, Manifest) {
 			t.Fatal(err)
 		}
 		digest := sha256.Sum256(data)
-		m.Components = append(m.Components, Component{role.ID, "1.0.0", strings.Repeat("a", 40), filepath.ToSlash(path), hex.EncodeToString(digest[:]), true})
+		m.Components = append(m.Components, Component{role.ID, m.SuiteVersion, strings.Repeat("a", 40), filepath.ToSlash(path), hex.EncodeToString(digest[:]), true})
 	}
 	writeManifest(t, root, m)
 	return root, t.TempDir(), m
@@ -83,6 +83,7 @@ func TestManifestRejectsIncompleteDuplicateWrongTarget(t *testing.T) {
 	}{
 		{"incomplete", func(m *Manifest) { m.Components = m.Components[:7] }},
 		{"duplicate", func(m *Manifest) { m.Components[1].ID = m.Components[0].ID }},
+		{"component-version", func(m *Manifest) { m.Components[1].Version = "99.0.0" }},
 		{"standalone", func(m *Manifest) { m.Components[1].SuiteBuild = false }},
 		{"escape", func(m *Manifest) { m.Components[0].Executable = "../outside" }},
 		{"windows-path", func(m *Manifest) { m.Components[0].Executable = "C:\\outside.exe" }},

@@ -16512,7 +16512,7 @@ index 0000000..b52b5a6
 +  })
 +})
 diff --git a/shared-frontend/components/AboutDialog.vue b/shared-frontend/components/AboutDialog.vue
-index f32445e..4cdaaed 100644
+index f32445e..d363c1b 100644
 --- a/shared-frontend/components/AboutDialog.vue
 +++ b/shared-frontend/components/AboutDialog.vue
 @@ -1,10 +1,12 @@
@@ -16528,7 +16528,18 @@ index f32445e..4cdaaed 100644
  
  defineProps<{ visible: boolean }>()
  const emit = defineEmits<{ (e: 'close'): void }>()
-@@ -22,7 +24,7 @@ onMounted(async () => {
+@@ -12,7 +14,9 @@ const emit = defineEmits<{ (e: 'close'): void }>()
+ const { t, locale } = useI18n()
+ const { flash: copied, openOrCopy } = useClipboardFlash()
+ const version = ref('')
+-const releaseNotes = computed(() => ABOUT_RELEASE_NOTES[locale.value])
++const releaseNotes = computed(() => isSimLabSuite
++  ? [locale.value === 'zh-CN' ? '随 SAIO 统一更新。' : 'Updates are delivered with SAIO.']
++  : ABOUT_RELEASE_NOTES[locale.value])
+ const documentationUrl = computed(() => documentationUrlForLocale(REPO_URL, locale.value))
+ onMounted(async () => {
+   try { version.value = await getVersion() } catch { version.value = '' }
+@@ -22,11 +26,11 @@ onMounted(async () => {
  <template>
    <Teleport to="body">
      <Transition name="dialog-pop">
@@ -16537,7 +16548,12 @@ index f32445e..4cdaaed 100644
        <div class="about-box" role="dialog" aria-modal="true">
          <div class="about-header">
            <div class="about-title">{{ APP_NAME }}</div>
-@@ -46,8 +48,10 @@ onMounted(async () => {
+-          <div class="about-version">v{{ version || '—' }}</div>
++          <div class="about-version">{{ isSimLabSuite ? 'SAIO ' : '' }}v{{ version || '—' }}</div>
+         </div>
+         <div class="about-body">
+           <div class="about-section-title">{{ t('about.whatsNew') }}</div>
+@@ -46,8 +50,10 @@ onMounted(async () => {
                data-testid="documentation-link"
                @click.prevent="openOrCopy(documentationUrl, t('about.homepageLabel'))"
              >{{ t('about.homepageLabel') }}</a>
@@ -16550,7 +16566,7 @@ index f32445e..4cdaaed 100644
              <span v-if="copied" class="about-toast">{{ copied }}</span>
            </div>
          </div>
-@@ -71,6 +75,9 @@ onMounted(async () => {
+@@ -71,6 +77,9 @@ onMounted(async () => {
    z-index: 2100;
  }
  .about-box {
@@ -16560,7 +16576,7 @@ index f32445e..4cdaaed 100644
    background: var(--c-base);
    border: 1px solid var(--c-surface1);
    border-radius: 8px;
-@@ -79,12 +86,13 @@ onMounted(async () => {
+@@ -79,12 +88,13 @@ onMounted(async () => {
    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
  }
  .about-header {
@@ -16575,7 +16591,7 @@ index f32445e..4cdaaed 100644
  .about-section-title { color: var(--c-text); font-weight: 600; margin-bottom: 6px; }
  .about-notes { margin: 0 0 14px; padding-left: 18px; line-height: 1.65; }
  .about-links { font-size: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-@@ -92,7 +100,7 @@ onMounted(async () => {
+@@ -92,7 +102,7 @@ onMounted(async () => {
  .about-links a:hover { text-decoration: underline; }
  .about-sep { color: var(--c-surface2); }
  .about-toast { color: var(--c-green); margin-left: 10px; font-size: 11px; }
@@ -16718,6 +16734,31 @@ index b165819..211d684 100644
        <div class="modal-box">
          <div class="modal-title">{{ t('parseFrame.title') }}</div>
          <div class="modal-body">
+diff --git a/shared-frontend/components/VersionBadge.vue b/shared-frontend/components/VersionBadge.vue
+index 8c16999..09e3606 100644
+--- a/shared-frontend/components/VersionBadge.vue
++++ b/shared-frontend/components/VersionBadge.vue
+@@ -9,6 +9,7 @@ import { useClipboardFlash } from '../composables/useClipboardFlash'
+ const { t, locale } = useI18n()
+ const { flash, copy, openOrCopy } = useClipboardFlash()
+ const version = ref('')
++const versionLabel = computed(() => `${import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'SAIO ' : ''}v${version.value}`)
+ const documentationUrl = computed(() =>
+   documentationUrlForLocale(REPO_URL, locale.value),
+ )
+@@ -24,9 +25,9 @@ onMounted(async () => {
+       v-if="version"
+       type="button"
+       class="version-text"
+-      :title="`v${version} · ${t('about.copiedSuffix')}`"
+-      @click="copy(`v${version}`)"
+-    >v{{ version }}</button>
++      :title="`${versionLabel} · ${t('about.copiedSuffix')}`"
++      @click="copy(versionLabel)"
++    >{{ versionLabel }}</button>
+     <button
+       type="button"
+       class="github-link"
 diff --git a/shared-frontend/i18n/index.ts b/shared-frontend/i18n/index.ts
 index af20765..16f4150 100644
 --- a/shared-frontend/i18n/index.ts

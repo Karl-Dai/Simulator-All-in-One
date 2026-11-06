@@ -19,6 +19,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sync_ui
 import toolchain
+import windows_portable
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_TOOLS = ("node", "npm", "python", "go", "rust", "wails")
@@ -114,6 +115,8 @@ def launcher_source_fingerprint(root):
 
 def read_lock(root=ROOT):
     value = json.loads((root / "components.lock.json").read_text(encoding="utf-8"))
+    if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", value.get("suiteVersion", "")):
+        raise SuiteError("The suite version must be a three-part release version")
     ids = [item["id"] for item in value["components"]]
     if value.get("schemaVersion") != 1 or set(ids) != EXPECTED_IDS or len(ids) != 8:
         raise SuiteError("The lock must contain exactly the eight supported component IDs")
@@ -233,7 +236,7 @@ def verify_shared_ui(workspace, root=ROOT):
 
 
 def build_tool_names(target):
-    return BUILD_TOOLS + (("nsis",) if target == "windows" else ())
+    return BUILD_TOOLS
 
 
 def native_version_probe(argv, first_line=False):
@@ -340,6 +343,12 @@ def build_toolchain_digest(record):
     return hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def tauri_suite_config(source, component, version):
+    """Override package_info and native metadata without changing standalone sources."""
+    config = json.loads((source / component["project"] / "tauri.suite.conf.json").read_text(encoding="utf-8"))
+    return json.dumps(dict(config, version=version))
+
+
 def build(workspace, target, arch, root=ROOT):
     native_target(target, arch)
     tool_record = inspect_build_toolchain(root, target, arch)
@@ -351,6 +360,7 @@ def build(workspace, target, arch, root=ROOT):
     wails_binary = wails(root)
     env = os.environ.copy()
     env["VITE_SIMLAB_SUITE"] = "1"
+    env["SAIO_VERSION"] = lock["suiteVersion"]
     if target == "darwin":
         env["CGO_ENABLED"] = "1"
         env["CGO_CFLAGS"] = env.get("CGO_CFLAGS", "") + " -mmacosx-version-min=13.0"
@@ -382,7 +392,7 @@ def build(workspace, target, arch, root=ROOT):
                 run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, env=env)
                 run(["npm", "run", "build"], cwd=frontend, env=env)
                 cli = frontend / "node_modules/@tauri-apps/cli/tauri.js"
-                args = [require("node"), cli, "build", "--ci", "--features", "simlab-suite", "--config", "tauri.suite.conf.json"]
+                args = [require("node"), cli, "build", "--ci", "--features", "simlab-suite", "--config", tauri_suite_config(source, component, lock["suiteVersion"])]
                 args += ["--bundles", "app"] if target == "darwin" else ["--no-bundle"]
                 if target == "windows":
                     args += ["--target", triple]
@@ -391,6 +401,7 @@ def build(workspace, target, arch, root=ROOT):
             write_json(workspace / ".state" / (component["id"] + ".build.json"), {
                 "commit": repo["commit"], "patchSha256": digest(root / repo["patch"]),
                 "platform": target, "architecture": arch, "sha256": digest(source_exe), "suiteBuild": True,
+                "suiteVersion": lock["suiteVersion"],
                 "payloadTreeSha256": source_payload_digest(source, component, target, arch),
                 "toolchainSha256": tool_digest,
             })
@@ -620,13 +631,13 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             assert_architecture(original, target, arch)
             receipt = workspace / ".state" / (component["id"] + ".build.json")
             if not (adopt and target == "darwin"):
-                expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "payloadTreeSha256": source_payload_digest(source, component, target, arch), "toolchainSha256": build_toolchain_digest(tool_record)}
+                expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "suiteVersion": lock["suiteVersion"], "payloadTreeSha256": source_payload_digest(source, component, target, arch), "toolchainSha256": build_toolchain_digest(tool_record)}
                 if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != expected:
                     raise SuiteError(f"Missing or stale suite-build receipt: {component['id']}")
             if target == "darwin":
                 source_app = original.parents[2]
                 _, info = app_entry(source_app)
-                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != component["version"]:
+                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
                     raise SuiteError(f"Child bundle identity/version mismatch: {component['id']}")
                 child = suite_root / "Helpers" / (component["product"] + ".app")
                 shutil.copytree(source_app, child, symlinks=True)
@@ -636,7 +647,8 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             else:
                 executable = copy_portable(source, component, target, suite_root / "apps" / component["id"], arch)
                 payload_root = executable.parent
-            entries.append({"id": component["id"], "version": component["version"], "sourceCommit": repo["commit"], "executable": executable.relative_to(suite_root).as_posix(), "sha256": digest(executable), "suiteBuild": True,
+            entries.append({"id": component["id"], "version": lock["suiteVersion"], "sourceVersion": component.get("sourceVersion", ""),
+                            "sourceCommit": repo["commit"], "sourcePatchSha256": digest(root / repo["patch"]), "executable": executable.relative_to(suite_root).as_posix(), "sha256": digest(executable), "suiteBuild": True,
                             "payloadRoot": payload_root.relative_to(suite_root).as_posix(), "payloadFiles": tree_snapshot(payload_root)})
         assert_tree_links(suite_root)
         manifest = suite_root / ("Resources/suite-manifest.json" if target == "darwin" else "suite-manifest.json")
@@ -688,17 +700,22 @@ def verify_manifest(suite_root, lock=None, root=ROOT):
         executable = safe_path(suite_root, item["executable"])
         if not item.get("suiteBuild") or not re.fullmatch(r"[0-9a-f]{40}", item.get("sourceCommit", "")):
             raise SuiteError(f"Missing suite build/source identity: {item['id']}")
+        if item.get("version") != value["suiteVersion"]:
+            raise SuiteError(f"Component must follow the suite version: {item['id']}")
         if not executable.is_file() or digest(executable) != item["sha256"]:
             raise SuiteError(f"Payload missing or checksum mismatch: {item['id']}")
         if "payloadFiles" in item and tree_snapshot(safe_path(suite_root, item["payloadRoot"])) != item["payloadFiles"]:
             raise SuiteError(f"Payload resource tree changed: {item['id']}")
         if lock:
             component = expected[item["id"]]
-            if item["version"] != component["version"] or item["sourceCommit"] != repos[component["repository"]]["commit"]:
+            repo = repos[component["repository"]]
+            if (item["sourceCommit"] != repo["commit"]
+                    or item.get("sourceVersion", "") != component.get("sourceVersion", "")
+                    or item.get("sourcePatchSha256") != digest(root / repo["patch"])):
                 raise SuiteError(f"Component version/source mismatch: {item['id']}")
             if value["platform"] == "darwin":
                 _, info = app_entry(executable.parents[2])
-                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != component["version"]:
+                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
                     raise SuiteError(f"Component bundle identity mismatch: {item['id']}")
     assert_tree_links(suite_root)
     return value
@@ -734,27 +751,17 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
             run(["hdiutil", "create", "-ov", "-format", "UDZO", "-volname", "SAIO", "-srcfolder", image_root, destination])
         run(["hdiutil", "verify", destination])
     elif target == "windows":
+        if arch != "amd64":
+            raise SuiteError("The single-EXE package currently supports Windows x64")
+        if webview2 is not None or webview2_sha256 is not None:
+            raise SuiteError("Portable Windows packages do not bundle WebView2; publish its installer separately")
         try:
-            toolchain.check_tools(toolchain.load_lock(root / "toolchain.lock.json"), names=("nsis",), platform=target)
+            toolchain.check_tools(toolchain.load_lock(root / "toolchain.lock.json"), names=("go",), platform=target)
         except toolchain.ToolchainError as error:
             raise SuiteError(str(error)) from error
-        makensis = require("makensis")
-        if webview2 is None and webview2_sha256 is None:
-            runtime_lock = json.loads((root / "packaging/windows/webview2.lock.json").read_text(encoding="utf-8"))
-            if runtime_lock["architecture"] != arch:
-                raise SuiteError("No default offline WebView2 runtime is locked for this architecture")
-            webview2 = root / ".tools/WebView2Runtime.exe"
-            webview2_sha256 = runtime_lock["sha256"]
-            if not webview2.is_file():
-                run([sys.executable, root / "scripts/fetch.py", runtime_lock["url"], webview2_sha256, webview2])
-        if not webview2 or not webview2_sha256 or not re.fullmatch(r"[0-9a-f]{64}", webview2_sha256):
-            raise SuiteError("Windows packaging requires a pinned offline WebView2 installer and its SHA256")
-        if digest(webview2) != webview2_sha256:
-            raise SuiteError("Offline WebView2 installer checksum mismatch")
-        destination = output / (name + "-setup.exe")
-        if Path(webview2).stat().st_size < 20 * 1024 * 1024:
-            raise SuiteError("WebView2 payload is too small for an offline standalone runtime installer")
-        run([makensis, f"/DARCH={arch}", f"/DVERSION={lock['suiteVersion']}", f"/DSTAGE={stage}", f"/DWEBVIEW2={Path(webview2).resolve()}", f"/DCHECKSCRIPT={root / 'packaging/windows/check-payload.ps1'}", f"/DOUTPUT={destination}", root / "packaging/windows/simlab.nsi"])
+        destination = output / (name + "-portable.exe")
+        windows_portable.build(stage, destination, lock["suiteVersion"], root, run, digest)
+        assert_architecture(destination, target, arch)
     else:
         native_target(target, arch)
         require("ldd")

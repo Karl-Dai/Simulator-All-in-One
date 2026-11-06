@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/saio-banner.svg" alt="Simulator All-in-One — One installer. Eight simulators. Independent windows." width="1200" />
+  <img src="docs/images/saio-banner.svg" alt="Simulator All-in-One — One app. Eight simulators. Independent windows." width="1200" />
 </p>
 
 <p align="center">
@@ -21,11 +21,11 @@
 
 **把常用工业协议模拟器，装进同一个桌面工具箱。**
 
-Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、Modbus、PMU 和 OPC UA 工具。一次安装，选择角色，即可在独立窗口开始测试。
+Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、Modbus、PMU 和 OPC UA 工具。一个应用，选择角色，即可在独立窗口开始测试。
 
 <table>
 <tr>
-<td width="50%"><strong>一次安装，八个模拟器</strong><br />四组协议工具完整内置，无需分别下载组件。</td>
+<td width="50%"><strong>一个应用，八个模拟器</strong><br />四组协议工具完整内置，无需分别下载组件。</td>
 <td width="50%"><strong>独立窗口，并行联调</strong><br />多个角色可同时运行，关闭主入口后子程序继续运行。</td>
 </tr>
 <tr>
@@ -42,7 +42,7 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 | --- | --- | --- |
 | **macOS · Apple Silicon** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-arm64.zip) | macOS 13.0+ · arm64 |
 | **macOS · Intel** | [DMG 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.dmg) · [ZIP 归档](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_darwin-amd64.zip) | macOS 13.0+ · x86_64 |
-| **Windows · x64** | [离线安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_windows-amd64-setup.exe) | 内置 WebView2 离线安装器 |
+| **Windows · x64** | [v0.1.4 安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_windows-amd64-setup.exe) | 已发布的旧格式；后续构建使用便携 EXE |
 | **Linux · x64** | [自解压安装包](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SAIO_0.1.4_linux-amd64.run) | 以 Ubuntu 22.04 为基准 · glibc 2.35+ |
 
 [发布说明](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4) · [SHA256 校验表](https://github.com/Karl-Dai/Simulator-All-in-One/releases/download/v0.1.4/SHA256SUMS) · [更新记录](CHANGELOG.md)
@@ -57,7 +57,7 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 <details>
 <summary><strong>安装、修复与更新说明</strong></summary>
 
-- **Windows：** 一个 NSIS 安装器包含全部八个子程序和经过 SHA256 校验的 WebView2 离线安装器。仅在缺少时安装 WebView2；支持修复声明内文件，保护无关文件，并在套件运行时阻止替换。
+- **Windows：** 后续构建使用单个便携 EXE，内置入口和八个模拟器。WebView2 是独立的一次性依赖，缺少时会提示下载。
 - **Linux：** 包含 GTK3 / WebKitGTK 4.1，先校验文件再解压到 `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/` 下的稳定版本目录，无需 FUSE。系统负责提供 glibc、显示服务和图形驱动。
 - **更新：** 套件内的子程序随整个套件更新，关闭各自的独立更新入口。0.1.3 尚未实现自动下载并替换完整套件。
 
@@ -80,14 +80,14 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 
 ## 协议与组件
 
-四种协议、八个角色，各自使用独立进程和窗口。组件版本单独锁定，与套件版本分别维护。
+四种协议、八个角色，各自使用独立进程和窗口。内置模拟器统一使用 SAIO 版本，随套件一起更新。上游版本和源码提交仅用于诊断与复现构建。
 
-| 协议 | 内置程序 | 角色 | 组件版本 |
-| --- | --- | --- | --- |
-| **IEC 60870-5-104** | [IEC104Master · IEC104Slave](https://github.com/Karl-Dai/IEC60870-5-104-Simulator) | 主站 / 子站 | `1.15.22` |
-| **Modbus** | [ModbusMaster · ModbusSlave](https://github.com/Karl-Dai/ModbusSim) | 主站 / 从站 | `0.17.9` |
-| **PMU V2 / V3** | [PmuSim · PmuSub](https://github.com/Karl-Dai/PmuSim) | 主站 / 子站 | `0.13.2` |
-| **OPC UA** | [OPCUAMaster · OPCUAServer](https://github.com/Karl-Dai/OPCUASim) | 客户端 / 服务端 | `0.8.0` |
+| 协议 | 内置程序 | 角色 |
+| --- | --- | --- |
+| **IEC 60870-5-104** | [IEC104Master · IEC104Slave](https://github.com/Karl-Dai/IEC60870-5-104-Simulator) | 主站 / 子站 |
+| **Modbus** | [ModbusMaster · ModbusSlave](https://github.com/Karl-Dai/ModbusSim) | 主站 / 从站 |
+| **PMU V2 / V3** | [PmuSim · PmuSub](https://github.com/Karl-Dai/PmuSim) | 主站 / 子站 |
+| **OPC UA** | [OPCUAMaster · OPCUAServer](https://github.com/Karl-Dai/OPCUASim) | 客户端 / 服务端 |
 
 每个角色使用独立的套件数据目录。工程、连接参数和证书沿用原应用语义，关闭主入口不会删除这些数据。
 
@@ -124,7 +124,7 @@ python scripts/toolchain.py check
 套件语言只覆盖当前会话，不写回独立版原有语言偏好。
 `scripts/sync_ui.py` 负责导出和检查公共文件；修改公共源后，重新生成已审阅的套件补丁。
 
-`components.lock.json` 锁定四个上游提交、组件版本、角色、构建位置及补丁：
+`components.lock.json` 锁定四个上游提交、来源版本、角色、构建位置及补丁：
 
 | 上游 | 锁定提交 |
 |---|---|
@@ -136,7 +136,7 @@ python scripts/toolchain.py check
 三个 Rust workspace 的依赖锁快照位于 `packaging/locks/`，校验值写入组件锁；构建使用 `--locked`。前端使用各仓库的 npm lockfile 和 `npm ci`。Wails CLI 固定为 **v2.14.0**。构建步骤可重复执行，未承诺不同编译器或系统镜像之间的产物字节完全相同。
 
 构建时使用 `toolchain.lock.json` 中的精确工具版本；引导脚本本身要求 Python 3.10+。
-另外需要 Git 和对应平台的原生工具。macOS 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 工具、Git Bash、NSIS 和已校验的 WebView2 离线安装器；Linux 需要 GTK3 / WebKitGTK 4.1 开发包和运行时资源。
+另外需要 Git 和对应平台的原生工具。macOS 需要 Xcode Command Line Tools；Windows 需要 Visual Studio C++ 工具和 Git Bash；运行时需要单独安装 WebView2；Linux 需要 GTK3 / WebKitGTK 4.1 开发包和运行时资源。
 
 在全新检出中执行：
 
@@ -177,13 +177,11 @@ dist/staging/linux-amd64/
 
 ## Windows 与 Linux 打包
 
-Windows 构建使用目标架构的 MSVC target 和静态 CRT。默认打包从 `webview2.lock.json` 的不可变微软 URL 获取 x64 离线 Standalone Installer，检查 SHA256 后内置；包体过小的 bootstrapper 会被拒绝。锁中的 `installerVersion` 是安装器自身文件版本，不是 WebView 渲染引擎版本。GitHub 工作流还校验 Microsoft Authenticode 签名。默认命令为 `python scripts/suite.py package --platform windows --arch amd64`；需要覆盖离线文件时，可按 [Microsoft 的离线分发说明](https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution#offline-deployment)准备文件并显式指定：
+Windows 构建现在生成 `SAIO_<version>_windows-amd64-portable.exe`。下载一个 EXE，双击即可打开主入口和内置八个模拟器。SAIO 无需安装，不请求管理员权限、不创建快捷方式或卸载项。首次启动将经过校验的程序解压到 `%LOCALAPPDATA%\SAIO\portable\<payload-hash>`，之后重复使用缓存。缓存缺失时重新解压；损坏时先保留旧目录再修复，工程保存在 `%APPDATA%\SimLab`。
 
-```sh
-python scripts/suite.py package --platform windows --arch amd64 \
-  --webview2 /absolute/path/MicrosoftEdgeWebView2RuntimeInstallerX64.exe \
-  --webview2-sha256 <该离线文件的64位小写SHA256>
-```
+**Windows 运行依赖：Microsoft Edge WebView2 运行库。** SAIO 不捆绑或静默安装运行库。缺少运行库或版本过旧时，程序会通过原生 Windows 提示框询问是否打开 [SimLab WebView2 下载页面](https://simlab.carldai.cloud/downloads/webview2/)，取消后正常退出。安装一次运行库后重新打开 SAIO 即可。离线电脑可先在其他电脑下载 x64 离线安装包，再拷贝过去安装。也可使用[微软官方下载页面](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)。
+
+运行 `python scripts/suite.py package --platform windows --arch amd64` 即可生成便携包；需要锁定的 Go 工具链和原生 CI 已加载的 MSVC 资源工具。WebView2 独立托管，来源及 SHA-256 记录在 `packaging/windows/webview2.lock.json`。已发布的 v0.1.4 安装包保持原样，后续发布改用便携 EXE。
 
 Linux 构建机固定为 Ubuntu 22.04 amd64；Wails 显式使用 `webkit2_41`。安装依赖可参考工作流的 apt 列表，然后执行：
 
@@ -219,9 +217,9 @@ macOS DMG 已通过 `hdiutil verify`。整套 `.app` 已通过 `codesign --verif
 
 所有工作流均由手动触发（`workflow_dispatch`）；发布流程也可调用源码检查和原生构建。推送、PR、标签和定时任务都不会自动启动 CI；需要时在 GitHub Actions 中明确运行对应工作流。
 
-`validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 默认读取 `packaging/windows/webview2.lock.json` 中固定的微软离线安装器 URL / SHA256；`WEBVIEW2_X64_URL` / `WEBVIEW2_X64_SHA256` 仓库变量可成对覆盖，校验不符直接失败，不降级为联网 bootstrapper。
+`validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 生成内置八个模拟器的单个便携 EXE，发布包不捆绑 WebView2；CI 单独安装测试运行依赖，原生检查覆盖缓存复用、修复和启动。
 
-`validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和八角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前安装脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
+`validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和八角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前便携包脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
 
 Rust 缓存保留失败任务的编译结果。完整包在运行验收之前上传，便于检查失败产物；可下载产物不代表该任务已通过。Linux 解压、虚拟显示与启动检查有阶段日志和超时限制。
 
@@ -240,7 +238,7 @@ Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护
 
 显示名称、About、仓库链接和新构建产物统一使用 Simulator All-in-One / SAIO。Go 模块地址为 `github.com/Karl-Dai/Simulator-All-in-One`。
 
-用户数据目录 `SimLab`、`SIMLAB_*` 环境变量、`cloud.carldai.simlab*` 应用标识、`simlab-suite` 构建特性、Windows 的安装目录/卸载注册表键及 `.simlab-owned` 标记保持兼容；现有工程、证书、收藏和语言选择会继续使用。Windows 校验器兼容旧 `SimLab.exe` 与新 `SAIO.exe`，新安装器会替换旧快捷方式。
+用户数据目录 `SimLab`、`SIMLAB_*` 环境变量、`cloud.carldai.simlab*` 应用标识及 `simlab-suite` 构建特性保持兼容。现有工程、证书、收藏和语言选择会继续使用。Windows 便携包单独保存程序缓存，不创建卸载注册表键或开始菜单快捷方式；旧安装包校验脚本继续保留，供历史版本使用。
 
 历史构建和验收记录继续使用当时的名称与文件名，旧的 `SimLab_*` 安装包不包含此次改名。
 
@@ -258,4 +256,4 @@ Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护
 
 ---
 
-<p align="center"><strong>一次安装，八个模拟器，独立窗口。</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">下载 SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">反馈问题</a> · <a href="README.md">English</a></p>
+<p align="center"><strong>一个应用，八个模拟器，独立窗口。</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">下载 SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">反馈问题</a> · <a href="README.md">English</a></p>

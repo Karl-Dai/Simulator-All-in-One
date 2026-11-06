@@ -45,7 +45,7 @@
       "project": "go/cmd/mastergui",
       "frontend": "master-frontend",
       "binary": "ModbusMaster",
-      "version": "0.17.9",
+      "sourceVersion": "0.17.9",
       "bundleId": "cloud.carldai.simlab.modbus.master"
     },
     {
@@ -55,7 +55,7 @@
       "project": "go/cmd/slavegui",
       "frontend": "frontend",
       "binary": "ModbusSlave",
-      "version": "0.17.9",
+      "sourceVersion": "0.17.9",
       "bundleId": "cloud.carldai.simlab.modbus.slave"
     },
     {
@@ -65,7 +65,7 @@
       "project": "crates/iec104master-app",
       "frontend": "master-frontend",
       "binary": "iec104master-app",
-      "version": "1.15.22",
+      "sourceVersion": "1.15.22",
       "bundleId": "cloud.carldai.simlab.iec104.master"
     },
     {
@@ -75,7 +75,7 @@
       "project": "crates/iec104sim-app",
       "frontend": "frontend",
       "binary": "iec104sim-app",
-      "version": "1.15.22",
+      "sourceVersion": "1.15.22",
       "bundleId": "cloud.carldai.simlab.iec104.slave"
     },
     {
@@ -85,7 +85,7 @@
       "project": "crates/pmusim-app",
       "frontend": "frontend",
       "binary": "pmusim-app",
-      "version": "0.13.2",
+      "sourceVersion": "0.13.2",
       "bundleId": "cloud.carldai.simlab.pmu.master"
     },
     {
@@ -95,7 +95,7 @@
       "project": "crates/pmusim-sub",
       "frontend": "frontend-sub",
       "binary": "pmusim-sub",
-      "version": "0.13.2",
+      "sourceVersion": "0.13.2",
       "bundleId": "cloud.carldai.simlab.pmu.sub"
     },
     {
@@ -105,7 +105,7 @@
       "project": "crates/opcuamaster-app",
       "frontend": "master-frontend",
       "binary": "opcuamaster-app",
-      "version": "0.8.0",
+      "sourceVersion": "0.8.0",
       "bundleId": "cloud.carldai.simlab.opcua.master"
     },
     {
@@ -115,7 +115,7 @@
       "project": "crates/opcuaserver-app",
       "frontend": "frontend",
       "binary": "opcuaserver-app",
-      "version": "0.8.0",
+      "sourceVersion": "0.8.0",
       "bundleId": "cloud.carldai.simlab.opcua.server"
     }
   ]

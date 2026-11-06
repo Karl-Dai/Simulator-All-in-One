@@ -15762,3 +15762,28 @@ index 341ed4b..a497c55 100644
    display: flex;
    justify-content: flex-end;
    gap: 8px;
+diff --git a/shared-frontend/components/VersionBadge.vue b/shared-frontend/components/VersionBadge.vue
+index 8c16999..09e3606 100644
+--- a/shared-frontend/components/VersionBadge.vue
++++ b/shared-frontend/components/VersionBadge.vue
+@@ -9,6 +9,7 @@ import { useClipboardFlash } from '../composables/useClipboardFlash'
+ const { t, locale } = useI18n()
+ const { flash, copy, openOrCopy } = useClipboardFlash()
+ const version = ref('')
++const versionLabel = computed(() => `${import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'SAIO ' : ''}v${version.value}`)
+ const documentationUrl = computed(() =>
+   documentationUrlForLocale(REPO_URL, locale.value),
+ )
+@@ -24,9 +25,9 @@ onMounted(async () => {
+       v-if="version"
+       type="button"
+       class="version-text"
+-      :title="`v${version} · ${t('about.copiedSuffix')}`"
+-      @click="copy(`v${version}`)"
+-    >v{{ version }}</button>
++      :title="`${versionLabel} · ${t('about.copiedSuffix')}`"
++      @click="copy(versionLabel)"
++    >{{ versionLabel }}</button>
+     <button
+       type="button"
+       class="github-link"

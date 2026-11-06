@@ -39,15 +39,16 @@ jobs:
           python-version: ${{ steps.toolchain.outputs.python }}
       - name: Packaging regression checks
         run: python -m unittest discover -s scripts/tests -v
-      - name: Windows checker fixture and packaging tool
+      - uses: actions/setup-go@v5
         if: inputs.platform == 'windows'
-        shell: pwsh
-        run: |
-          ./scripts/test-windows-checker.ps1
-          choco install nsis --version=${{ steps.toolchain.outputs.nsis }} --allow-downgrade --no-progress -y
-          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
+        with:
+          go-version: ${{ steps.toolchain.outputs.go }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: inputs.platform == 'windows'
+        with:
+          arch: x64
       - name: Check packaging tools
-        run: python scripts/toolchain.py --tools "${{ inputs.platform == 'windows' && 'python,nsis' || 'python' }}" check
+        run: python scripts/toolchain.py --tools "${{ inputs.platform == 'windows' && 'python,go' || 'python' }}" check
       - name: Verify trusted source and reuse original native payloads
         run: python scripts/revalidate_package.py --platform "$PACKAGE_PLATFORM" --source-run "$SOURCE_RUN"
       - name: Preserve complete packages and provenance before runtime checks
@@ -74,9 +75,20 @@ jobs:
             printf "%s\n" "Extraction complete; starting offline display and application checks" >&2
             timeout --signal=TERM --kill-after=10s 4m xvfb-run -a -e /dev/stderr dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
           '
-      - name: Windows native installer transaction and startup checks
+      - name: Install WebView2 on the CI host only
         if: inputs.platform == 'windows'
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
-          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
+          $lock = Get-Content packaging/windows/webview2.lock.json -Raw | ConvertFrom-Json
+          python scripts/fetch.py $lock.url $lock.sha256 .tools/WebView2Runtime.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the verified CI prerequisite' }
+          $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'WebView2 runtime is not signed by Microsoft' }
+          $process = Start-Process .tools/WebView2Runtime.exe -ArgumentList '/silent', '/install' -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) { throw "CI prerequisite installation failed: $($process.ExitCode)" }
+      - name: Windows native portable extraction and startup checks
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem dist/packages/*-portable.exe | Select-Object -First 1
+          ./scripts/test-windows-portable.ps1 -Package $package.FullName
