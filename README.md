@@ -168,7 +168,7 @@ Windows builds now produce `SAIO_<version>_windows-amd64-portable.exe`. Download
 
 **Windows prerequisite: Microsoft Edge WebView2 Runtime.** SAIO does not bundle or silently install this runtime. If it is missing or outdated, a native Windows prompt offers to open the [SimLab WebView2 download page](https://simlab.carldai.cloud/downloads/webview2/); canceling exits normally. Install the runtime once and reopen SAIO. For offline PCs, download the x64 offline installer on another computer and copy it across. The [official Microsoft download page](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) is also available.
 
-The portable package is built with `python scripts/suite.py package --platform windows --arch amd64`; it requires the locked Go toolchain, MSVC `rc.exe`, and LLVM `llvm-cvtres.exe` on PATH. Native CI provides these resource tools. WebView2 is hosted independently using the pinned download and SHA-256 in `packaging/windows/webview2.lock.json`. Previously published v0.1.4 installers are unchanged; subsequent release builds use the portable EXE.
+The portable package is built with `python scripts/suite.py package --platform windows --arch amd64`; it requires the locked Go toolchain and MinGW's GNU `windres.exe` on PATH. Native Windows CI already provides MinGW. WebView2 is hosted independently using the pinned download and SHA-256 in `packaging/windows/webview2.lock.json`. Previously published v0.1.4 installers are unchanged; subsequent release builds use the portable EXE.
 
 ## Checks and CI
 

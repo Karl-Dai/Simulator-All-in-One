@@ -66,12 +66,9 @@ BEGIN
  END
 END
 ''')
-        # Keep rc.exe for resource compilation, but use LLVM's COFF converter:
-        # MSVC cvtres can emit absolute symbols rejected by Go's linker.
-        if os.name == "nt":
-            run(["rc.exe", "/nologo", "/fo", "portable.res", "portable.rc"], cwd=work)
-            run(["llvm-cvtres.exe", "/MACHINE:X64", "/OUT:resource_windows_amd64.syso", "portable.res"], cwd=work)
-        else:
-            run(["x86_64-w64-mingw32-windres", "portable.rc", "-O", "coff", "-o", "resource_windows_amd64.syso"], cwd=work)
+        # GNU windres emits COFF objects supported by Go's internal linker.
+        # MSVC cvtres can emit absolute symbols that it rejects.
+        windres = "windres.exe" if os.name == "nt" else "x86_64-w64-mingw32-windres"
+        run([windres, "portable.rc", "--target", "pe-x86-64", "-O", "coff", "-o", "resource_windows_amd64.syso"], cwd=work)
         env = dict(os.environ, GOOS="windows", GOARCH="amd64", CGO_ENABLED="0")
         run(["go", "build", "-trimpath", "-ldflags", "-s -w -H=windowsgui", "-o", destination, "."], cwd=work, env=env)

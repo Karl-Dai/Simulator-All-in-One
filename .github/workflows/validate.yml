@@ -19,9 +19,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ steps.toolchain.outputs.go }}
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
       - name: Compile real Windows resources and verify portable extraction
         run: python -m unittest discover -s scripts/tests -p test_windows_portable.py -v
   static:
