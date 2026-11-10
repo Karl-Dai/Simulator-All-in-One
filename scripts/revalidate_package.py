@@ -18,7 +18,8 @@ def allowed_change(path):
     if path in {"toolchain.lock.json", "scripts/toolchain.py"}:
         return False
     return path in {
-        "README.md", "scripts/smoke.py", "scripts/revalidate_package.py",
+        "README.md", "README.zh-CN.md", "scripts/smoke.py", "scripts/revalidate_package.py",
+        "scripts/windows_portable.py", "scripts/test-windows-portable.ps1",
         "scripts/test-windows-installer.ps1", "scripts/test-windows-checker.ps1",
     } or path.startswith(("docs/", ".github/workflows/", "packaging/linux/",
                           "packaging/windows/", "scripts/tests/"))
@@ -86,38 +87,26 @@ def main():
     download = workspace / "download"
     suite.run(["gh", "run", "download", args.source_run, "--repo", repository,
                "--name", f"SAIO-{args.platform}-amd64", "--dir", download])
-    suffix = "*-setup.exe" if args.platform == "windows" else "*.run"
+    suffix = "*-portable.exe" if args.platform == "windows" else "*.run"
     packages = list(download.rglob(suffix))
     if len(packages) != 1:
-        raise suite.SuiteError("Expected exactly one complete native installer")
+        raise suite.SuiteError("Expected exactly one complete native package")
     package = packages[0]
     receipt = Path(str(package) + ".sha256.json")
     if suite.digest(package) != json.loads(receipt.read_text(encoding="utf-8"))["sha256"]:
-        raise suite.SuiteError("Original installer checksum mismatch")
+        raise suite.SuiteError("Original package checksum mismatch")
     stage = suite.ROOT / "dist/staging" / f"{args.platform}-amd64"
     lock = suite.read_lock()
-    runtime = None
     if args.platform == "windows":
-        extractor = shutil.which("7z")
-        if not extractor:
-            candidate = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "7-Zip/7z.exe"
-            if candidate.is_file():
-                extractor = str(candidate)
-        if not extractor:
-            raise suite.SuiteError("7-Zip is required to recover the original NSIS payloads")
-        extracted = workspace / "nsis-extracted"
-        suite.run([extractor, "x", "-y", f"-o{extracted}", package])
-        manifests = list(extracted.rglob("suite-manifest.json"))
-        runtimes = list(extracted.rglob("WebView2Runtime.exe"))
-        if len(manifests) != 1 or len(runtimes) != 1:
-            raise suite.SuiteError("The installer must contain one manifest and one offline WebView2 runtime")
-        original = manifests[0].parent
+        cache = workspace / "portable-cache"
+        env = dict(os.environ, LOCALAPPDATA=str(cache))
+        original = Path(suite.run([package, "--extract-only"], env=env, capture=True))
+        if not original.resolve().is_relative_to(cache.resolve()):
+            raise suite.SuiteError("Portable EXE extracted outside the isolated cache")
         manifest = suite.verify_manifest(original, lock)
         if (manifest["platform"], manifest["architecture"]) != ("windows", "amd64"):
             raise suite.SuiteError("Wrong prebuilt package target")
         copy_declared_windows_payload(original, stage, manifest)
-        runtime_lock = json.loads((suite.ROOT / "packaging/windows/webview2.lock.json").read_text(encoding="utf-8"))
-        runtime = runtimes[0]
     else:
         data = workspace / "extracted-data"
         env = dict(os.environ, XDG_DATA_HOME=str(data))
@@ -144,8 +133,8 @@ def main():
     entries += [stage / item["executable"] for item in manifest["components"]]
     for entry in entries:
         suite.assert_architecture(entry, args.platform, "amd64")
-    if runtime is not None:
-        suite.package("windows", "amd64", webview2=runtime, webview2_sha256=runtime_lock["sha256"])
+    if args.platform == "windows":
+        suite.package("windows", "amd64")
     suite.write_json(suite.ROOT / "dist/provenance.json", {
         "sourceRun": args.source_run, "sourceHead": source_sha,
         "validationHead": suite.run(["git", "rev-parse", "HEAD"], capture=True),

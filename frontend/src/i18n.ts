@@ -50,7 +50,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "toast.launched": "已向 {protocol} {role} 提交启动请求",
     "toast.close": "关闭提示",
     "error.title": "暂时无法完成操作",
-    "error.help": "如果套件文件缺失或损坏，请重新运行完整安装包进行修复。",
+    "error.help": "如果套件文件缺失或损坏，请重新下载完整套件后再打开程序。",
     "error.dismiss": "知道了",
     "error.notReady": "内置程序不可用，请修复完整套件。",
     "about.title": "关于 Simulator All-in-One",
@@ -110,7 +110,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "toast.close": "Dismiss notice",
     "error.title": "Action unavailable",
     "error.help":
-      "If bundled files are missing or corrupted, re-run the full installer to repair.",
+      "If bundled files are missing or corrupted, download the complete suite again and reopen it.",
     "error.dismiss": "OK",
     "error.notReady": "Bundled program unavailable; repair the suite.",
     "about.title": "About Simulator All-in-One",

@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/Karl-Dai/Simulator-All-in-One/internal/suite"
+	"github.com/Karl-Dai/Simulator-All-in-One/internal/webviewruntime"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -49,6 +50,9 @@ func main() {
 				os.Exit(1)
 			}
 		}
+		return
+	}
+	if !webviewruntime.Ensure() {
 		return
 	}
 	if *launch != "" {

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
   <title id="title">Simulator All-in-One</title>
-  <desc id="desc">One installer. Eight industrial protocol simulators. Independent windows. IEC 104, Modbus, PMU and OPC UA.</desc>
+  <desc id="desc">One app. Eight industrial protocol simulators. Independent windows. IEC 104, Modbus, PMU and OPC UA.</desc>
   <defs>
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#9fc4d3" stroke-opacity=".07"/></pattern>
   </defs>
@@ -18,7 +18,7 @@
     <text x="114" y="68" font-size="13" letter-spacing="2.4" fill="#a9c1cc">INDUSTRIAL PROTOCOL TOOLKIT</text>
     <text x="48" y="160" font-size="65" font-weight="700" letter-spacing="-2" fill="#f3f6f7">Simulator</text>
     <text x="48" y="232" font-size="65" font-weight="700" letter-spacing="-2" fill="#dca177">All-in-One.</text>
-    <text x="51" y="278" font-size="20" fill="#bed0d8">One installer. Eight simulators. Independent windows.</text>
+    <text x="51" y="278" font-size="20" fill="#bed0d8">One app. Eight simulators. Independent windows.</text>
     <g font-size="13" font-weight="600" letter-spacing=".8" fill="#dceaf0">
       <rect x="50" y="321" width="91" height="31" rx="7" fill="#29414e"/><text x="66" y="342">IEC 104</text>
       <rect x="151" y="321" width="103" height="31" rx="7" fill="#29414e"/><text x="167" y="342">MODBUS</text>

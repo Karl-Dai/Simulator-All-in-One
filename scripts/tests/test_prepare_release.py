@@ -19,7 +19,7 @@ class ReleaseTests(unittest.TestCase):
         self.output = self.root / 'output'
         (self.root / 'components.lock.json').write_text('{"suiteVersion":"0.1.1"}')
         (self.root / 'CHANGELOG.md').write_text('## [0.1.1] - 2026-11-05\nCurrent notes\n\n## [0.1.0] - 2026-10-30\nOld notes\n')
-        for suffix in ('darwin-arm64.dmg', 'darwin-arm64.zip', 'darwin-amd64.dmg', 'darwin-amd64.zip', 'windows-amd64-setup.exe', 'linux-amd64.run'):
+        for suffix in ('darwin-arm64.dmg', 'darwin-arm64.zip', 'darwin-amd64.dmg', 'darwin-amd64.zip', 'windows-amd64-portable.exe', 'linux-amd64.run'):
             package = self.artifacts / ('SAIO_0.1.1_' + suffix)
             package.write_bytes(suffix.encode())
             package.with_name(package.name + '.sha256.json').write_text(json.dumps({'file': package.name, 'sha256': hashlib.sha256(package.read_bytes()).hexdigest()}))

@@ -408,7 +408,6 @@ onMounted(refresh);
         <div class="component-table">
           <div v-for="role in snapshot?.roles ?? []" :key="role.id">
             <span>{{ role.product }}</span
-            ><span>{{ role.version || t("about.unknownVersion") }}</span
             ><span :class="{ 'component-error': !role.ready }">{{
               role.ready ? t("about.ready") : t("role.repair")
             }}</span>

@@ -6,6 +6,21 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read locked tool versions
+        id: toolchain
+        run: python scripts/toolchain.py ci --output "$env:GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.toolchain.outputs.python }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.toolchain.outputs.go }}
+      - name: Compile real Windows resources and verify portable extraction
+        run: python -m unittest discover -s scripts/tests -p test_windows_portable.py -v
   static:
     runs-on: ubuntu-22.04
     steps:

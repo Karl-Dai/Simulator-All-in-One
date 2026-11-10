@@ -2,7 +2,10 @@ module github.com/Karl-Dai/Simulator-All-in-One
 
 go 1.25.0
 
-require github.com/wailsapp/wails/v2 v2.14.0
+require (
+	github.com/wailsapp/go-webview2 v1.0.22
+	github.com/wailsapp/wails/v2 v2.14.0
+)
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
@@ -27,7 +30,6 @@ require (
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/net v0.56.0 // indirect

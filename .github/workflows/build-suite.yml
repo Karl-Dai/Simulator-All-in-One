@@ -25,7 +25,7 @@ jobs:
           targets = [
               {"runner": "macos-15", "platform": "darwin", "arch": "arm64"},
               {"runner": "macos-15-intel", "platform": "darwin", "arch": "amd64"},
-              {"runner": "windows-latest", "platform": "windows", "arch": "amd64", "webview_url_var": "WEBVIEW2_X64_URL", "webview_sha_var": "WEBVIEW2_X64_SHA256"},
+              {"runner": "windows-latest", "platform": "windows", "arch": "amd64"},
               {"runner": "ubuntu-22.04", "platform": "linux", "arch": "amd64"},
           ]
           target = os.environ["TARGET"]
@@ -49,8 +49,6 @@ jobs:
       CARGO_INCREMENTAL: '0'
       PYTHONUTF8: '1'
       MACOSX_DEPLOYMENT_TARGET: '13.0'
-      WEBVIEW2_URL: ${{ matrix.platform == 'windows' && vars[matrix.webview_url_var] || '' }}
-      WEBVIEW2_SHA256: ${{ matrix.platform == 'windows' && vars[matrix.webview_sha_var] || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Read locked tool versions
@@ -78,25 +76,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential perl pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libgdk-pixbuf2.0-bin fonts-dejavu-core bubblewrap xdg-dbus-proxy
-      - name: Windows packaging prerequisite checks
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          $lock = Get-Content packaging/windows/webview2.lock.json -Raw | ConvertFrom-Json
-          if (!$env:WEBVIEW2_URL -and !$env:WEBVIEW2_SHA256) {
-            $env:WEBVIEW2_URL = $lock.url
-            $env:WEBVIEW2_SHA256 = $lock.sha256
-          }
-          if (!$env:WEBVIEW2_URL -or $env:WEBVIEW2_SHA256 -notmatch '^[0-9a-f]{64}$') { throw 'WebView2 URL and SHA256 overrides must be provided together.' }
-          "WEBVIEW2_SHA256=$env:WEBVIEW2_SHA256" | Out-File -FilePath $env:GITHUB_ENV -Append
-          choco install nsis --version=${{ steps.toolchain.outputs.nsis }} --allow-downgrade --no-progress -y
-          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
-          $tokens = $null; $parseErrors = $null
-          $null = [System.Management.Automation.Language.Parser]::ParseFile("$pwd/packaging/windows/check-payload.ps1", [ref]$tokens, [ref]$parseErrors)
-          if ($parseErrors) { throw $parseErrors }
-          python scripts/fetch.py "$env:WEBVIEW2_URL" "$env:WEBVIEW2_SHA256" .tools/WebView2Runtime.exe
-          $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
-          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'WebView2 runtime is not signed by Microsoft' }
       - name: Install pinned Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v${{ steps.toolchain.outputs.wails }}
       - name: Install locked npm
@@ -105,6 +84,11 @@ jobs:
         run: python scripts/toolchain.py record --output dist/toolchain-environment.json
       - name: Packaging tests
         run: python -m unittest discover -s scripts/tests -v
+      - name: Verify headless binding generation skips WebView2 prompts
+        if: matrix.platform == 'windows'
+        env:
+          CGO_ENABLED: '0'
+        run: go test -tags bindings ./internal/webviewruntime
       - name: Clone exact commits and strictly apply suite patches
         run: python scripts/suite.py bootstrap --workspace "${{ env.SUITE_WORKSPACE }}"
       - name: Cache native Rust build outputs, including failed packaging runs
@@ -143,10 +127,10 @@ jobs:
         id: package_unix
         if: matrix.platform != 'windows'
         run: python scripts/suite.py package --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
-      - name: Package Windows with one offline WebView2 runtime
+      - name: Package Windows as a single portable EXE
         id: package_windows
         if: matrix.platform == 'windows'
-        run: python scripts/suite.py package --platform windows --arch ${{ matrix.arch }} --webview2 .tools/WebView2Runtime.exe --webview2-sha256 "${{ env.WEBVIEW2_SHA256 }}"
+        run: python scripts/suite.py package --platform windows --arch ${{ matrix.arch }}
       - name: Upload complete suite artifacts before runtime validation
         if: always() && (steps.package_unix.outcome == 'success' || steps.package_windows.outcome == 'success')
         uses: actions/upload-artifact@v4
@@ -173,9 +157,20 @@ jobs:
             printf "%s\n" "Extraction complete; starting offline display and application checks" >&2
             timeout --signal=TERM --kill-after=10s 4m xvfb-run -a -e /dev/stderr dbus-run-session -- python3 /source/scripts/smoke.py "$stage"
           '
-      - name: Windows native installer transaction and startup checks
+      - name: Install WebView2 on the CI host only
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist/packages/*-setup.exe | Select-Object -First 1
-          ./scripts/test-windows-installer.ps1 -Installer $installer.FullName
+          $lock = Get-Content packaging/windows/webview2.lock.json -Raw | ConvertFrom-Json
+          python scripts/fetch.py $lock.url $lock.sha256 .tools/WebView2Runtime.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the verified CI prerequisite' }
+          $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') { throw 'WebView2 runtime is not signed by Microsoft' }
+          $process = Start-Process .tools/WebView2Runtime.exe -ArgumentList '/silent', '/install' -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) { throw "CI prerequisite installation failed: $($process.ExitCode)" }
+      - name: Windows native portable extraction and startup checks
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem dist/packages/*-portable.exe | Select-Object -First 1
+          ./scripts/test-windows-portable.ps1 -Package $package.FullName

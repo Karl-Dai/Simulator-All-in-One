@@ -43,7 +43,7 @@ func (m Manifest) Validate(platform, architecture string) error {
 		}
 		seen[c.ID] = true
 		digest, err := hex.DecodeString(c.SHA256)
-		if !c.SuiteBuild || c.Version == "" || len(c.SourceCommit) != 40 || err != nil || len(digest) != sha256.Size {
+		if !c.SuiteBuild || c.Version != m.SuiteVersion || len(c.SourceCommit) != 40 || err != nil || len(digest) != sha256.Size {
 			return fmt.Errorf("%s 的套件版本或校验信息不完整", c.ID)
 		}
 		if err := validateRelative(c.Executable); err != nil {

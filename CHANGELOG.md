@@ -2,6 +2,12 @@
 
 Notable changes are documented in English and Chinese, following Keep a Changelog.
 
+## [Unreleased]
+
+- 内置模拟器统一使用 SAIO 版本，保留上游源码与补丁摘要用于诊断。 / Bundled simulators share the SAIO version; source and patch identities remain available for diagnostics.
+- Windows 改为单个便携 EXE，自动校验、解压及修复程序缓存，保留用户工程。 / Windows builds use one portable EXE with verified extraction and cache repair, preserving user projects.
+- WebView2 不随包携带；缺少或过旧时提示打开 SimLab 下载页面。 / WebView2 is a separate prerequisite; missing or outdated runtimes trigger a native download prompt.
+
 ## [0.1.4] - 2026-11-05
 
 ### Highlights / 亮点

@@ -12,7 +12,7 @@ def prepare(tag, artifacts, output, root=Path(__file__).resolve().parents[1]):
     if tag != 'v' + version or not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
         raise ValueError('Tag must match the locked suite version')
     suffixes = ('darwin-arm64.dmg', 'darwin-arm64.zip', 'darwin-amd64.dmg',
-                'darwin-amd64.zip', 'windows-amd64-setup.exe', 'linux-amd64.run')
+                'darwin-amd64.zip', 'windows-amd64-portable.exe', 'linux-amd64.run')
     expected = {f'SAIO_{version}_{suffix}' for suffix in suffixes}
     verified = {}
     for name in sorted(expected):
