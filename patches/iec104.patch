@@ -14484,7 +14484,7 @@ index 37d162e..03e9357 100644
  .app-layout {
    display: grid;
 diff --git a/master-frontend/src/components/ControlDialog.vue b/master-frontend/src/components/ControlDialog.vue
-index 9ccae02..c130df2 100644
+index 9ccae02..1058742 100644
 --- a/master-frontend/src/components/ControlDialog.vue
 +++ b/master-frontend/src/components/ControlDialog.vue
 @@ -1,10 +1,12 @@
@@ -14621,7 +14621,7 @@ index 9ccae02..c130df2 100644
      send()
    }
  }
-@@ -277,10 +300,11 @@ const caSelectValue = computed<number>({
+@@ -277,34 +300,33 @@ const caSelectValue = computed<number>({
  <template>
    <Teleport to="body">
      <Transition name="dialog-pop">
@@ -14632,9 +14632,41 @@ index 9ccae02..c130df2 100644
          <div class="modal-body">
 +          <fieldset class="form-fields" :disabled="sending">
            <div class="form-row">
-             <label class="form-label form-label-half">
-               {{ t('control.targetCa') }}
-@@ -390,20 +414,25 @@ const caSelectValue = computed<number>({
+-            <label class="form-label form-label-half">
+-              {{ t('control.targetCa') }}
++            <label class="address-label ca-label" for="control-ca">{{ t('control.targetCa') }}</label>
++            <label class="address-label ioa-label" for="control-ioa">{{ t('control.ioa') }}</label>
++            <div class="ca-controls">
+               <template v-if="useCASelect">
+-                <select v-model.number="caSelectValue" class="form-input">
++                <select id="control-ca" v-model.number="caSelectValue" class="form-input">
+                   <option v-for="opt in availableCAs" :key="opt" :value="opt">CA {{ opt }}</option>
+                   <option :value="CUSTOM_CA">{{ t('control.caCustom') }}</option>
+                 </select>
+                 <input
+                   v-if="caSelectValue === CUSTOM_CA"
+                   v-model.number="ca"
++                  :aria-label="t('control.targetCa')"
+                   class="form-input"
+                   type="number"
+                   min="1"
+                   max="65534"
+-                  style="margin-top: 4px"
+                 />
+               </template>
+-              <input v-else v-model.number="ca" class="form-input" type="number" min="1" max="65534" />
+-            </label>
+-            <label class="form-label form-label-half">
+-              {{ t('control.ioa') }}
+-              <input v-model.number="ioa" class="form-input" type="number" min="0" max="16777215" />
+-            </label>
++              <input v-else id="control-ca" v-model.number="ca" class="form-input" type="number" min="1" max="65534" />
++            </div>
++            <input id="control-ioa" v-model.number="ioa" class="form-input ioa-input" type="number" min="0" max="16777215" />
+           </div>
+ 
+           <label class="form-label">
+@@ -390,20 +412,25 @@ const caSelectValue = computed<number>({
                </label>
              </div>
            </details>
@@ -14642,12 +14674,12 @@ index 9ccae02..c130df2 100644
  
 -          <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 +          <div v-if="errorMsg" class="error-msg" role="alert">{{ errorMsg }}</div>
-+
+ 
+-          <div v-if="lastResult" class="result-indicator result-ok">
 +          <div v-if="sending" class="result-indicator result-pending" role="status">
 +            {{ waitingForConfirmation ? t('control.waitingForConfirmation') : t('control.sending') }}
 +          </div>
- 
--          <div v-if="lastResult" class="result-indicator result-ok">
++
 +          <div v-if="lastResult && resultStatus" :class="['result-indicator', resultStatus.confirmed ? 'result-ok' : 'result-unconfirmed']" role="status">
              <span class="result-steps">
                <span v-for="(step, i) in lastResult.steps" :key="i" class="step-dot" :title="step.action">&#9679;</span>
@@ -14666,7 +14698,18 @@ index 9ccae02..c130df2 100644
            </AppButton>
          </div>
        </div>
-@@ -464,6 +493,16 @@ const caSelectValue = computed<number>({
+@@ -428,8 +455,8 @@ const caSelectValue = computed<number>({
+   border: 1px solid var(--border-strong);
+   border-radius: var(--radius-lg);
+   padding: 20px;
+-  min-width: 400px;
+-  max-width: 90vw;
++  width: 520px;
++  max-width: calc(100vw - 32px);
+   /* issue #28:setpoint + 展开高级区 + 错误/结果提示时约 500-560px,小视口下标题/按钮
+      必须常驻,滚动收进 .modal-body —— 之前连 max-height 都没有,超高内容直接被裁。 */
+   max-height: 90vh;
+@@ -464,6 +491,16 @@ const caSelectValue = computed<number>({
    margin-top: 20px;
  }
  
@@ -14683,7 +14726,53 @@ index 9ccae02..c130df2 100644
  .form-label {
    display: flex;
    flex-direction: column;
-@@ -639,6 +678,13 @@ const caSelectValue = computed<number>({
+@@ -473,12 +510,42 @@ const caSelectValue = computed<number>({
+ }
+ 
+ .form-row {
++  display: grid;
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  grid-template-areas: "ca-label ioa-label" "ca-control ioa-control";
++  align-items: start;
++  gap: 4px 12px;
++}
++
++.address-label {
++  min-width: 0;
++  font-size: 12px;
++  line-height: 1.4;
++  color: var(--text-muted);
++}
++.ca-label { grid-area: ca-label; }
++.ioa-label { grid-area: ioa-label; }
++.ca-controls {
++  grid-area: ca-control;
+   display: flex;
+-  gap: 8px;
++  flex-direction: column;
++  gap: 4px;
++  min-width: 0;
++}
++.ioa-input { grid-area: ioa-control; }
++.form-row .form-input {
++  width: 100%;
++  min-width: 0;
++  height: 32px;
+ }
+ 
+-.form-label-half {
+-  flex: 1;
++@media (max-width: 480px) {
++  .form-row {
++    grid-template-columns: minmax(0, 1fr);
++    grid-template-areas: "ca-label" "ca-control" "ioa-label" "ioa-control";
++  }
++  .ioa-label { margin-top: 8px; }
++  .toggle-row { align-items: flex-start; flex-direction: column; gap: 6px; }
+ }
+ 
+ .bitstring-control {
+@@ -639,6 +706,13 @@ const caSelectValue = computed<number>({
    color: var(--success);
  }
  
@@ -14697,7 +14786,7 @@ index 9ccae02..c130df2 100644
  .result-steps {
    display: flex;
    gap: 4px;
-@@ -646,7 +692,7 @@ const caSelectValue = computed<number>({
+@@ -646,7 +720,7 @@ const caSelectValue = computed<number>({
  }
  
  .step-dot {
@@ -14952,7 +15041,7 @@ index ac65bcb..00ae629 100644
  
  .result-text {
 diff --git a/master-frontend/src/i18n/locales/en-US.ts b/master-frontend/src/i18n/locales/en-US.ts
-index 63158ec..bc75fea 100644
+index 63158ec..a0b6b1b 100644
 --- a/master-frontend/src/i18n/locales/en-US.ts
 +++ b/master-frontend/src/i18n/locales/en-US.ts
 @@ -1,6 +1,21 @@
@@ -14977,7 +15066,15 @@ index 63158ec..bc75fea 100644
    common: {
      confirm: 'Confirm',
      cancel: 'Cancel',
-@@ -350,6 +365,15 @@ const dict: DictShape = {
+@@ -102,6 +117,7 @@ const dict: DictShape = {
+     broadcastAddressInvalid: 'Enter 1–4 hex digits',
+   },
+   tree: {
++    pointCount: '{n} points',
+     title: 'Connections',
+     noConnections: 'No connections',
+     deleteConnection: 'Delete connection',
+@@ -350,6 +366,15 @@ const dict: DictShape = {
      cot9: '9 - Deactivation Confirmation',
      cot10: '10 - Activation Termination',
      sending: 'Sending...',
@@ -14994,7 +15091,7 @@ index 63158ec..bc75fea 100644
    },
    about: {
 diff --git a/master-frontend/src/i18n/locales/zh-CN.ts b/master-frontend/src/i18n/locales/zh-CN.ts
-index 102889a..e11637b 100644
+index 102889a..069ceec 100644
 --- a/master-frontend/src/i18n/locales/zh-CN.ts
 +++ b/master-frontend/src/i18n/locales/zh-CN.ts
 @@ -1,4 +1,19 @@
@@ -15017,7 +15114,15 @@ index 102889a..e11637b 100644
    common: {
      confirm: string
      cancel: string
-@@ -291,6 +306,15 @@ export type DictShape = {
+@@ -100,6 +115,7 @@ export type DictShape = {
+     broadcastAddressInvalid: string
+   }
+   tree: {
++    pointCount: string;
+     title: string
+     noConnections: string
+     deleteConnection: string
+@@ -291,6 +307,15 @@ export type DictShape = {
      cot9: string
      cot10: string
      sending: string
@@ -15033,7 +15138,7 @@ index 102889a..e11637b 100644
      send: string
    }
    about: {
-@@ -382,6 +406,21 @@ export type DictShape = {
+@@ -382,6 +407,21 @@ export type DictShape = {
  }
  
  const dict: DictShape = {
@@ -15055,7 +15160,15 @@ index 102889a..e11637b 100644
    common: {
      confirm: '确认',
      cancel: '取消',
-@@ -731,6 +770,15 @@ const dict: DictShape = {
+@@ -483,6 +523,7 @@ const dict: DictShape = {
+     broadcastAddressInvalid: '请输入 1-4 位十六进制',
+   },
+   tree: {
++    pointCount: '{n} 个点',
+     title: '连接列表',
+     noConnections: '暂无连接',
+     deleteConnection: '删除连接',
+@@ -731,6 +772,15 @@ const dict: DictShape = {
      cot9: '9 - 停止激活确认',
      cot10: '10 - 激活终止',
      sending: '发送中...',
@@ -16814,3 +16927,132 @@ index 0000000..4ec7695
 @@ -0,0 +1,2 @@
 +/** The suite owns updates; standalone builds keep their existing updater. */
 +export const isSimLabSuite = import.meta.env.VITE_SIMLAB_SUITE === '1'
+diff --git a/master-frontend/src/components/ConnectionTree.vue b/master-frontend/src/components/ConnectionTree.vue
+index 76b32db..2ca57c3 100644
+--- a/master-frontend/src/components/ConnectionTree.vue
++++ b/master-frontend/src/components/ConnectionTree.vue
+@@ -394,13 +394,14 @@ function stateClass(state: string): string {
+                 :key="`${ca}-${cat.key}`"
+                 :class="['tree-node', 'tree-child', 'tree-grand', {
+                   selected: selectedNodeId === `${conn.info.id}:ca:${ca}:${cat.key}`,
++                  'has-points': countFor(conn.info.id, cat.key, ca) > 0,
+                   'cat-flash': flashingCategories.has(flashKey(conn.info.id, ca, cat.key)),
+                 }]"
+                 @click="selectCategory(conn, cat, ca)"
+               >
+                 <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
+                 <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
+-                <span class="node-count" v-if="countFor(conn.info.id, cat.key, ca) > 0">
++                <span class="node-count" :title="t('tree.pointCount', { n: countFor(conn.info.id, cat.key, ca) })">
+                   {{ countFor(conn.info.id, cat.key, ca) }}
+                 </span>
+               </div>
+@@ -416,13 +417,14 @@ function stateClass(state: string): string {
+             :key="cat.key"
+             :class="['tree-node', 'tree-child', {
+               selected: selectedNodeId === `${conn.info.id}:${cat.key}`,
++              'has-points': countFor(conn.info.id, cat.key, null) > 0,
+               'cat-flash': flashingCategories.has(flashKey(conn.info.id, conn.info.common_addresses[0], cat.key)),
+             }]"
+             @click="selectCategory(conn, cat, null)"
+           >
+             <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
+             <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
+-            <span class="node-count" v-if="countFor(conn.info.id, cat.key, null) > 0">
++            <span class="node-count" :title="t('tree.pointCount', { n: countFor(conn.info.id, cat.key, null) })">
+               {{ countFor(conn.info.id, cat.key, null) }}
+             </span>
+           </div>
+@@ -494,7 +496,6 @@ input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
+ }
+ 
+ .tree-node.selected .node-ca,
+-.tree-node.selected .node-count,
+ .tree-node.selected .ca-badge {
+   color: var(--text-secondary);
+ }
+@@ -604,15 +605,33 @@ button.node-expand { background: transparent; border: 0; padding: 3px 0; flex-sh
+ }
+ 
+ .node-count {
+-  font-size: 10px;
++  box-sizing: border-box;
++  flex-shrink: 0;
++  min-width: 26px;
++  padding: 1px 6px;
++  border: 1px solid var(--border-strong);
++  border-radius: 9px;
++  background: var(--bg-panel);
+   color: var(--text-muted);
+-  background: var(--bg-raised);
+-  padding: 0 5px;
+-  border-radius: 8px;
+-  min-width: 18px;
++  font-size: 11px;
++  font-weight: 500;
++  line-height: 16px;
++  font-variant-numeric: tabular-nums;
+   text-align: center;
+ }
+ 
++.has-points .node-label {
++  color: var(--accent);
++  font-weight: 600;
++}
++
++.has-points .node-count {
++  background: var(--accent);
++  border-color: var(--accent);
++  color: var(--c-on-accent);
++  font-weight: 700;
++}
++
+ .context-menu {
+   position: fixed;
+   background: var(--bg-raised);
+diff --git a/master-frontend/tests/connectionTreeLifecycle.spec.ts b/master-frontend/tests/connectionTreeLifecycle.spec.ts
+index c54123c..c1d79fc 100644
+--- a/master-frontend/tests/connectionTreeLifecycle.spec.ts
++++ b/master-frontend/tests/connectionTreeLifecycle.spec.ts
+@@ -141,3 +141,41 @@ describe('ConnectionTree workspace lifecycle', () => {
+     expect(openEditConnection).toHaveBeenNthCalledWith(2, 'secure')
+   })
+ })
++
++
++describe('ConnectionTree point presence', () => {
++  it.each([{ addresses: [1] }, { addresses: [1, 2] }])('updates populated and empty categories with CAs $addresses', async ({ addresses }) => {
++    invokeMock.mockResolvedValue([connection('counts', { common_addresses: addresses })])
++    const counts = ref<CategoryCountsMap>(new Map([
++      ['counts', new Map(addresses.map(ca => [ca, new Map([['float_measured', ca === 1 ? 48 : 28]])]))],
++    ]))
++    const { wrapper } = mountTree(counts)
++    try {
++      await flushPromises()
++      const rows = wrapper.findAll('.tree-child')
++      const populated = rows[6]
++      const empty = rows[0]
++      expect(populated.classes()).toContain('has-points')
++      expect(populated.find('.node-count').text()).toBe('48')
++      expect(empty.classes()).not.toContain('has-points')
++      expect(empty.find('.node-count').text()).toBe('0')
++      expect(populated.find('.node-count').attributes('title')).toContain('48')
++
++      await populated.trigger('click')
++      expect(populated.classes()).toContain('selected')
++      expect(populated.classes()).toContain('has-points')
++      expect(wrapper.emitted('category-select')?.[0]).toEqual(['counts', 'float_measured', addresses.length > 1 ? 1 : null])
++      if (addresses.length > 1) expect(rows[14].find('.node-count').text()).toBe('28')
++
++      counts.value = new Map([['counts', new Map([[1, new Map([['single_point', 3]])]])]])
++      await nextTick()
++      expect(populated.classes()).not.toContain('has-points')
++      expect(populated.classes()).toContain('selected')
++      expect(populated.find('.node-count').text()).toBe('0')
++      expect(empty.classes()).toContain('has-points')
++      expect(empty.find('.node-count').text()).toBe('3')
++    } finally {
++      wrapper.unmount()
++    }
++  })
++})
