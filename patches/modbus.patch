@@ -19431,7 +19431,7 @@ index bfaa8f2..5e89365 100644
  .status-text { font-size: 12px; color: var(--c-blue); text-align: center; padding: 6px; }
  </style>
 diff --git a/master-frontend/src/components/WriteDialog.vue b/master-frontend/src/components/WriteDialog.vue
-index 124e4d6..697d0a0 100644
+index 124e4d6..1c1432c 100644
 --- a/master-frontend/src/components/WriteDialog.vue
 +++ b/master-frontend/src/components/WriteDialog.vue
 @@ -1,7 +1,7 @@
@@ -19439,10 +19439,27 @@ index 124e4d6..697d0a0 100644
  import { ref, computed, watch } from 'vue'
  import * as App from '../../wailsjs/go/main/App'
 -import { useI18n, showAlert, float32ToU16Pair, type ByteOrder } from 'shared-frontend'
-+import { useI18n, showAlert, vModal, float32ToU16Pair, type ByteOrder } from 'shared-frontend'
++import { useI18n, showAlert, vModal, encodeRegisterWrite, registerWriteOrders, registerWriteWidth, type RegisterWriteType } from 'shared-frontend'
  
  const { t } = useI18n()
  
+@@ -14,13 +14,13 @@ const form = ref({
+   Function: 'write_single_register',
+   Address: 0,
+   value: '',
+-  dataType: 'raw' as 'raw' | 'float32',
+-  byteOrder: 'ABCD' as ByteOrder,
++  dataType: 'raw' as RegisterWriteType,
++  byteOrder: 'AB',
+ })
+ 
+ watch(() => props.show, (visible) => {
+   if (!visible) return
+-  form.value = { Function: 'write_single_register', Address: 0, value: '', dataType: 'raw', byteOrder: 'ABCD' }
++  form.value = { Function: 'write_single_register', Address: 0, value: '', dataType: 'raw', byteOrder: 'AB' }
+ })
+ 
+ watch(() => form.value.Function, (fc) => {
 @@ -29,6 +29,7 @@ watch(() => form.value.Function, (fc) => {
  })
  
@@ -19451,14 +19468,108 @@ index 124e4d6..697d0a0 100644
  const isMultiCoilFC = computed(() => form.value.Function === 'write_multiple_coils')
  // Keep empty comma-separated entries so an omitted value cannot shift later addresses.
  const coilTokens = computed(() => {
-@@ -131,10 +132,11 @@ async function submit() {
+@@ -64,40 +65,46 @@ function toggleCoil(index: number) {
+ }
+ 
+ const isMultiRegFC = computed(() => form.value.Function === 'write_multiple_registers')
+-const isFloat32Mode = computed(() => isMultiRegFC.value && form.value.dataType === 'float32')
+-
+-const float32Preview = computed(() => {
+-  if (!isFloat32Mode.value) return null
+-  const parts = form.value.value.split(',').map(s => s.trim()).filter(s => s !== '')
+-  if (parts.length === 0) return null
+-  return parts.map((input, index) => {
+-    const n = parseFloat(input)
+-    if (isNaN(n)) return { index, input, float: null, regs: null, Error: t('errors.invalidNumber') }
+-    const pair = float32ToU16Pair(n, form.value.byteOrder)
+-    return { index, input, float: n, regs: pair, Error: '' }
+-  })
++const registerTypes: RegisterWriteType[] = ['raw', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64']
++const byteOrders = computed(() => registerWriteOrders(form.value.dataType))
++watch(() => form.value.dataType, () => {
++  if (!byteOrders.value.includes(form.value.byteOrder)) form.value.byteOrder = byteOrders.value[0]!
+ })
+-
+-const float32Valid = computed(() => {
+-  if (!float32Preview.value) return false
+-  return float32Preview.value.length > 0 && float32Preview.value.every(r => !r.Error)
++const registerTokens = computed(() => {
++  const input = form.value.value.trim()
++  return input ? input.split(/[,，]/).flatMap(part => part.trim() ? part.trim().split(/\s+/) : ['']) : []
+ })
+-
+-const float32RegCount = computed(() => {
+-  if (!float32Preview.value) return 0
+-  return float32Preview.value.filter(r => !r.Error).length * 2
++const registerPreview = computed(() => {
++  if (!isMultiRegFC.value) return []
++  return registerTokens.value.map((input, index) => {
++    try {
++      return { input, index, regs: encodeRegisterWrite(input, form.value.dataType, form.value.byteOrder), error: '' }
++    } catch {
++      return { input, index, regs: [] as number[], error: t('errors.invalidRegisterValue', { index: index + 1, type: form.value.dataType }) }
++    }
++  })
+ })
+-
+-const float32Warning = computed(() => {
+-  if (!float32Preview.value || !float32Valid.value) return ''
+-  const count = float32Preview.value.length
+-  if (count * 2 > 123) return t('errors.overflowFC16', { count: count * 2 })
+-  if (form.value.Address + count * 2 - 1 > 65535) return t('errors.addressOverflow')
++const registerCount = computed(() => registerTokens.value.length * registerWriteWidth(form.value.dataType))
++const registerAddressError = computed(() => {
++  if (!Number.isInteger(form.value.Address) || form.value.Address < 0 || form.value.Address > 65535) return t('errors.invalidRegisterAddress')
++  if (form.value.Address + registerCount.value - 1 > 65535) return t('errors.addressOverflow')
+   return ''
+ })
++const registerValueError = computed(() => {
++  if (!registerTokens.value.length) return t('errors.emptyRegisterValues')
++  if (registerCount.value > 123) return t('errors.overflowFC16', { count: registerCount.value })
++  return registerPreview.value.find(row => row.error)?.error ?? ''
++})
++const registerError = computed(() => isMultiRegFC.value ? registerAddressError.value || registerValueError.value : '')
++const registerPlaceholder = computed(() => {
++  if (form.value.dataType.startsWith('float')) return '3.14, 2.71'
++  if (form.value.dataType === 'int64') return '-9223372036854775808, 9223372036854775807'
++  if (form.value.dataType === 'uint64') return '18446744073709551615'
++  return form.value.dataType.startsWith('int') ? '-1, 123' : '10, 20'
++})
+ 
+ async function submit() {
+-  if (!props.connectionId || busy.value || (isMultiCoilFC.value && coilError.value)) return
++  if (!props.connectionId || busy.value || (isMultiCoilFC.value && coilError.value) || registerError.value) return
+   busy.value = true
+   try {
+     const fc = form.value.Function
+@@ -106,18 +113,7 @@ async function submit() {
+     } else if (fc === 'write_single_coil') {
+       await App.WriteSingleCoilSlave(props.connectionId, props.slaveId ?? null, form.value.Address, form.value.value === '1' || form.value.value.toLowerCase() === 'true')
+     } else if (fc === 'write_multiple_registers') {
+-      let values: number[]
+-      if (form.value.dataType === 'float32') {
+-        const floats = form.value.value.split(',').map(v => parseFloat(v.trim()))
+-        if (floats.some(isNaN)) { await showAlert(t('errors.invalidFloat')); return }
+-        values = []
+-        for (const f of floats) {
+-          const [r0, r1] = float32ToU16Pair(f, form.value.byteOrder)
+-          values.push(r0, r1)
+-        }
+-      } else {
+-        values = form.value.value.split(',').map(v => parseInt(v.trim()))
+-      }
++      const values = registerPreview.value.flatMap(row => row.regs)
+       await App.WriteMultipleRegistersSlave(props.connectionId, props.slaveId ?? null, form.value.Address, values)
+     } else if (fc === 'write_multiple_coils') {
+       const values = [...coilValues.value]
+@@ -131,10 +127,11 @@ async function submit() {
  
  <template>
    <Teleport to="body">
 -    <div v-if="show" class="modal-backdrop" @click.self="emit('close')">
 -      <div class="modal-box" :class="{ 'coil-modal': isMultiCoilFC }">
 +    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
-+      <div v-modal="close" :aria-label="t('dialog.writeRegisters')" :aria-busy="busy" class="modal-box" :class="{ 'coil-modal': isMultiCoilFC }">
++      <div v-modal="close" :aria-label="t('dialog.writeRegisters')" :aria-busy="busy" class="modal-box" :class="{ 'coil-modal': isMultiCoilFC, 'register-modal': isMultiRegFC }">
          <div class="modal-title">{{ t('dialog.writeRegisters') }}</div>
 -        <div class="modal-body">
 +        <div class="modal-scroll">
@@ -19466,7 +19577,74 @@ index 124e4d6..697d0a0 100644
            <div class="form-hint write-target">{{ writeTarget }}</div>
            <label class="form-label">
              {{ t('table.function') }}
-@@ -209,9 +211,10 @@ async function submit() {
+@@ -148,22 +145,18 @@ async function submit() {
+           <label v-if="isMultiRegFC" class="form-label">
+             {{ t('dialog.dataType') }}
+             <select v-model="form.dataType" class="form-input">
+-              <option value="raw">Raw u16</option>
+-              <option value="float32">Float32 (REAL)</option>
++              <option v-for="type in registerTypes" :key="type" :value="type">{{ t(`dialog.writeType_${type}`) }}</option>
+             </select>
+           </label>
+-          <label v-if="isFloat32Mode" class="form-label">
++          <label v-if="isMultiRegFC" class="form-label">
+             {{ t('dialog.byteOrder') }}
+             <select v-model="form.byteOrder" class="form-input">
+-              <option value="ABCD">AB CD (Big Endian)</option>
+-              <option value="CDAB">CD AB (Little Endian Word Swap)</option>
+-              <option value="BADC">BA DC (Byte Swap)</option>
+-              <option value="DCBA">DC BA (Little Endian)</option>
++              <option v-for="order in byteOrders" :key="order" :value="order">{{ order }}</option>
+             </select>
+           </label>
+           <label class="form-label">
+             {{ isMultiCoilFC ? t('dialog.coilStartAddress') : t('table.address') }}
+-            <input v-model.number="form.Address" class="form-input" type="number" min="0" max="65535" />
++            <input v-model.number="form.Address" class="form-input" type="number" min="0" max="65535" :aria-invalid="isMultiRegFC && !!registerAddressError" :aria-describedby="isMultiRegFC && registerAddressError ? 'register-write-error' : undefined" />
+           </label>
+           <label v-if="isMultiCoilFC" class="form-label">
+             {{ t('dialog.coilQuantity') }}
+@@ -173,11 +166,12 @@ async function submit() {
+           <label class="form-label">
+             {{ t('dialog.simpleValue') }}
+             <span id="coil-value-hint" class="form-hint" v-if="isMultiCoilFC">{{ t('dialog.coilValuesHint') }}</span>
+-            <span class="form-hint" v-else-if="isFloat32Mode">{{ t('dialog.valueHintFloat32') }}</span>
++            <span id="register-value-hint" class="form-hint" v-else-if="isMultiRegFC">{{ t(form.dataType.startsWith('float') ? 'dialog.registerFloatHint' : 'dialog.registerIntegerHint') }}</span>
+             <span class="form-hint" v-else-if="form.Function.includes('multiple')">{{ t('dialog.valueHintMultiple') }}</span>
+             <textarea v-if="isMultiCoilFC" v-model="form.value" class="form-input form-textarea" placeholder="1, 0, 1, 0" rows="3"
+               :disabled="busy" :aria-invalid="!!coilError" :aria-describedby="coilError ? 'coil-value-hint coil-value-error' : 'coil-value-hint'" />
+-            <textarea v-else-if="isFloat32Mode" v-model="form.value" class="form-input form-textarea" placeholder="3.14, 2.71, 1.41" rows="3" />
++            <textarea v-else-if="isMultiRegFC" v-model="form.value" class="form-input form-textarea" :placeholder="registerPlaceholder" rows="3"
++              :aria-invalid="!!registerValueError" :aria-describedby="registerError ? 'register-value-hint register-write-error' : 'register-value-hint'" />
+             <input v-else v-model="form.value" class="form-input" type="text" placeholder="0" />
+           </label>
+           <template v-if="isMultiCoilFC">
+@@ -192,28 +186,26 @@ async function submit() {
+               </div>
+             </template>
+           </template>
+-          <div v-if="float32Preview && float32Preview.length > 0" class="float-preview">
+-            <div class="preview-summary">
+-              {{ t('dialog.float32Summary', { count: float32Preview.length, regCount: float32RegCount, addr: form.Address }) }}
+-              <span v-if="float32Warning" class="preview-warn">{{ float32Warning }}</span>
+-            </div>
++          <p v-if="registerError" id="register-write-error" class="coil-error" role="alert">{{ registerError }}</p>
++          <div v-if="isMultiRegFC && registerPreview.length && !registerError" class="register-preview">
++            <p class="preview-summary" role="status">{{ t('dialog.registerWriteSummary', { count: registerPreview.length, regCount: registerCount, start: form.Address, end: form.Address + registerCount - 1 }) }}</p>
+             <table class="preview-table">
+-              <thead><tr><th>{{ t('table.address') }}</th><th>Float</th><th>Reg[0]</th><th>Reg[1]</th></tr></thead>
++              <thead><tr><th>{{ t('table.address') }}</th><th>{{ t('dialog.simpleValue') }}</th><th>{{ t('dialog.registerWriteWords') }}</th></tr></thead>
+               <tbody>
+-                <tr v-for="item in float32Preview" :key="item.index" :class="{ 'preview-error': item.Error }">
+-                  <td>{{ form.Address + item.index * 2 }}</td>
+-                  <td>{{ item.Error || item.float }}</td>
+-                  <td>{{ item.regs ? '0x' + item.regs[0].toString(16).toUpperCase().padStart(4, '0') : '-' }}</td>
+-                  <td>{{ item.regs ? '0x' + item.regs[1].toString(16).toUpperCase().padStart(4, '0') : '-' }}</td>
++                <tr v-for="item in registerPreview" :key="item.index">
++                  <td>{{ form.Address + item.index * registerWriteWidth(form.dataType) }}</td>
++                  <td>{{ item.input }}</td>
++                  <td>{{ item.regs.map(reg => '0x' + reg.toString(16).toUpperCase().padStart(4, '0')).join(' ') }}</td>
+                 </tr>
                </tbody>
              </table>
            </div>
@@ -19476,9 +19654,12 @@ index 124e4d6..697d0a0 100644
 -          <button class="btn btn-secondary" @click="emit('close')">{{ t('common.cancel') }}</button>
 +          <button class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
            <button class="btn btn-primary" @click="submit"
-             :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || (isFloat32Mode && (!float32Valid || !!float32Warning))">{{ t('toolbar.write') }}</button>
+-            :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || (isFloat32Mode && (!float32Valid || !!float32Warning))">{{ t('toolbar.write') }}</button>
++            :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || !!registerError">{{ t('toolbar.write') }}</button>
          </div>
-@@ -221,8 +224,9 @@ async function submit() {
+       </div>
+     </div>
+@@ -221,9 +213,11 @@ async function submit() {
  </template>
  
  <style scoped>
@@ -19487,9 +19668,11 @@ index 124e4d6..697d0a0 100644
 -.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 340px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
 +.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; box-sizing: border-box; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
  .coil-modal { width: min(520px, calc(100vw - 32px)); min-width: 0; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
++.register-modal { width: min(560px, calc(100vw - 32px)); }
  .coil-modal .form-label, .coil-modal .form-hint { color: var(--c-subtext1); }
  .coil-error { margin: 0; color: var(--c-red); font-size: 12px; }
-@@ -232,9 +236,9 @@ async function submit() {
+ .coil-summary { margin: 0; color: var(--c-green); font-size: 12px; }
+@@ -232,11 +226,11 @@ async function submit() {
  .coil-toggle.on { background: var(--c-success-bg); color: var(--c-success-text); border-color: var(--c-green); }
  .coil-toggle:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
  .coil-toggle:disabled { cursor: default; opacity: 0.6; }
@@ -19500,8 +19683,24 @@ index 124e4d6..697d0a0 100644
 +.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 +.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
  .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
- .form-input { padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
+-.form-input { padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
++.form-input { min-width: 0; padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
  .form-input:focus { outline: none; border-color: var(--c-blue); }
+ .form-hint { color: var(--c-subtext0); font-size: 11px; }
+ .form-textarea { resize: vertical; min-height: 60px; font-family: var(--font-mono); }
+@@ -246,11 +240,9 @@ async function submit() {
+ .btn-primary:disabled { opacity: 0.4; cursor: default; }
+ .btn-secondary { background: var(--c-neutral-bg); color: var(--c-text); }
+ .btn-secondary:hover { background: var(--c-hover-bg); }
+-.float-preview { margin-top: 4px; border: 1px solid var(--c-surface0); border-radius: 4px; overflow: hidden; }
++.register-preview { margin-top: 4px; border: 1px solid var(--c-surface0); border-radius: 4px; overflow-x: auto; }
+ .preview-summary { padding: 4px 8px; font-size: 11px; color: var(--c-green); background: var(--c-mantle); }
+-.preview-warn { color: var(--c-peach); margin-left: 8px; }
+ .preview-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+ .preview-table th { background: var(--c-mantle); color: var(--c-subtext0); font-weight: 500; padding: 3px 8px; text-align: left; }
+ .preview-table td { padding: 2px 8px; color: var(--c-text); font-family: var(--font-mono); border-top: 1px solid var(--c-base); }
+-.preview-error td { color: var(--c-red); }
+ </style>
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
 index 8f74f8b..c812ef1 100644
 --- a/master-frontend/src/main.ts
@@ -20787,7 +20986,7 @@ index f0af503..bbd69be 100644
    }
  }
 diff --git a/shared-frontend/src/i18n/locales/en-US.ts b/shared-frontend/src/i18n/locales/en-US.ts
-index 1687f00..ed283bd 100644
+index 1687f00..808db2c 100644
 --- a/shared-frontend/src/i18n/locales/en-US.ts
 +++ b/shared-frontend/src/i18n/locales/en-US.ts
 @@ -1,6 +1,21 @@
@@ -20824,7 +21023,27 @@ index 1687f00..ed283bd 100644
      tlsCompatibilityHint: 'Allow legacy certificates with missing EKU/SAN, mismatched names or self-signatures. Traffic remains encrypted, but server identity is not verified. Use only in trusted test environments.',
      requireClientCert: 'Require client certificate (mTLS)',
      refreshSerialPorts: 'Refresh Serial Ports',
-@@ -348,6 +368,13 @@ const messages: Messages = {
+@@ -332,6 +352,19 @@ const messages: Messages = {
+     dataType: 'Data Type',
+     dataTypeRaw: 'Raw u16',
+     dataTypeFloat32: 'Float32 (REAL)',
++    writeType_raw: 'Raw u16 (register words)',
++    writeType_uint16: 'UInt16 (unsigned 16-bit)',
++    writeType_int16: 'Int16 (signed 16-bit)',
++    writeType_uint32: 'UInt32 (unsigned 32-bit)',
++    writeType_int32: 'Int32 (signed 32-bit)',
++    writeType_uint64: 'UInt64 (unsigned 64-bit)',
++    writeType_int64: 'Int64 (signed 64-bit)',
++    writeType_float32: 'Float32 (REAL)',
++    writeType_float64: 'Float64 (DOUBLE)',
++    registerIntegerHint: 'Separate values with commas, spaces or newlines; use decimal or 0x-prefixed hexadecimal integers.',
++    registerFloatHint: 'Separate values with commas, spaces or newlines; decimal and scientific notation are supported.',
++    registerWriteSummary: 'Write {count} values using {regCount} registers, addresses {start}–{end}',
++    registerWriteWords: 'Register words (hex)',
+     byteOrder: 'Byte Order',
+     byteOrderBig: 'Big Endian',
+     byteOrderLittle: 'Little Endian',
+@@ -348,6 +381,13 @@ const messages: Messages = {
      valueHintFloat32: '(comma-separated floats, e.g. 3.14, 2.71, 1.41)',
      writeRegisters: 'Write Registers',
      newScanGroup: 'New Scan Group',
@@ -20838,7 +21057,17 @@ index 1687f00..ed283bd 100644
      scanGroupName: 'Scan Group Name',
      scanGroupNamePlaceholder: 'Enter scan group name',
      scanInterval: 'Poll Interval (ms)',
-@@ -395,6 +422,18 @@ const messages: Messages = {
+@@ -387,6 +427,9 @@ const messages: Messages = {
+     confirmDeleteRegister: 'Delete this register point?',
+     toolPanelPending: 'Tool panel (not yet implemented)',
+     invalidDataInput: 'Invalid data',
++    invalidRegisterValue: 'Value {index} is invalid or outside the {type} range',
++    invalidRegisterAddress: 'Starting register address must be an integer from 0 to 65535',
++    emptyRegisterValues: 'Enter at least one value',
+     overflowFC16: 'Exceeds FC16 single-request limit of 123 registers (current: {count})',
+     addressOverflow: 'Register address overflow (exceeds 65535)',
+     connectSuccessAskScan: 'Connection successful. Scan slave devices?',
+@@ -395,6 +438,18 @@ const messages: Messages = {
      rangeTooLarge: 'Range too large (max 50000)',
    },
    scanDialog: {
@@ -20857,7 +21086,7 @@ index 1687f00..ed283bd 100644
      title: 'Device Scan',
      slaveScan: 'Slave Scan',
      registerScan: 'Register Scan',
-@@ -413,6 +452,20 @@ const messages: Messages = {
+@@ -413,6 +468,20 @@ const messages: Messages = {
      autoAddAfterScan: 'Auto-add to monitor after scan',
      addingProgress: 'Adding Slave {id} {fc} 0-99...',
    },
@@ -20879,7 +21108,7 @@ index 1687f00..ed283bd 100644
      title: 'Batch Import Registers',
      namePrefix: 'Name Prefix (optional)',
 diff --git a/shared-frontend/src/i18n/locales/zh-CN.ts b/shared-frontend/src/i18n/locales/zh-CN.ts
-index 955f0b4..88e9cc2 100644
+index 955f0b4..67d978b 100644
 --- a/shared-frontend/src/i18n/locales/zh-CN.ts
 +++ b/shared-frontend/src/i18n/locales/zh-CN.ts
 @@ -1,4 +1,19 @@
@@ -20914,7 +21143,27 @@ index 955f0b4..88e9cc2 100644
      tlsCompatibilityHint: '兼容缺少 EKU/SAN、名称不匹配或自签名的旧证书。连接仍加密，但不验证服务器身份；仅限可信测试环境。',
      requireClientCert: '要求客户端证书(mTLS)',
      refreshSerialPorts: '刷新串口列表',
-@@ -351,6 +371,13 @@ const messages = {
+@@ -335,6 +355,19 @@ const messages = {
+     dataType: '数据类型',
+     dataTypeRaw: 'Raw u16',
+     dataTypeFloat32: 'Float32 (REAL)',
++    writeType_raw: 'Raw u16（原始寄存器）',
++    writeType_uint16: 'UInt16（16位无符号整数）',
++    writeType_int16: 'Int16（16位有符号整数）',
++    writeType_uint32: 'UInt32（32位无符号整数）',
++    writeType_int32: 'Int32（32位有符号整数）',
++    writeType_uint64: 'UInt64（64位无符号整数）',
++    writeType_int64: 'Int64（64位有符号整数）',
++    writeType_float32: 'Float32（32位浮点数）',
++    writeType_float64: 'Float64（64位浮点数）',
++    registerIntegerHint: '支持逗号、空格或换行分隔；整数可输入十进制或 0x 开头的十六进制。',
++    registerFloatHint: '支持逗号、空格或换行分隔；支持小数和科学计数法。',
++    registerWriteSummary: '将写入 {count} 个值，占 {regCount} 个寄存器，地址 {start}–{end}',
++    registerWriteWords: '寄存器内容（十六进制）',
+     byteOrder: '字节序',
+     byteOrderBig: '大端序(Big Endian)',
+     byteOrderLittle: '小端序(Little Endian)',
+@@ -351,6 +384,13 @@ const messages = {
      valueHintFloat32: '（逗号分隔浮点数，如 3.14, 2.71, 1.41）',
      writeRegisters: '写入寄存器',
      newScanGroup: '新建扫描组',
@@ -20928,7 +21177,17 @@ index 955f0b4..88e9cc2 100644
      scanGroupName: '扫描组名称',
      scanGroupNamePlaceholder: '输入扫描组名称',
      scanInterval: '轮询间隔(ms)',
-@@ -398,6 +425,18 @@ const messages = {
+@@ -390,6 +430,9 @@ const messages = {
+     confirmDeleteRegister: '确认删除此寄存器点位？',
+     toolPanelPending: '工具面板（待实现）',
+     invalidDataInput: '数据无效',
++    invalidRegisterValue: '第 {index} 个值无效或超出 {type} 范围',
++    invalidRegisterAddress: '寄存器起始地址须为 0–65535 的整数',
++    emptyRegisterValues: '请输入至少一个值',
+     overflowFC16: '超出 FC16 单次最大 123 寄存器限制 (当前 {count})',
+     addressOverflow: '寄存器地址溢出 (超过 65535)',
+     connectSuccessAskScan: '连接成功，是否扫描从站设备？',
+@@ -398,6 +441,18 @@ const messages = {
      rangeTooLarge: '范围过大（最多 50000）',
    },
    scanDialog: {
@@ -20947,7 +21206,7 @@ index 955f0b4..88e9cc2 100644
      title: '设备扫描',
      slaveScan: '从站扫描',
      registerScan: '寄存器扫描',
-@@ -416,6 +455,20 @@ const messages = {
+@@ -416,6 +471,20 @@ const messages = {
      autoAddAfterScan: '扫描完成后自动添加到监控',
      addingProgress: '添加 Slave {id} {fc} 0-99...',
    },
@@ -21539,4 +21798,273 @@ index 917dd57..6ccb602 100644
 +  await flushPromises()
 +  expect(nameCheck().disabled).toBe(false)
 +  expect(nameCheck().checked).toBe(true)
++})
+diff --git a/shared-frontend/tests/masterWriteDialog.spec.ts b/shared-frontend/tests/masterWriteDialog.spec.ts
+index f35ff57..3649f4a 100644
+--- a/shared-frontend/tests/masterWriteDialog.spec.ts
++++ b/shared-frontend/tests/masterWriteDialog.spec.ts
+@@ -139,7 +139,7 @@ describe('FC15 coil editing', () => {
+     await flushPromises()
+     expect(App.WriteSingleCoilSlave).toHaveBeenLastCalledWith('test-connection', null, 0, true)
+     await wrapper.get('select').setValue('write_multiple_registers')
+-    await wrapper.get('input[type="text"]').setValue('10,20')
++    await valuesInput().setValue('10,20')
+     await writeButton().trigger('click')
+     await flushPromises()
+     expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('test-connection', null, 0, [10, 20])
+diff --git a/shared-frontend/src/index.ts b/shared-frontend/src/index.ts
+index 4af737b..8745335 100644
+--- a/shared-frontend/src/index.ts
++++ b/shared-frontend/src/index.ts
+@@ -20,11 +20,15 @@ export {
+   swapBytes16,
+   toFloat32,
+   float32ToU16Pair,
++  encodeRegisterWrite,
++  registerWriteOrders,
++  registerWriteWidth,
+   use16BitFormat,
+   use32BitFormat,
+   use64BitFormat,
+ } from './composables/useValueFormat'
+ export type { ByteOrder } from './composables/useValueFormat'
++export type { RegisterWriteType } from './composables/useValueFormat'
+ 
+ // Address formatting
+ export { formatAddress } from './composables/useAddressFormat'
+diff --git a/shared-frontend/src/composables/useValueFormat.ts b/shared-frontend/src/composables/useValueFormat.ts
+index d431f8e..11138c1 100644
+--- a/shared-frontend/src/composables/useValueFormat.ts
++++ b/shared-frontend/src/composables/useValueFormat.ts
+@@ -146,3 +146,49 @@ export function float32ToU16Pair(value: number, byteOrder: ByteOrder): [number,
+   }
+   return map[byteOrder]
+ }
++
++export type RegisterWriteType = 'raw' | 'uint16' | 'int16' | 'uint32' | 'int32' | 'uint64' | 'int64' | 'float32' | 'float64'
++
++export function registerWriteWidth(type: RegisterWriteType): number {
++  if (type.endsWith('64')) return 4
++  if (type.endsWith('32')) return 2
++  return 1
++}
++
++/** Letters describe the transmitted byte sequence of one value, high byte first. */
++export function registerWriteOrders(type: RegisterWriteType): string[] {
++  const width = registerWriteWidth(type)
++  if (width === 1) return ['AB', 'BA']
++  if (width === 2) return ['ABCD', 'CDAB', 'BADC', 'DCBA']
++  return ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']
++}
++
++/** Parse text before encoding so 64-bit integers never pass through Number. */
++export function encodeRegisterWrite(input: string, type: RegisterWriteType, order: string): number[] {
++  if (!registerWriteOrders(type).includes(order)) throw new Error('Invalid byte order')
++  const text = input.trim()
++  const width = registerWriteWidth(type)
++  const view = new DataView(new ArrayBuffer(width * 2))
++  if (type === 'float32' || type === 'float64') {
++    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) throw new Error('Invalid float')
++    const value = Number(text)
++    if (!Number.isFinite(value)) throw new Error('Float overflow')
++    if (type === 'float32') {
++      if (!Number.isFinite(Math.fround(value))) throw new Error('Float32 overflow')
++      view.setFloat32(0, value)
++    } else view.setFloat64(0, value)
++  } else {
++    if (!/^(?:[+-]?\d+|0x[\da-f]+)$/i.test(text)) throw new Error('Invalid integer')
++    const value = BigInt(text)
++    const bits = BigInt(width * 16)
++    const signed = type.startsWith('int')
++    const min = signed ? -(1n << (bits - 1n)) : 0n
++    const max = signed ? (1n << (bits - 1n)) - 1n : (1n << bits) - 1n
++    if (value < min || value > max) throw new Error('Integer out of range')
++    if (width === 4) view.setBigUint64(0, BigInt.asUintN(64, value))
++    else if (width === 2) view.setUint32(0, Number(BigInt.asUintN(32, value)))
++    else view.setUint16(0, Number(BigInt.asUintN(16, value)))
++  }
++  const bytes = [...order].map(letter => view.getUint8(letter.charCodeAt(0) - 65))
++  return Array.from({ length: width }, (_, index) => bytes[index * 2]! * 256 + bytes[index * 2 + 1]!)
++}
+diff --git a/shared-frontend/tests/registerWrite.spec.ts b/shared-frontend/tests/registerWrite.spec.ts
+new file mode 100644
+index 0000000..55f6c18
+--- /dev/null
++++ b/shared-frontend/tests/registerWrite.spec.ts
+@@ -0,0 +1,176 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { mount, flushPromises } from '@vue/test-utils'
++import { useI18n } from '../src/i18n'
++import { encodeRegisterWrite, type RegisterWriteType } from '../src/composables/useValueFormat'
++import WriteDialog from '../../master-frontend/src/components/WriteDialog.vue'
++import * as App from '../../master-frontend/wailsjs/go/main/App'
++
++vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({
++  WriteSingleRegisterSlave: vi.fn(), WriteSingleCoilSlave: vi.fn(),
++  WriteMultipleRegistersSlave: vi.fn(), WriteMultipleCoilsSlave: vi.fn(),
++}))
++let wrapper: ReturnType<typeof mount>
++const button = () => wrapper.get<HTMLButtonElement>('.btn-primary')
++const address = () => wrapper.get('input[type="number"]')
++const values = () => wrapper.get('textarea')
++const typeSelect = () => wrapper.findAll('select')[1]!
++const orderSelect = () => wrapper.findAll('select')[2]!
++async function select(type: RegisterWriteType, order?: string) {
++  await typeSelect().setValue(type)
++  if (order) await orderSelect().setValue(order)
++}
++beforeEach(async () => {
++  vi.resetAllMocks()
++  useI18n().setLocale('zh-CN')
++  wrapper = mount(WriteDialog, {
++    props: { show: true, connectionId: 'connection', slaveId: 7 },
++    global: { stubs: { teleport: true } },
++  })
++  await wrapper.get('select').setValue('write_multiple_registers')
++})
++afterEach(() => wrapper.unmount())
++
++describe('FC16 typed writes', () => {
++  it('offers all types and changes byte orders with the value width', async () => {
++    expect(typeSelect().findAll('option').map(o => o.element.value))
++      .toEqual(['raw', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64'])
++    for (const [type, orders] of [
++      ['int16', ['AB', 'BA']], ['float32', ['ABCD', 'CDAB', 'BADC', 'DCBA']],
++      ['float64', ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']],
++    ] as const) {
++      await select(type)
++      expect(orderSelect().findAll('option').map(o => o.element.value)).toEqual(orders)
++      expect(orderSelect().element.value).toBe(orders[0])
++    }
++  })
++
++  it.each<[RegisterWriteType, string, string, number[]]>([
++    ['raw', 'AB', '0x1234, 65535', [0x1234, 0xffff]],
++    ['uint16', 'BA', '0x1234', [0x3412]],
++    ['int16', 'AB', '-32768, 32767', [0x8000, 0x7fff]],
++    ['int32', 'CDAB', '-2147483648', [0, 0x8000]],
++    ['uint32', 'BADC', '0x12345678', [0x3412, 0x7856]],
++    ['int64', 'ABCDEFGH', '-9223372036854775808', [0x8000, 0, 0, 0]],
++    ['uint64', 'ABCDEFGH', '9007199254740993', [0x20, 0, 0, 1]],
++    ['uint64', 'HGFEDCBA', '18446744073709551615', [0xffff, 0xffff, 0xffff, 0xffff]],
++    ['float32', 'DCBA', '1', [0, 0x803f]],
++    ['float64', 'GHEFCDAB', '-2.5', [0, 0, 0, 0xc004]],
++  ])('previews and sends %s in %s order', async (type, order, input, expected) => {
++    await select(type, order)
++    await address().setValue('100')
++    await values().setValue(input)
++    expect(wrapper.get('[role="status"]').text()).toContain(`100–${100 + expected.length - 1}`)
++    const words = wrapper.findAll('.preview-table tbody tr').flatMap(row => row.findAll('td')[2]!.text().split(' '))
++    expect(words).toEqual(expected.map(word => '0x' + word.toString(16).toUpperCase().padStart(4, '0')))
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledExactlyOnceWith('connection', 7, 100, expected)
++    expect(wrapper.emitted('close')).toHaveLength(1)
++  })
++
++  it.each<[RegisterWriteType, string]>([
++    ['raw', ''], ['raw', '1,,2'], ['raw', '1,'], ['raw', '-1'], ['raw', '65536'],
++    ['int16', '-32769'], ['int16', '32768'], ['uint32', '4294967296'], ['int32', '2147483648'],
++    ['int64', '-9223372036854775809'], ['int64', '9223372036854775808'], ['uint64', '18446744073709551616'],
++    ['uint64', '1.5'], ['uint64', '1e3'], ['float32', '3.5e38'], ['float32', '12abc'],
++    ['float64', 'Infinity'], ['float64', 'NaN'], ['float64', '1e309'],
++  ])('blocks invalid %s input %j', async (type, input) => {
++    await select(type)
++    await values().setValue(input)
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('[role="alert"]').text()).not.toBe('')
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++    expect(wrapper.emitted('close')).toBeUndefined()
++  })
++
++  it.each(['-1', '0.5', '', '65536'])('blocks invalid address %j', async input => {
++    await values().setValue('1')
++    await address().setValue(input)
++    expect(button().element.disabled).toBe(true)
++    expect(address().attributes('aria-invalid')).toBe('true')
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++  })
++
++  it('accepts pasted separators and advances addresses by the type width', async () => {
++    await select('float32')
++    await values().setValue('1，2\n3 4')
++    expect(wrapper.findAll('.preview-table tbody tr').map(row => row.findAll('td')[0]!.text())).toEqual(['0', '2', '4', '6'])
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('connection', 7, 0, [0x3f80, 0, 0x4000, 0, 0x4040, 0, 0x4080, 0])
++  })
++
++  it.each<[RegisterWriteType, number, number]>([['raw', 123, 65535], ['float32', 61, 65534], ['float64', 30, 65532]])
++  ('enforces quantity and address boundaries for %s', async (type, limit, lastStart) => {
++    await select(type)
++    await values().setValue(Array(limit).fill('1').join(','))
++    expect(button().element.disabled).toBe(false)
++    await values().setValue(Array(limit + 1).fill('1').join(','))
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('[role="alert"]').text()).toContain('123')
++    await values().setValue('1')
++    await address().setValue(String(lastStart))
++    expect(button().element.disabled).toBe(false)
++    await address().setValue(String(lastStart + 1))
++    expect(button().element.disabled).toBe(true)
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++  })
++
++  it('prevents editing and duplicate submissions while the request is pending', async () => {
++    await select('int64')
++    await values().setValue('-1')
++    let finish!: () => void
++    vi.mocked(App.WriteMultipleRegistersSlave).mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(undefined) }))
++    await button().trigger('click')
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('fieldset').element.disabled).toBe(true)
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledTimes(1)
++    finish()
++    await flushPromises()
++    expect(wrapper.emitted('close')).toHaveLength(1)
++  })
++
++  it('resets on reopen, keeps FC06 working and translates labels and errors', async () => {
++    await select('float64', 'HGFEDCBA')
++    await wrapper.setProps({ show: false })
++    await wrapper.setProps({ show: true })
++    expect(wrapper.findAll('select')).toHaveLength(1)
++    await wrapper.get('input[type="text"]').setValue('123')
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteSingleRegisterSlave).toHaveBeenLastCalledWith('connection', 7, 0, 123)
++    useI18n().setLocale('en-US')
++    await wrapper.get('select').setValue('write_multiple_registers')
++    expect(orderSelect().element.value).toBe('AB')
++    await select('uint64')
++    expect(typeSelect().text()).toContain('UInt64 (unsigned 64-bit)')
++    await values().setValue('-1')
++    expect(wrapper.get('[role="alert"]').text()).toContain('outside the uint64 range')
++  })
++})
++
++describe('register encoding known vectors', () => {
++  it.each([
++    ['ABCD', [0x1234, 0x5678]], ['CDAB', [0x5678, 0x1234]],
++    ['BADC', [0x3412, 0x7856]], ['DCBA', [0x7856, 0x3412]],
++  ] as const)('encodes distinct UInt32 bytes in %s order', (order, expected) => {
++    expect(encodeRegisterWrite('0x12345678', 'uint32', order)).toEqual(expected)
++  })
++  it.each([
++    ['ABCDEFGH', [0x1234, 0x5678, 0x9abc, 0xdef0]], ['GHEFCDAB', [0xdef0, 0x9abc, 0x5678, 0x1234]],
++    ['BADCFEHG', [0x3412, 0x7856, 0xbc9a, 0xf0de]], ['HGFEDCBA', [0xf0de, 0xbc9a, 0x7856, 0x3412]],
++  ] as const)('preserves every UInt64 byte in %s order', (order, expected) => {
++    expect(encodeRegisterWrite('0x123456789ABCDEF0', 'uint64', order)).toEqual(expected)
++  })
++  it('preserves integer precision, float sign and scientific notation', () => {
++    expect(encodeRegisterWrite('9223372036854775807', 'int64', 'ABCDEFGH')).toEqual([0x7fff, 0xffff, 0xffff, 0xffff])
++    expect(encodeRegisterWrite('-1', 'int64', 'ABCDEFGH')).toEqual([0xffff, 0xffff, 0xffff, 0xffff])
++    expect(encodeRegisterWrite('-0', 'float32', 'ABCD')).toEqual([0x8000, 0])
++    expect(encodeRegisterWrite('1.25e2', 'float64', 'ABCDEFGH')).toEqual([0x405f, 0x4000, 0, 0])
++    expect(() => encodeRegisterWrite('1', 'uint16', 'ABCD')).toThrow('byte order')
++  })
 +})
