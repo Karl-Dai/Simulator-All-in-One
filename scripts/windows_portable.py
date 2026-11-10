@@ -66,10 +66,11 @@ BEGIN
  END
 END
 ''')
-        # Native CI already loads the MSVC environment for Rust. No NSIS needed.
+        # Keep rc.exe for resource compilation, but use LLVM's COFF converter:
+        # MSVC cvtres can emit absolute symbols rejected by Go's linker.
         if os.name == "nt":
             run(["rc.exe", "/nologo", "/fo", "portable.res", "portable.rc"], cwd=work)
-            run(["cvtres.exe", "/NOLOGO", "/MACHINE:X64", "/OUT:resource_windows_amd64.syso", "portable.res"], cwd=work)
+            run(["llvm-cvtres.exe", "/MACHINE:X64", "/OUT:resource_windows_amd64.syso", "portable.res"], cwd=work)
         else:
             run(["x86_64-w64-mingw32-windres", "portable.rc", "-O", "coff", "-o", "resource_windows_amd64.syso"], cwd=work)
         env = dict(os.environ, GOOS="windows", GOARCH="amd64", CGO_ENABLED="0")

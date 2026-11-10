@@ -1,8 +1,10 @@
 """Validate real portable payload inputs without executing a Windows binary."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +17,34 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class WindowsPortableTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "requires the native Windows resource tools")
+    def test_native_resources_link_and_extract_without_running_a_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            stage = root / "stage"
+            stage.mkdir()
+            (stage / "SAIO.exe").write_bytes(b"payload is only extracted, never executed")
+            destination = root / "portable.exe"
+
+            def run(args, cwd=None, env=None):
+                subprocess.run(args, cwd=cwd, env=env, check=True)
+
+            windows_portable.build(stage, destination, "0.1.4", ROOT, run,
+                                   lambda p: hashlib.sha256(p.read_bytes()).hexdigest())
+            env = dict(os.environ, LOCALAPPDATA=str(root / "cache"), APPDATA=str(root / "config"))
+            extracted = Path(subprocess.check_output(
+                [str(destination), "--extract-only"], env=env, text=True).strip())
+            self.assertTrue(extracted.is_relative_to(root / "cache"))
+            self.assertEqual((extracted / "SAIO.exe").read_bytes(), (stage / "SAIO.exe").read_bytes())
+            metadata_env = dict(env, SAIO_TEST_PORTABLE=str(destination))
+            metadata = json.loads(subprocess.check_output([
+                "powershell.exe", "-NoProfile", "-Command",
+                "$v=(Get-Item -LiteralPath $env:SAIO_TEST_PORTABLE).VersionInfo; "
+                "@{ProductName=$v.ProductName;FileVersion=$v.FileVersion}|ConvertTo-Json -Compress",
+            ], env=metadata_env, text=True))
+            self.assertEqual(metadata["ProductName"], "Simulator All-in-One")
+            self.assertEqual(metadata["FileVersion"], "0.1.4")
+
     def test_embeds_all_payloads_and_renders_native_metadata_without_webview(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

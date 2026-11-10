@@ -181,7 +181,7 @@ Windows 构建现在生成 `SAIO_<version>_windows-amd64-portable.exe`。下载�
 
 **Windows 运行依赖：Microsoft Edge WebView2 运行库。** SAIO 不捆绑或静默安装运行库。缺少运行库或版本过旧时，程序会通过原生 Windows 提示框询问是否打开 [SimLab WebView2 下载页面](https://simlab.carldai.cloud/downloads/webview2/)，取消后正常退出。安装一次运行库后重新打开 SAIO 即可。离线电脑可先在其他电脑下载 x64 离线安装包，再拷贝过去安装。也可使用[微软官方下载页面](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)。
 
-运行 `python scripts/suite.py package --platform windows --arch amd64` 即可生成便携包；需要锁定的 Go 工具链和原生 CI 已加载的 MSVC 资源工具。WebView2 独立托管，来源及 SHA-256 记录在 `packaging/windows/webview2.lock.json`。已发布的 v0.1.4 安装包保持原样，后续发布改用便携 EXE。
+运行 `python scripts/suite.py package --platform windows --arch amd64` 即可生成便携包。需要锁定的 Go 工具链、MSVC 的 `rc.exe` 和 LLVM 的 `llvm-cvtres.exe`，后两者须在 PATH 中；原生 CI 已提供这些工具。WebView2 独立托管，来源及 SHA-256 记录在 `packaging/windows/webview2.lock.json`。已发布的 v0.1.4 安装包保持原样，后续发布改用便携 EXE。
 
 Linux 构建机固定为 Ubuntu 22.04 amd64；Wails 显式使用 `webkit2_41`。安装依赖可参考工作流的 apt 列表，然后执行：
 
