@@ -230,7 +230,9 @@ Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护
 <details>
 <summary><strong>用户数据、改名和兼容性</strong></summary>
 
-入口和子程序使用独立于原独立版的套件身份。启动器传递绝对 `SIMLAB_DATA_DIR`，默认位于系统用户配置目录下的 `SimLab`；组件按角色分目录。macOS WKWebView 网站数据使用各自的套件 bundle ID，Windows WebView2、Linux XDG 数据路径采用组件隔离目录。OPC UA 的 PKI 等可写资源保存在用户数据目录。工程文件及用户证书路径保留原应用语义，不向安装目录写配置。
+入口和八个子程序统一把配置写入用户数据根目录的 `saio.db`（SQLite）。启动器传递绝对 `SIMLAB_DATA_DIR`，默认位于系统用户配置目录下的 `SimLab`。配置修改自动保存，重开恢复配置后保持连接和服务停止。旧自动保存文件和界面设置仅首次迁移，原文件保留。手动工程副本统一使用 `.saioproj`，继续支持原工程格式导入。详见[配置保存说明](docs/configuration-storage.md)。
+
+组件的 WebView、OPC UA PKI、证书等资源仍按角色隔离。macOS WKWebView 网站数据使用各自的套件 bundle ID，Windows WebView2、Linux XDG 数据路径采用组件隔离目录。外部证书和回放文件保留路径引用。
 
 套件子程序关闭独立更新及相应下载入口，版本随整个套件交付。首版未实现自动下载并替换套件。用户选择的工程、证书和连接参数不会因为关闭主入口而被删除。
 

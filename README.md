@@ -198,6 +198,8 @@ See [implementation and acceptance evidence](docs/implementation-status.md) and 
 
 The public product name, About screens, repository and new executable/package names use **Simulator All-in-One / SAIO**. The Go module is `github.com/Karl-Dai/Simulator-All-in-One`.
 
+The launcher and all eight suite roles automatically save configuration in one `saio.db` SQLite database under the existing `SimLab` user-data root (`SIMLAB_DATA_DIR` overrides it). Restored connections and services stay stopped. Existing auto-save files and WebView preferences migrate once and remain intact. Manual project copies use `.saioproj`; legacy project formats remain importable. Program caches and external certificate/replay files remain separate. See the [storage contract](storage/CONTRACT.md) and [validation results](storage/VALIDATION.md).
+
 Compatibility identities remain unchanged: the `SimLab` user-data directory, `SIMLAB_*` environment variables, `cloud.carldai.simlab*` bundle IDs and `simlab-suite` build feature. Existing projects, certificates, favorites and saved language choices keep their current locations. Portable Windows builds use a separate program cache and create no uninstall registry entries or Start Menu shortcuts. Legacy installer checks remain available for previously released packages.
 
 Historical records and existing artifacts retain their original names. Original standalone simulator repositories are not modified by suite builds; exact upstream commits and suite patches are used in isolated component checkouts.

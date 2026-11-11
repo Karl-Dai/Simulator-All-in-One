@@ -89,6 +89,32 @@ index 0000000..7af294d
 +<use href="#mark" color="#0B2439" transform="translate(0 0.9)" opacity="0.18"/><use href="#mark" color="#F9FCFF"/>
 +<g id="protocol-label" aria-label="MODBUS"><path d="M50.762 109.867V94.133H52.928L55.823 102.464H55.867L58.74 94.133H60.928V109.867H58.674V100.298H58.63L56.398 107.061H55.271L53.061 100.298H53.016V109.867H50.762ZM62.917 97.845Q62.917 96.895 63.248 96.166Q63.58 95.436 64.132 94.95Q64.663 94.486 65.337 94.243Q66.011 94 66.696 94Q67.381 94 68.055 94.243Q68.729 94.486 69.282 94.95Q69.812 95.436 70.143 96.166Q70.475 96.895 70.475 97.845V106.155Q70.475 107.149 70.143 107.856Q69.812 108.564 69.282 109.028Q68.729 109.514 68.055 109.757Q67.381 110 66.696 110Q66.011 110 65.337 109.757Q64.663 109.514 64.132 109.028Q63.58 108.564 63.248 107.856Q62.917 107.149 62.917 106.155V97.845ZM65.171 106.155Q65.171 106.972 65.624 107.359Q66.077 107.746 66.696 107.746Q67.315 107.746 67.768 107.359Q68.221 106.972 68.221 106.155V97.845Q68.221 97.028 67.768 96.641Q67.315 96.254 66.696 96.254Q66.077 96.254 65.624 96.641Q65.171 97.028 65.171 97.845V106.155ZM72.464 109.867V94.133H75.801Q77.746 94.133 78.751 95.193Q79.757 96.254 79.757 98.199V105.558Q79.757 107.768 78.685 108.818Q77.613 109.867 75.602 109.867H72.464ZM74.718 96.254V107.746H75.757Q76.707 107.746 77.105 107.271Q77.503 106.796 77.503 105.779V98.199Q77.503 97.271 77.127 96.762Q76.751 96.254 75.757 96.254H74.718ZM81.878 109.867V94.133H85.171Q86.254 94.133 87.016 94.464Q87.779 94.796 88.265 95.348Q88.751 95.901 88.961 96.619Q89.171 97.337 89.171 98.11V98.685Q89.171 99.326 89.072 99.768Q88.972 100.21 88.773 100.541Q88.398 101.16 87.624 101.602Q88.42 101.978 88.795 102.707Q89.171 103.436 89.171 104.696V105.58Q89.171 107.657 88.166 108.762Q87.16 109.867 84.95 109.867H81.878ZM84.132 102.575V107.613H85.105Q85.79 107.613 86.177 107.414Q86.563 107.215 86.762 106.862Q86.961 106.508 87.005 106.022Q87.05 105.536 87.05 104.961Q87.05 104.365 86.983 103.923Q86.917 103.481 86.718 103.171Q86.497 102.862 86.121 102.718Q85.746 102.575 85.127 102.575H84.132ZM84.132 96.254V100.586H85.149Q86.276 100.586 86.663 100.022Q87.05 99.459 87.05 98.376Q87.05 97.315 86.619 96.785Q86.188 96.254 85.061 96.254H84.132ZM98.585 94.133V106.331Q98.585 107.105 98.309 107.757Q98.033 108.409 97.525 108.917Q97.016 109.425 96.353 109.713Q95.69 110 94.939 110Q94.188 110 93.536 109.713Q92.884 109.425 92.375 108.917Q91.867 108.409 91.58 107.757Q91.293 107.105 91.293 106.331V94.133H93.547V106.11Q93.547 106.95 93.945 107.348Q94.342 107.746 94.939 107.746Q95.536 107.746 95.933 107.348Q96.331 106.95 96.331 106.11V94.133H98.585ZM108 98.663H105.746V98.155Q105.746 97.381 105.381 96.818Q105.016 96.254 104.154 96.254Q103.69 96.254 103.403 96.431Q103.116 96.608 102.939 96.873Q102.762 97.16 102.696 97.525Q102.63 97.89 102.63 98.287Q102.63 98.751 102.663 99.061Q102.696 99.37 102.829 99.613Q102.961 99.856 103.215 100.033Q103.469 100.21 103.911 100.387L105.635 101.072Q106.387 101.359 106.851 101.746Q107.315 102.133 107.58 102.641Q107.823 103.171 107.911 103.845Q108 104.519 108 105.381Q108 106.376 107.801 107.227Q107.602 108.077 107.16 108.674Q106.696 109.293 105.945 109.646Q105.193 110 104.11 110Q103.293 110 102.585 109.713Q101.878 109.425 101.37 108.917Q100.862 108.409 100.563 107.735Q100.265 107.061 100.265 106.265V105.425H102.519V106.133Q102.519 106.751 102.884 107.249Q103.248 107.746 104.11 107.746Q104.685 107.746 105.005 107.58Q105.326 107.414 105.503 107.105Q105.679 106.796 105.712 106.365Q105.746 105.934 105.746 105.403Q105.746 104.785 105.701 104.387Q105.657 103.989 105.525 103.746Q105.37 103.503 105.116 103.348Q104.862 103.193 104.442 103.017L102.829 102.354Q101.37 101.757 100.873 100.773Q100.375 99.79 100.375 98.309Q100.375 97.425 100.619 96.63Q100.862 95.834 101.348 95.26Q101.812 94.685 102.53 94.343Q103.248 94 104.243 94Q105.083 94 105.779 94.309Q106.475 94.619 106.983 95.127Q108 96.188 108 97.558V98.663Z" fill="#F9FCFF" aria-label="MODBUS"/></g>
 +</svg>
+diff --git a/frontend/src/bootstrap.ts b/frontend/src/bootstrap.ts
+new file mode 100644
+index 0000000..a105177
+--- /dev/null
++++ b/frontend/src/bootstrap.ts
+@@ -0,0 +1,20 @@
++import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
++import 'shared-frontend/src/styles/tokens.css'
++import { createApp } from 'vue'
++import './style.css'
++import 'shared-frontend/src/styles/transitions.css'
++import 'shared-frontend/src/styles/toolbar.css'
++import { desktopServicesKey, initTheme } from 'shared-frontend'
++import App from './App.vue'
++
++import { GetVersion } from '../wailsjs/go/main/App'
++import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
++
++initTheme()
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
++createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
++
++void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
 diff --git a/frontend/src/components/AboutDialog.vue b/frontend/src/components/AboutDialog.vue
 index 6bc572e..ee17a5e 100644
 --- a/frontend/src/components/AboutDialog.vue
@@ -439,41 +465,105 @@ index 0000000..29bfa41
 +.range-total { font-size: 13px; margin-bottom: 0; }
 +@media (max-width: 650px) { .range-fields { grid-template-columns: 1fr 1fr; } .range-remove { justify-self: start; } }
 +</style>
+diff --git a/frontend/src/components/Toolbar.vue b/frontend/src/components/Toolbar.vue
+index e2ec625..6842883 100644
+--- a/frontend/src/components/Toolbar.vue
++++ b/frontend/src/components/Toolbar.vue
+@@ -60,7 +60,7 @@ async function openProjectByPath() {
+   if (!path?.trim()) return
+   try {
+     await App.LoadProject(path.trim())
+-    currentProjectPath.value = path.trim()
++    currentProjectPath.value = suiteBuild && !path.trim().endsWith(".saioproj") ? null : path.trim()
+     resetWorkspaceView()
+   } catch (error) { await showAlert(String(error)) }
+ }
+@@ -69,16 +69,19 @@ const shortcuts = useProjectShortcuts({
+   save: () => run(saveProject),
+   saveAs: () => run(saveProjectAs),
+ })
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1"
++const projectExtensions = suiteBuild ? ["saioproj", "modbusproj", "json"] : ["modbusproj"]
++const saveExtensions = suiteBuild ? ["saioproj"] : ["modbusproj"]
+ const currentProjectPath = ref<string | null>(null)
+ const showNewConn = ref(false)
+ const showNewSlave = ref(false)
+ 
+ async function openProject() {
+   try {
+-    const path = await App.OpenFileDialog([{ Name: 'Modbus Project', Extensions: ['modbusproj'] }])
++    const path = await App.OpenFileDialog([{ Name: 'Modbus Project', Extensions: projectExtensions }])
+     if (!path) return
+     await App.LoadProject(path)
+-    currentProjectPath.value = path as string
++    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
+     selectedConnectionId.value = null
+     selectedSlaveId.value = null
+     selectedConnectionState.value = 'Stopped'
+@@ -95,10 +98,10 @@ async function saveProject() {
+ 
+ async function saveProjectAs() {
+   try {
+-    const path = await App.SaveFileDialog('untitled.modbusproj', [{ Name: 'Modbus Project', Extensions: ['modbusproj'] }])
++    const path = await App.SaveFileDialog(suiteBuild ? "untitled.saioproj" : "untitled.modbusproj", [{ Name: 'Modbus Project', Extensions: saveExtensions }])
+     if (!path) return
+     await App.SaveProject(path)
+-    currentProjectPath.value = path
++    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
+   } catch (e) { await showAlert(String(e)) }
+ }
+ 
 diff --git a/frontend/src/main.ts b/frontend/src/main.ts
-index 0d42ea4..a105177 100644
+index 0d42ea4..0fa820b 100644
 --- a/frontend/src/main.ts
 +++ b/frontend/src/main.ts
-@@ -1,3 +1,7 @@
-+import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
- import 'shared-frontend/src/styles/tokens.css'
- import { createApp } from 'vue'
- import './style.css'
-@@ -10,4 +14,7 @@ import { GetVersion } from '../wailsjs/go/main/App'
- import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
+@@ -1,13 +1,16 @@
+-import 'shared-frontend/src/styles/tokens.css'
+-import { createApp } from 'vue'
+-import './style.css'
+-import 'shared-frontend/src/styles/transitions.css'
+-import 'shared-frontend/src/styles/toolbar.css'
+-import { desktopServicesKey, initTheme } from 'shared-frontend'
+-import App from './App.vue'
++import { installWailsConfigurationClose } from './simlab-ui/configClose'
++import { EventsOn } from '../wailsjs/runtime/runtime'
++import { installSuitePreferences } from './simlab-ui/configPreferences'
  
- initTheme()
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
-+
-+void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
+-import { GetVersion } from '../wailsjs/go/main/App'
+-import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
+-
+-initTheme()
+-createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
++async function start() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installWailsConfigurationClose(EventsOn)
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('modbus.slave')
++  await import('./bootstrap')
++}
++void start().catch(error => {
++  console.error('Application initialization failed', error)
++  const message = document.createElement('div')
++  message.setAttribute('role', 'alert')
++  message.textContent = String(error)
++  document.body.append(message)
++})
 diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/frontend/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -927,6 +1017,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/frontend/src/simlab-ui/configClose.ts b/frontend/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/frontend/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/frontend/src/simlab-ui/configInvoke.ts b/frontend/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/frontend/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/frontend/src/simlab-ui/configPreferences.ts b/frontend/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/frontend/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/frontend/src/simlab-ui/contracts/appearance-cases.json b/frontend/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -1341,6 +1719,18 @@ index 0000000..59de44f
 +  const addresses = range.EndAddress - range.StartAddress + 1
 +  return { points: addresses / rangeWidth(range), addresses }
 +}
+diff --git a/frontend/tsconfig.app.json b/frontend/tsconfig.app.json
+index 8d16e42..11d277d 100644
+--- a/frontend/tsconfig.app.json
++++ b/frontend/tsconfig.app.json
+@@ -12,5 +12,6 @@
+     "noFallthroughCasesInSwitch": true,
+     "noUncheckedSideEffectImports": true
+   },
+-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
++  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
++  "exclude": ["src/simlab-ui/configInvoke.ts"]
+ }
 diff --git a/frontend/wailsjs/go/models.ts b/frontend/wailsjs/go/models.ts
 index 070383d..804d978 100755
 --- a/frontend/wailsjs/go/models.ts
@@ -1403,11 +1793,202 @@ index 0000000..e30d3f6
 +export function Theme() {
 +  return window['go']['suitehost']['Appearance']['Theme']();
 +}
+diff --git a/go/cmd/mastergui/app.go b/go/cmd/mastergui/app.go
+index 0485794..f3a8448 100644
+--- a/go/cmd/mastergui/app.go
++++ b/go/cmd/mastergui/app.go
+@@ -11,10 +11,12 @@ import (
+ var Version = "0.17.9"
+ 
+ type App struct {
+-	mu      sync.RWMutex
+-	ctx     context.Context
+-	manager *masterstate.Manager
+-	emit    func(string, any)
++	closeState configurationClose
++	config     configurationState
++	mu         sync.RWMutex
++	ctx        context.Context
++	manager    *masterstate.Manager
++	emit       func(string, any)
+ }
+ 
+ func newApp() *App {
+@@ -30,28 +32,42 @@ func newApp() *App {
+ 	a.manager = masterstate.NewManager(masterstate.Events{Emit: func(name string, payload any) { a.emit(name, payload) }})
+ 	return a
+ }
+-func (a *App) startup(ctx context.Context) { a.mu.Lock(); a.ctx = ctx; a.mu.Unlock() }
+-func (a *App) shutdown(context.Context)    { a.manager.CloseAll() }
+-func (a *App) GetVersion() string          { return Version }
++func (a *App) startup(ctx context.Context) {
++	a.mu.Lock()
++	a.ctx = ctx
++	a.mu.Unlock()
++	a.initializePersistence()
++}
++func (a *App) shutdown(context.Context) {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.manager.CloseAll()
++	if a.config.store != nil {
++		_ = a.config.store.Close()
++	}
++}
++func (a *App) GetVersion() string { return Version }
+ func (a *App) CreateConnection(s masterstate.Settings) (masterstate.ConnectionInfo, error) {
+-	return a.manager.CreateConnection(s)
++	return changeValue(a, []string{}, func() (masterstate.ConnectionInfo, error) { return a.manager.CreateConnection(s) })
+ }
+ func (a *App) UpdateConnection(id string, s masterstate.Settings) error {
+-	return a.manager.UpdateConnection(id, s)
++	return a.change([]string{id}, func() error { return a.manager.UpdateConnection(id, s) })
+ }
+ func (a *App) GetSettings(id string) (masterstate.Settings, error) { return a.manager.GetSettings(id) }
+ func (a *App) ListConnections() []masterstate.ConnectionInfo       { return a.manager.ListConnections() }
+ func (a *App) Connect(id string) error                             { return a.manager.Connect(id) }
+ func (a *App) Disconnect(id string) error                          { return a.manager.Disconnect(id) }
+-func (a *App) DeleteConnection(id string) error                    { return a.manager.DeleteConnection(id) }
++func (a *App) DeleteConnection(id string) error {
++	return a.change([]string{id}, func() error { return a.manager.DeleteConnection(id) })
++}
+ func (a *App) AddScanGroup(id string, g masterstate.ScanGroup) (masterstate.ScanGroup, error) {
+-	return a.manager.AddScanGroup(id, g)
++	return changeValue(a, []string{id}, func() (masterstate.ScanGroup, error) { return a.manager.AddScanGroup(id, g) })
+ }
+ func (a *App) UpdateScanGroup(id string, g masterstate.ScanGroup) error {
+-	return a.manager.UpdateScanGroup(id, g)
++	return a.change([]string{id}, func() error { return a.manager.UpdateScanGroup(id, g) })
+ }
+ func (a *App) RemoveScanGroup(id, groupID string) error {
+-	return a.manager.RemoveScanGroup(id, groupID)
++	return a.change([]string{id}, func() error { return a.manager.RemoveScanGroup(id, groupID) })
+ }
+ func (a *App) ListScanGroups(id string) ([]masterstate.ScanGroup, error) {
+ 	return a.manager.ListScanGroups(id)
+@@ -88,8 +104,8 @@ func (a *App) CancelScan(id, kind string) error               { return a.manager
+ func (a *App) Logs(id string) ([]masterstate.LogEntry, error) { return a.manager.Logs(id) }
+ func (a *App) ClearLogs(id string) error                      { return a.manager.ClearLogs(id) }
+ func (a *App) ExportLogsCSV(id string) (string, error)        { return a.manager.ExportLogsCSV(id) }
+-func (a *App) LoadProject(path string) (int, error)           { return a.manager.LoadProject(path) }
+-func (a *App) SaveProject(path string) error                  { return a.manager.SaveProject(path) }
++func (a *App) LoadProject(path string) (int, error)           { return a.readProject(path) }
++func (a *App) SaveProject(path string) error                  { return a.writeProject(path) }
+ func (a *App) ListSerialPorts() ([]string, error)             { return serial.ListPorts() }
+ 
+ func (a *App) RefreshScanGroup(id, groupID string) (masterstate.ReadResult, error) {
+diff --git a/go/cmd/mastergui/config_close.go b/go/cmd/mastergui/config_close.go
+new file mode 100644
+index 0000000..5f916eb
+--- /dev/null
++++ b/go/cmd/mastergui/config_close.go
+@@ -0,0 +1,54 @@
++package main
++
++import (
++	"context"
++	"sync"
++
++	"github.com/wailsapp/wails/v2/pkg/runtime"
++)
++
++type configurationClose struct {
++	mu        sync.Mutex
++	armed     bool
++	requested bool
++	approved  bool
++	ctx       context.Context
++}
++
++func (c *configurationClose) enable() { c.mu.Lock(); c.armed = true; c.mu.Unlock() }
++func (c *configurationClose) request(ctx context.Context, notify func()) bool {
++	c.mu.Lock()
++	if !c.armed || c.approved {
++		c.mu.Unlock()
++		return false
++	}
++	if c.requested {
++		c.mu.Unlock()
++		return true
++	}
++	c.requested = true
++	c.ctx = ctx
++	c.mu.Unlock()
++	notify()
++	return true
++}
++func (c *configurationClose) confirm(quit func(context.Context)) {
++	c.mu.Lock()
++	if !c.requested || c.approved {
++		c.mu.Unlock()
++		return
++	}
++	c.approved = true
++	ctx := c.ctx
++	c.mu.Unlock()
++	quit(ctx)
++}
++func (a *App) EnableConfigurationClose() { a.closeState.enable() }
++func (a *App) beforeClose(ctx context.Context) bool {
++	return a.closeState.request(ctx, func() { runtime.EventsEmit(ctx, "saio-before-close") })
++}
++func (a *App) ConfirmConfigurationClose() {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.closeState.confirm(runtime.Quit)
++}
+diff --git a/go/cmd/mastergui/config_close_test.go b/go/cmd/mastergui/config_close_test.go
+new file mode 100644
+index 0000000..d87a13e
+--- /dev/null
++++ b/go/cmd/mastergui/config_close_test.go
+@@ -0,0 +1,41 @@
++package main
++
++import (
++	"context"
++	"testing"
++)
++
++func TestConfigurationCloseRequiresArmRequestAndAcknowledgement(t *testing.T) {
++	var c configurationClose
++	notifications, exits := 0, 0
++	ctx := context.WithValue(context.Background(), struct{}{}, "close")
++	notify := func() { notifications++ }
++	quit := func(actual context.Context) {
++		if actual != ctx {
++			t.Fatal("lost native close context")
++		}
++		exits++
++	}
++	c.confirm(quit)
++	if exits != 0 {
++		t.Fatal("unsolicited acknowledgement closed the application")
++	}
++	if c.request(ctx, notify) {
++		t.Fatal("disarmed guard blocked an unmounted application")
++	}
++	c.enable()
++	if !c.request(ctx, notify) || !c.request(ctx, notify) {
++		t.Fatal("close was allowed before a flush acknowledgement")
++	}
++	if notifications != 1 || exits != 0 {
++		t.Fatalf("requests did not coalesce: notifications=%d exits=%d", notifications, exits)
++	}
++	c.confirm(quit)
++	c.confirm(quit)
++	if exits != 1 {
++		t.Fatalf("acknowledgement exits=%d", exits)
++	}
++	if c.request(ctx, notify) {
++		t.Fatal("acknowledged native close was blocked")
++	}
++}
 diff --git a/go/cmd/mastergui/main.go b/go/cmd/mastergui/main.go
-index b01a3de..65b33a2 100644
+index b01a3de..defbb2c 100644
 --- a/go/cmd/mastergui/main.go
 +++ b/go/cmd/mastergui/main.go
-@@ -21,17 +21,24 @@ func main() {
+@@ -21,17 +21,25 @@ func main() {
  		log.Fatal(err)
  	}
  	app := newApp()
@@ -1426,8 +2007,10 @@ index b01a3de..65b33a2 100644
  		Title: "ModbusMaster — Go", Width: 1280, Height: 800,
  		MinWidth: 900, MinHeight: 600, Menu: appMenu,
  		AssetServer: &assetserver.Options{Assets: frontend},
- 		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
+-		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
 -	}); err != nil {
++		OnStartup:   app.startup, OnShutdown: app.shutdown, OnBeforeClose: app.beforeClose,
++		Bind: []interface{}{app},
 +	}
 +	if err := configureSuite(appOptions); err != nil {
 +		log.Fatal(err)
@@ -1436,6 +2019,374 @@ index b01a3de..65b33a2 100644
  		log.Fatal(err)
  	}
  }
+diff --git a/go/cmd/mastergui/persistence.go b/go/cmd/mastergui/persistence.go
+new file mode 100644
+index 0000000..2f5c54c
+--- /dev/null
++++ b/go/cmd/mastergui/persistence.go
+@@ -0,0 +1,84 @@
++package main
++
++import (
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"sync"
++)
++
++type configurationStore interface {
++	Load(string, any) (bool, error)
++	Save(string, any) error
++	MigrateJSON(string, []byte, string) (bool, error)
++	Close() error
++}
++type configurationState struct {
++	mu    sync.Mutex
++	store configurationStore
++	err   error
++}
++
++func (a *App) snapshot() (*project.Project, error) { return a.manager.Project() }
++func (a *App) change(ids []string, operation func() error) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return fmt.Errorf("configuration restore failed; no changes saved: %w", a.config.err)
++	}
++	if a.config.store == nil {
++		return operation()
++	}
++	before, err := a.snapshot()
++	if err != nil {
++		return err
++	}
++	if err = operation(); err != nil {
++		return err
++	}
++	after, err := a.snapshot()
++	if err == nil {
++		err = a.config.store.Save("workspace", after)
++	}
++	if err == nil {
++		return nil
++	}
++	if ids != nil && len(ids) == 0 && after != nil {
++		oldIDs := map[string]bool{}
++		for _, c := range before.Connections {
++			oldIDs[c.ID] = true
++		}
++		for _, c := range after.Connections {
++			if !oldIDs[c.ID] {
++				ids = append(ids, c.ID)
++			}
++		}
++	}
++	if ids == nil {
++		seen := map[string]bool{}
++		for _, c := range before.Connections {
++			seen[c.ID] = true
++		}
++		if after != nil {
++			for _, c := range after.Connections {
++				seen[c.ID] = true
++			}
++		}
++		for id := range seen {
++			ids = append(ids, id)
++		}
++	}
++	if rollbackErr := a.manager.RestoreConnections(before, ids); rollbackErr != nil {
++		a.config.err = fmt.Errorf("save failed: %v; rollback failed: %w", err, rollbackErr)
++		return a.config.err
++	}
++	return fmt.Errorf("save failed; previous configuration restored; affected connections stopped, restart manually: %w", err)
++}
++func changeValue[T any](a *App, ids []string, operation func() (T, error)) (T, error) {
++	var result T
++	err := a.change(ids, func() error { var err error; result, err = operation(); return err })
++	if err != nil {
++		var zero T
++		return zero, err
++	}
++	return result, nil
++}
+diff --git a/go/cmd/mastergui/persistence_default.go b/go/cmd/mastergui/persistence_default.go
+new file mode 100644
+index 0000000..94a8a5f
+--- /dev/null
++++ b/go/cmd/mastergui/persistence_default.go
+@@ -0,0 +1,9 @@
++//go:build !simlab_suite
++
++package main
++
++const projectFileExtension = ".modbusproj"
++
++func (a *App) initializePersistence()               {}
++func (a *App) readProject(path string) (int, error) { return a.manager.LoadProject(path) }
++func (a *App) writeProject(path string) error       { return a.manager.SaveProject(path) }
+diff --git a/go/cmd/mastergui/persistence_suite.go b/go/cmd/mastergui/persistence_suite.go
+new file mode 100644
+index 0000000..b97d2aa
+--- /dev/null
++++ b/go/cmd/mastergui/persistence_suite.go
+@@ -0,0 +1,122 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"encoding/json"
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
++	"io"
++	"os"
++	"path/filepath"
++)
++
++const projectFileExtension = ".saioproj"
++const storageRole = "modbus.master"
++
++func (a *App) openPersistence() {
++	if a.config.store != nil {
++		_ = a.config.store.Close()
++		a.config.store = nil
++	}
++	dir, err := suitehost.DataDir("master")
++	if err != nil {
++		a.config.err = err
++		return
++	}
++	store, err := configstore.Open(filepath.Dir(dir), storageRole)
++	if err != nil {
++		a.config.err = err
++		return
++	}
++	a.config.store = store
++	var saved project.Project
++	present, err := store.Load("workspace", &saved)
++	if err == nil && present {
++		_, err = a.manager.ApplyProject(&saved)
++	}
++	a.config.err = err
++}
++func (a *App) initializePersistence() {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.openPersistence()
++}
++func (a *App) LoadPreferences(legacy map[string]any) (map[string]any, error) {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil || a.config.store == nil {
++		a.openPersistence()
++	}
++	if a.config.err != nil {
++		return nil, a.config.err
++	}
++	data, err := json.Marshal(legacy)
++	if err != nil {
++		return nil, err
++	}
++	if _, err = a.config.store.MigrateJSON("ui", data, "webview-localStorage-v1"); err != nil {
++		a.config.err = err
++		return nil, err
++	}
++	var values map[string]any
++	if _, err = a.config.store.Load("ui", &values); err != nil {
++		a.config.err = err
++		return nil, err
++	}
++	if values == nil {
++		values = map[string]any{}
++	}
++	return values, nil
++}
++func (a *App) SavePreferences(values map[string]any) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return a.config.err
++	}
++	if a.config.store == nil {
++		return fmt.Errorf("configuration is not initialized")
++	}
++	return a.config.store.Save("ui", values)
++}
++func (a *App) readProject(path string) (int, error) {
++	file, err := os.Open(path)
++	if err != nil {
++		return 0, err
++	}
++	header := make([]byte, 16)
++	_, readErr := io.ReadFull(file, header)
++	_ = file.Close()
++	if readErr != nil && readErr != io.ErrUnexpectedEOF && readErr != io.EOF {
++		return 0, readErr
++	}
++	var saved *project.Project
++	if string(header) == "SQLite format 3\x00" {
++		saved = &project.Project{}
++		err = configstore.ReadProject(path, storageRole, "workspace", saved)
++	} else {
++		saved, err = project.LoadFile(path)
++	}
++	if err != nil {
++		return 0, err
++	}
++	return changeValue(a, nil, func() (int, error) { return a.manager.ApplyProject(saved) })
++}
++func (a *App) writeProject(path string) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return a.config.err
++	}
++	if filepath.Ext(path) != ".saioproj" {
++		return fmt.Errorf("export requires a .saioproj file; legacy imports are kept unchanged")
++	}
++	saved, err := a.snapshot()
++	if err != nil {
++		return err
++	}
++	return configstore.ExportProject(path, storageRole, "workspace", saved)
++}
+diff --git a/go/cmd/mastergui/persistence_suite_test.go b/go/cmd/mastergui/persistence_suite_test.go
+new file mode 100644
+index 0000000..5f9671e
+--- /dev/null
++++ b/go/cmd/mastergui/persistence_suite_test.go
+@@ -0,0 +1,129 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"context"
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
++	"github.com/Karl-Dai/ModbusSim/go/internal/masterstate"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++func persistedApp(t *testing.T) *App {
++	t.Helper()
++	a := newApp()
++	a.initializePersistence()
++	if a.config.err != nil {
++		t.Fatal(a.config.err)
++	}
++	t.Cleanup(func() { a.shutdown(context.Background()) })
++	return a
++}
++func TestSuiteWorkspaceRestartConflictAndProject(t *testing.T) {
++	root := t.TempDir()
++	t.Setenv("SIMLAB_DATA_DIR", root)
++	first := persistedApp(t)
++	stale := persistedApp(t)
++	info, err := first.CreateConnection(masterstate.DefaultSettings())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err = stale.CreateConnection(masterstate.DefaultSettings()); err == nil || !strings.Contains(err.Error(), "restored") {
++		t.Fatalf("stale write: %v", err)
++	}
++	if len(stale.ListConnections()) != 0 {
++		t.Fatal("stale mutation remained in memory")
++	}
++	restarted := persistedApp(t)
++	rows := restarted.ListConnections()
++	if len(rows) != 1 || rows[0].ID != info.ID || rows[0].State != "Disconnected" {
++		t.Fatalf("restart: %+v", rows)
++	}
++	path := filepath.Join(root, "master.saioproj")
++	if err = first.SaveProject(path); err != nil {
++		t.Fatal(err)
++	}
++	bytes, err := os.ReadFile(path)
++	if err != nil || !strings.HasPrefix(string(bytes), "SQLite format 3") {
++		t.Fatalf("export is not SQLite: %v", err)
++	}
++	if _, err = first.LoadProject(path); err != nil {
++		t.Fatal(err)
++	}
++	if err = first.SaveProject(filepath.Join(root, "legacy.modbusproj")); err == nil {
++		t.Fatal("overwrote a legacy extension")
++	}
++}
++func TestSuiteRestoreErrorBlocksDefaultWrites(t *testing.T) {
++	root := t.TempDir()
++	t.Setenv("SIMLAB_DATA_DIR", root)
++	path := filepath.Join(root, "saio.db")
++	original := []byte("broken database")
++	if err := os.WriteFile(path, original, 0600); err != nil {
++		t.Fatal(err)
++	}
++	a := newApp()
++	a.initializePersistence()
++	defer a.shutdown(context.Background())
++	if a.config.err == nil {
++		t.Fatal("accepted broken database")
++	}
++	if _, err := a.CreateConnection(masterstate.DefaultSettings()); err == nil {
++		t.Fatal("accepted mutation after failed restore")
++	}
++	bytes, _ := os.ReadFile(path)
++	if string(bytes) != string(original) {
++		t.Fatal("overwrote corrupt data with defaults")
++	}
++}
++
++func TestSuiteImportsLegacyV1UsingExistingConverter(t *testing.T) {
++	t.Setenv("SIMLAB_DATA_DIR", t.TempDir())
++	a := persistedApp(t)
++	fixture := filepath.Join("..", "..", "internal", "project", "testdata", "v1-master-saved.json")
++	bytes, err := os.ReadFile(fixture)
++	if err != nil {
++		t.Fatal(err)
++	}
++	path := filepath.Join(t.TempDir(), "legacy.modbusproj")
++	if err = os.WriteFile(path, bytes, 0600); err != nil {
++		t.Fatal(err)
++	}
++	if _, err = a.LoadProject(path); err != nil {
++		t.Fatal(err)
++	}
++	if len(a.ListConnections()) == 0 {
++		t.Fatal("v1 connections were lost")
++	}
++	retained, _ := os.ReadFile(path)
++	if string(retained) != string(bytes) {
++		t.Fatal("legacy source changed")
++	}
++}
++
++func TestSuiteRejectsUnsupportedSQLiteProjectVersion(t *testing.T) {
++	root := t.TempDir()
++	t.Setenv("SIMLAB_DATA_DIR", root)
++	a := persistedApp(t)
++	if _, err := a.CreateConnection(masterstate.DefaultSettings()); err != nil {
++		t.Fatal(err)
++	}
++	saved, err := a.manager.Project()
++	if err != nil {
++		t.Fatal(err)
++	}
++	saved.Version = 99
++	path := filepath.Join(root, "future.saioproj")
++	if err = configstore.ExportProject(path, "modbus.master", "workspace", saved); err != nil {
++		t.Fatal(err)
++	}
++	if _, err = a.LoadProject(path); err == nil || !strings.Contains(err.Error(), "unsupported project version") {
++		t.Fatalf("version error: %v", err)
++	}
++	if len(a.ListConnections()) != 1 {
++		t.Fatal("unsupported project replaced workspace")
++	}
++}
 diff --git a/go/cmd/mastergui/suite-icons/128x128.png b/go/cmd/mastergui/suite-icons/128x128.png
 new file mode 100644
 index 0000000000000000000000000000000000000000..e0e250dcca2e1647b063e3414bf0044002d61792
@@ -8569,21 +9520,22 @@ index 0000000..c3122b1
 +}
 diff --git a/go/cmd/mastergui/suite_enabled.go b/go/cmd/mastergui/suite_enabled.go
 new file mode 100644
-index 0000000..d0a1586
+index 0000000..00e9bfb
 --- /dev/null
 +++ b/go/cmd/mastergui/suite_enabled.go
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,14 @@
 +//go:build simlab_suite
 +
 +package main
 +
 +import (
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
 +	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
 +	"github.com/wailsapp/wails/v2/pkg/options"
 +)
 +
 +func configureSuite(app *options.App) error {
-+	app.Bind = append(app.Bind, suitehost.NewAppearance(true))
++	app.Bind = append(app.Bind, suitehost.NewAppearance(true, configstore.ReadJSON))
 +	return suitehost.Configure(app, "master")
 +}
 diff --git a/go/cmd/mastergui/suite_enabled_test.go b/go/cmd/mastergui/suite_enabled_test.go
@@ -8644,11 +9596,277 @@ index 0000000..ca5bbba
 +    "comments": "SimLab embedded ModbusMaster"
 +  }
 +}
+diff --git a/go/cmd/slavegui/app.go b/go/cmd/slavegui/app.go
+index 233d797..35513cd 100644
+--- a/go/cmd/slavegui/app.go
++++ b/go/cmd/slavegui/app.go
+@@ -23,9 +23,11 @@ var Version = "0.17.9"
+ 
+ // App binds native Go DTOs to the desktop; the Manager owns all protocol state.
+ type App struct {
+-	ctx     context.Context
+-	manager *appstate.Manager
+-	emit    func(string, interface{})
++	closeState configurationClose
++	config     configurationState
++	ctx        context.Context
++	manager    *appstate.Manager
++	emit       func(string, interface{})
+ }
+ 
+ type RegisterChange struct {
+@@ -112,14 +114,21 @@ func newApp() *App {
+ 	return a
+ }
+ 
+-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+-func (a *App) shutdown(context.Context)    { a.manager.CloseAll() }
+-func (a *App) GetVersion() string          { return Version }
++func (a *App) startup(ctx context.Context) { a.ctx = ctx; a.initializePersistence() }
++func (a *App) shutdown(context.Context) {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.manager.CloseAll()
++	if a.config.store != nil {
++		_ = a.config.store.Close()
++	}
++}
++func (a *App) GetVersion() string { return Version }
+ func (a *App) CreateConnection(req appstate.CreateConnectionRequest) (ConnectionInfo, error) {
+ 	if err := appstate.ValidateTransport(req.Transport); err != nil {
+ 		return ConnectionInfo{}, err
+ 	}
+-	info, err := a.manager.CreateConnection(req)
++	info, err := changeValue(a, []string{}, func() (appstate.ConnectionInfo, error) { return a.manager.CreateConnection(req) })
+ 	return connectionInfo(info), err
+ }
+ func connectionInfo(info appstate.ConnectionInfo) ConnectionInfo {
+@@ -139,21 +148,23 @@ func (a *App) ListConnections() []ConnectionInfo {
+ 	}
+ 	return out
+ }
+-func (a *App) StartConnection(id string) error                   { return a.manager.StartConnection(id) }
+-func (a *App) StopConnection(id string) error                    { return a.manager.StopConnection(id) }
+-func (a *App) DeleteConnection(id string) error                  { return a.manager.DeleteConnection(id) }
++func (a *App) StartConnection(id string) error { return a.manager.StartConnection(id) }
++func (a *App) StopConnection(id string) error  { return a.manager.StopConnection(id) }
++func (a *App) DeleteConnection(id string) error {
++	return a.change([]string{id}, func() error { return a.manager.DeleteConnection(id) })
++}
+ func (a *App) GetTransport(id string) (project.Transport, error) { return a.manager.GetTransport(id) }
+ func (a *App) UpdateTransport(id string, transport project.Transport) error {
+-	return a.manager.UpdateTransport(id, transport)
++	return a.change([]string{id}, func() error { return a.manager.UpdateTransport(id, transport) })
+ }
+ func (a *App) AddDevice(req appstate.AddDeviceRequest) (appstate.DeviceInfo, error) {
+-	return a.manager.AddDevice(req)
++	return changeValue(a, []string{req.ConnectionID}, func() (appstate.DeviceInfo, error) { return a.manager.AddDevice(req) })
+ }
+ func (a *App) UpdateDevice(req appstate.UpdateDeviceRequest) (appstate.DeviceInfo, error) {
+-	return a.manager.UpdateDevice(req)
++	return changeValue(a, []string{req.ConnectionID}, func() (appstate.DeviceInfo, error) { return a.manager.UpdateDevice(req) })
+ }
+ func (a *App) RemoveDevice(id string, slaveID uint8) error {
+-	return a.manager.RemoveDevice(id, slaveID)
++	return a.change([]string{id}, func() error { return a.manager.RemoveDevice(id, slaveID) })
+ }
+ func (a *App) ListDevices(id string) ([]appstate.DeviceInfo, error) {
+ 	rows, err := a.manager.ListDevices(id)
+@@ -162,12 +173,14 @@ func (a *App) ListDevices(id string) ([]appstate.DeviceInfo, error) {
+ 	}
+ 	return rows, err
+ }
+-func (a *App) AddRegister(req appstate.AddRegisterRequest) error { return a.manager.AddRegister(req) }
++func (a *App) AddRegister(req appstate.AddRegisterRequest) error {
++	return a.change([]string{req.ConnectionID}, func() error { return a.manager.AddRegister(req) })
++}
+ func (a *App) UpdateRegister(req appstate.UpdateRegisterRequest) error {
+-	return a.manager.UpdateRegister(req)
++	return a.change([]string{req.ConnectionID}, func() error { return a.manager.UpdateRegister(req) })
+ }
+ func (a *App) RemoveRegister(id string, slaveID uint8, address uint16, area string) error {
+-	return a.manager.RemoveRegister(id, slaveID, address, area)
++	return a.change([]string{id}, func() error { return a.manager.RemoveRegister(id, slaveID, address, area) })
+ }
+ func (a *App) ListRegisters(id string, slaveID uint8, area string) ([]Point, error) {
+ 	points, err := a.manager.ListPoints(id, slaveID, area)
+@@ -188,19 +201,21 @@ func (a *App) ReadRegistersBulk(id string, slaveID uint8, area string) ([]appsta
+ 	return rows, err
+ }
+ func (a *App) WriteRegister(req appstate.WriteRegisterRequest) error {
+-	return a.manager.WriteRegister(req)
++	return a.change([]string{req.ConnectionID}, func() error { return a.manager.WriteRegister(req) })
+ }
+ func (a *App) ImportRegisters(req appstate.ImportRegistersRequest) (int, error) {
+-	return a.manager.ImportRegisters(req)
++	return changeValue(a, []string{req.ConnectionID}, func() (int, error) { return a.manager.ImportRegisters(req) })
+ }
+ func (a *App) ExportRegisters(id string, slaveID uint8) (string, error) {
+ 	return a.manager.ExportRegisters(id, slaveID)
+ }
+ func (a *App) SetPointMutation(req SetPointMutationRequest) error {
+-	return a.manager.SetPointMutation(appstate.SetPointMutationRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Config: req.Config.ToEngine()})
++	return a.change([]string{req.ConnectionID}, func() error {
++		return a.manager.SetPointMutation(appstate.SetPointMutationRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Config: req.Config.ToEngine()})
++	})
+ }
+ func (a *App) ClearPointMutation(id string, slaveID uint8, area string, address uint16) error {
+-	return a.manager.ClearPointMutation(id, slaveID, area, address)
++	return a.change([]string{id}, func() error { return a.manager.ClearPointMutation(id, slaveID, area, address) })
+ }
+ func (a *App) ListPointMutations(id string, slaveID uint8) ([]appstate.PointMutationInfo, error) {
+ 	rows, err := a.manager.ListPointMutations(id, slaveID)
+@@ -212,10 +227,12 @@ func (a *App) ListPointMutations(id string, slaveID uint8) ([]appstate.PointMuta
+ func (a *App) SetMutationRunning(running bool) { a.manager.SetMutationRunning(running) }
+ func (a *App) MutationRunning() bool           { return a.manager.MutationRunning() }
+ func (a *App) SetDataSource(req SetDataSourceRequest) error {
+-	return a.manager.SetDataSource(appstate.SetDataSourceRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Source: req.Source.ToEngine(), UpdateIntervalMS: req.UpdateIntervalMS})
++	return a.change([]string{req.ConnectionID}, func() error {
++		return a.manager.SetDataSource(appstate.SetDataSourceRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Source: req.Source.ToEngine(), UpdateIntervalMS: req.UpdateIntervalMS})
++	})
+ }
+ func (a *App) RemoveDataSource(id string, slaveID uint8, area string, address uint16) error {
+-	return a.manager.RemoveDataSource(id, slaveID, area, address)
++	return a.change([]string{id}, func() error { return a.manager.RemoveDataSource(id, slaveID, area, address) })
+ }
+ func (a *App) Logs(id string) ([]LogEntry, error) {
+ 	rows, err := a.manager.Logs(id)
+@@ -227,8 +244,8 @@ func (a *App) Logs(id string) ([]LogEntry, error) {
+ }
+ func (a *App) ClearLogs(id string) error               { return a.manager.ClearLogs(id) }
+ func (a *App) ExportLogsCSV(id string) (string, error) { return a.manager.ExportLogsCSV(id) }
+-func (a *App) LoadProject(path string) (int, error)    { return a.manager.LoadProject(path) }
+-func (a *App) SaveProject(path string) error           { return a.manager.SaveProject(path) }
++func (a *App) LoadProject(path string) (int, error)    { return a.readProject(path) }
++func (a *App) SaveProject(path string) error           { return a.writeProject(path) }
+ func (a *App) ListSerialPorts() ([]string, error)      { return serial.ListPorts() }
+ func (a *App) InspectModbusFrame(data, transport, direction, lang string) (string, error) {
+ 	return explain.Explain(data, transport, direction, explain.LangFromCode(lang))
+diff --git a/go/cmd/slavegui/app_test.go b/go/cmd/slavegui/app_test.go
+index 5e594a6..b69d98e 100644
+--- a/go/cmd/slavegui/app_test.go
++++ b/go/cmd/slavegui/app_test.go
+@@ -123,7 +123,7 @@ func TestNativePointConfigAndProjectRoundTrip(t *testing.T) {
+ 	if err != nil || len(points) == 0 || points[0].Mutation == nil || points[0].Mutation.PeriodMS != 500 {
+ 		t.Fatalf("configs: %+v %v", points, err)
+ 	}
+-	path := filepath.Join(t.TempDir(), "native.modbusproj")
++	path := filepath.Join(t.TempDir(), "native"+projectFileExtension)
+ 	if err := app.SaveProject(path); err != nil {
+ 		t.Fatal(err)
+ 	}
+diff --git a/go/cmd/slavegui/config_close.go b/go/cmd/slavegui/config_close.go
+new file mode 100644
+index 0000000..5f916eb
+--- /dev/null
++++ b/go/cmd/slavegui/config_close.go
+@@ -0,0 +1,54 @@
++package main
++
++import (
++	"context"
++	"sync"
++
++	"github.com/wailsapp/wails/v2/pkg/runtime"
++)
++
++type configurationClose struct {
++	mu        sync.Mutex
++	armed     bool
++	requested bool
++	approved  bool
++	ctx       context.Context
++}
++
++func (c *configurationClose) enable() { c.mu.Lock(); c.armed = true; c.mu.Unlock() }
++func (c *configurationClose) request(ctx context.Context, notify func()) bool {
++	c.mu.Lock()
++	if !c.armed || c.approved {
++		c.mu.Unlock()
++		return false
++	}
++	if c.requested {
++		c.mu.Unlock()
++		return true
++	}
++	c.requested = true
++	c.ctx = ctx
++	c.mu.Unlock()
++	notify()
++	return true
++}
++func (c *configurationClose) confirm(quit func(context.Context)) {
++	c.mu.Lock()
++	if !c.requested || c.approved {
++		c.mu.Unlock()
++		return
++	}
++	c.approved = true
++	ctx := c.ctx
++	c.mu.Unlock()
++	quit(ctx)
++}
++func (a *App) EnableConfigurationClose() { a.closeState.enable() }
++func (a *App) beforeClose(ctx context.Context) bool {
++	return a.closeState.request(ctx, func() { runtime.EventsEmit(ctx, "saio-before-close") })
++}
++func (a *App) ConfirmConfigurationClose() {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.closeState.confirm(runtime.Quit)
++}
+diff --git a/go/cmd/slavegui/config_close_test.go b/go/cmd/slavegui/config_close_test.go
+new file mode 100644
+index 0000000..d87a13e
+--- /dev/null
++++ b/go/cmd/slavegui/config_close_test.go
+@@ -0,0 +1,41 @@
++package main
++
++import (
++	"context"
++	"testing"
++)
++
++func TestConfigurationCloseRequiresArmRequestAndAcknowledgement(t *testing.T) {
++	var c configurationClose
++	notifications, exits := 0, 0
++	ctx := context.WithValue(context.Background(), struct{}{}, "close")
++	notify := func() { notifications++ }
++	quit := func(actual context.Context) {
++		if actual != ctx {
++			t.Fatal("lost native close context")
++		}
++		exits++
++	}
++	c.confirm(quit)
++	if exits != 0 {
++		t.Fatal("unsolicited acknowledgement closed the application")
++	}
++	if c.request(ctx, notify) {
++		t.Fatal("disarmed guard blocked an unmounted application")
++	}
++	c.enable()
++	if !c.request(ctx, notify) || !c.request(ctx, notify) {
++		t.Fatal("close was allowed before a flush acknowledgement")
++	}
++	if notifications != 1 || exits != 0 {
++		t.Fatalf("requests did not coalesce: notifications=%d exits=%d", notifications, exits)
++	}
++	c.confirm(quit)
++	c.confirm(quit)
++	if exits != 1 {
++		t.Fatalf("acknowledgement exits=%d", exits)
++	}
++	if c.request(ctx, notify) {
++		t.Fatal("acknowledged native close was blocked")
++	}
++}
 diff --git a/go/cmd/slavegui/main.go b/go/cmd/slavegui/main.go
-index 693cce8..fd45d30 100644
+index 693cce8..6ae41b5 100644
 --- a/go/cmd/slavegui/main.go
 +++ b/go/cmd/slavegui/main.go
-@@ -21,17 +21,24 @@ func main() {
+@@ -21,17 +21,25 @@ func main() {
  		log.Fatal(err)
  	}
  	app := newApp()
@@ -8667,8 +9885,10 @@ index 693cce8..fd45d30 100644
  		Title: "ModbusSlave — Go", Width: 1280, Height: 800,
  		MinWidth: 900, MinHeight: 600, Menu: appMenu,
  		AssetServer: &assetserver.Options{Assets: frontend},
- 		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
+-		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
 -	}); err != nil {
++		OnStartup:   app.startup, OnShutdown: app.shutdown, OnBeforeClose: app.beforeClose,
++		Bind: []interface{}{app},
 +	}
 +	if err := configureSuite(appOptions); err != nil {
 +		log.Fatal(err)
@@ -8677,6 +9897,340 @@ index 693cce8..fd45d30 100644
  		log.Fatal(err)
  	}
  }
+diff --git a/go/cmd/slavegui/persistence.go b/go/cmd/slavegui/persistence.go
+new file mode 100644
+index 0000000..65f4269
+--- /dev/null
++++ b/go/cmd/slavegui/persistence.go
+@@ -0,0 +1,84 @@
++package main
++
++import (
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"sync"
++)
++
++type configurationStore interface {
++	Load(string, any) (bool, error)
++	Save(string, any) error
++	MigrateJSON(string, []byte, string) (bool, error)
++	Close() error
++}
++type configurationState struct {
++	mu    sync.Mutex
++	store configurationStore
++	err   error
++}
++
++func (a *App) snapshot() (*project.Project, error) { return a.manager.Project(), nil }
++func (a *App) change(ids []string, operation func() error) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return fmt.Errorf("configuration restore failed; no changes saved: %w", a.config.err)
++	}
++	if a.config.store == nil {
++		return operation()
++	}
++	before, err := a.snapshot()
++	if err != nil {
++		return err
++	}
++	if err = operation(); err != nil {
++		return err
++	}
++	after, err := a.snapshot()
++	if err == nil {
++		err = a.config.store.Save("workspace", after)
++	}
++	if err == nil {
++		return nil
++	}
++	if ids != nil && len(ids) == 0 && after != nil {
++		oldIDs := map[string]bool{}
++		for _, c := range before.Connections {
++			oldIDs[c.ID] = true
++		}
++		for _, c := range after.Connections {
++			if !oldIDs[c.ID] {
++				ids = append(ids, c.ID)
++			}
++		}
++	}
++	if ids == nil {
++		seen := map[string]bool{}
++		for _, c := range before.Connections {
++			seen[c.ID] = true
++		}
++		if after != nil {
++			for _, c := range after.Connections {
++				seen[c.ID] = true
++			}
++		}
++		for id := range seen {
++			ids = append(ids, id)
++		}
++	}
++	if rollbackErr := a.manager.RestoreConnections(before, ids); rollbackErr != nil {
++		a.config.err = fmt.Errorf("save failed: %v; rollback failed: %w", err, rollbackErr)
++		return a.config.err
++	}
++	return fmt.Errorf("save failed; previous configuration restored; affected connections stopped, restart manually: %w", err)
++}
++func changeValue[T any](a *App, ids []string, operation func() (T, error)) (T, error) {
++	var result T
++	err := a.change(ids, func() error { var err error; result, err = operation(); return err })
++	if err != nil {
++		var zero T
++		return zero, err
++	}
++	return result, nil
++}
+diff --git a/go/cmd/slavegui/persistence_default.go b/go/cmd/slavegui/persistence_default.go
+new file mode 100644
+index 0000000..94a8a5f
+--- /dev/null
++++ b/go/cmd/slavegui/persistence_default.go
+@@ -0,0 +1,9 @@
++//go:build !simlab_suite
++
++package main
++
++const projectFileExtension = ".modbusproj"
++
++func (a *App) initializePersistence()               {}
++func (a *App) readProject(path string) (int, error) { return a.manager.LoadProject(path) }
++func (a *App) writeProject(path string) error       { return a.manager.SaveProject(path) }
+diff --git a/go/cmd/slavegui/persistence_suite.go b/go/cmd/slavegui/persistence_suite.go
+new file mode 100644
+index 0000000..5906af5
+--- /dev/null
++++ b/go/cmd/slavegui/persistence_suite.go
+@@ -0,0 +1,122 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"encoding/json"
++	"fmt"
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
++	"io"
++	"os"
++	"path/filepath"
++)
++
++const projectFileExtension = ".saioproj"
++const storageRole = "modbus.slave"
++
++func (a *App) openPersistence() {
++	if a.config.store != nil {
++		_ = a.config.store.Close()
++		a.config.store = nil
++	}
++	dir, err := suitehost.DataDir("slave")
++	if err != nil {
++		a.config.err = err
++		return
++	}
++	store, err := configstore.Open(filepath.Dir(dir), storageRole)
++	if err != nil {
++		a.config.err = err
++		return
++	}
++	a.config.store = store
++	var saved project.Project
++	present, err := store.Load("workspace", &saved)
++	if err == nil && present {
++		_, err = a.manager.ApplyProject(&saved)
++	}
++	a.config.err = err
++}
++func (a *App) initializePersistence() {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	a.openPersistence()
++}
++func (a *App) LoadPreferences(legacy map[string]any) (map[string]any, error) {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil || a.config.store == nil {
++		a.openPersistence()
++	}
++	if a.config.err != nil {
++		return nil, a.config.err
++	}
++	data, err := json.Marshal(legacy)
++	if err != nil {
++		return nil, err
++	}
++	if _, err = a.config.store.MigrateJSON("ui", data, "webview-localStorage-v1"); err != nil {
++		a.config.err = err
++		return nil, err
++	}
++	var values map[string]any
++	if _, err = a.config.store.Load("ui", &values); err != nil {
++		a.config.err = err
++		return nil, err
++	}
++	if values == nil {
++		values = map[string]any{}
++	}
++	return values, nil
++}
++func (a *App) SavePreferences(values map[string]any) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return a.config.err
++	}
++	if a.config.store == nil {
++		return fmt.Errorf("configuration is not initialized")
++	}
++	return a.config.store.Save("ui", values)
++}
++func (a *App) readProject(path string) (int, error) {
++	file, err := os.Open(path)
++	if err != nil {
++		return 0, err
++	}
++	header := make([]byte, 16)
++	_, readErr := io.ReadFull(file, header)
++	_ = file.Close()
++	if readErr != nil && readErr != io.ErrUnexpectedEOF && readErr != io.EOF {
++		return 0, readErr
++	}
++	var saved *project.Project
++	if string(header) == "SQLite format 3\x00" {
++		saved = &project.Project{}
++		err = configstore.ReadProject(path, storageRole, "workspace", saved)
++	} else {
++		saved, err = project.LoadFile(path)
++	}
++	if err != nil {
++		return 0, err
++	}
++	return changeValue(a, nil, func() (int, error) { return a.manager.ApplyProject(saved) })
++}
++func (a *App) writeProject(path string) error {
++	a.config.mu.Lock()
++	defer a.config.mu.Unlock()
++	if a.config.err != nil {
++		return a.config.err
++	}
++	if filepath.Ext(path) != ".saioproj" {
++		return fmt.Errorf("export requires a .saioproj file; legacy imports are kept unchanged")
++	}
++	saved, err := a.snapshot()
++	if err != nil {
++		return err
++	}
++	return configstore.ExportProject(path, storageRole, "workspace", saved)
++}
+diff --git a/go/cmd/slavegui/persistence_suite_test.go b/go/cmd/slavegui/persistence_suite_test.go
+new file mode 100644
+index 0000000..29ea163
+--- /dev/null
++++ b/go/cmd/slavegui/persistence_suite_test.go
+@@ -0,0 +1,95 @@
++//go:build simlab_suite
++
++package main
++
++import (
++	"context"
++	"encoding/json"
++	"github.com/Karl-Dai/ModbusSim/go/internal/appstate"
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"path/filepath"
++	"testing"
++)
++
++func persistedApp(t *testing.T) *App {
++	t.Helper()
++	a := newApp()
++	a.initializePersistence()
++	if a.config.err != nil {
++		t.Fatal(a.config.err)
++	}
++	t.Cleanup(func() { a.shutdown(context.Background()) })
++	return a
++}
++func TestSuiteSlaveRestartAndLegacyImport(t *testing.T) {
++	root := t.TempDir()
++	t.Setenv("SIMLAB_DATA_DIR", root)
++	first := persistedApp(t)
++	info, err := first.CreateConnection(appstate.CreateConnectionRequest{Transport: project.Transport{Type: project.TransportTCP, Host: "127.0.0.1", Port: 15020}, SlaveID: 1, RegisterRanges: []appstate.RegisterRange{}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err = first.AddDevice(appstate.AddDeviceRequest{ConnectionID: info.ID, SlaveID: 2, Name: "saved"}); err != nil {
++		t.Fatal(err)
++	}
++	restarted := persistedApp(t)
++	rows := restarted.ListConnections()
++	if len(rows) != 1 || rows[0].State != appstate.Stopped {
++		t.Fatalf("restart: %+v", rows)
++	}
++	devices, err := restarted.ListDevices(info.ID)
++	if err != nil || len(devices) != 2 {
++		t.Fatalf("devices: %+v %v", devices, err)
++	}
++	legacy := filepath.Join(root, "old.modbusproj")
++	if err = project.SaveFile(legacy, first.manager.Project()); err != nil {
++		t.Fatal(err)
++	}
++	if _, err = first.LoadProject(legacy); err != nil {
++		t.Fatal(err)
++	}
++	export := filepath.Join(root, "slave.saioproj")
++	if err = first.SaveProject(export); err != nil {
++		t.Fatal(err)
++	}
++	var saved project.Project
++	// The master role cannot import the slave role's SQLite document.
++	if err = configstore.ReadProject(export, "modbus.master", "workspace", &saved); err == nil {
++		t.Fatal("cross-role project accepted")
++	}
++}
++
++func TestSuiteLegacyV1AndInvalidImportPreserveWorkspace(t *testing.T) {
++	t.Setenv("SIMLAB_DATA_DIR", t.TempDir())
++	a := persistedApp(t)
++	legacy := filepath.Join("..", "..", "internal", "project", "testdata", "v1-slave-legacy-blocks.json")
++	if _, err := a.LoadProject(legacy); err != nil {
++		t.Fatal(err)
++	}
++	before := a.manager.Project()
++	if len(before.Connections) == 0 || len(before.Connections[0].Devices) == 0 {
++		t.Fatal("fixture did not restore devices")
++	}
++	original, err := json.Marshal(before)
++	if err != nil {
++		t.Fatal(err)
++	}
++	before.Connections[0].Devices = append(before.Connections[0].Devices, before.Connections[0].Devices[0])
++	invalid := filepath.Join(t.TempDir(), "duplicate.modbusproj")
++	if err = project.SaveFile(invalid, before); err != nil {
++		t.Fatal(err)
++	}
++	if _, err = a.LoadProject(invalid); err == nil {
++		t.Fatal("duplicate slave id accepted")
++	}
++	current, _ := json.Marshal(a.manager.Project())
++	if string(current) != string(original) {
++		t.Fatal("failed import replaced live workspace")
++	}
++	restarted := persistedApp(t)
++	saved, _ := json.Marshal(restarted.manager.Project())
++	if string(saved) != string(original) {
++		t.Fatal("failed import changed durable workspace")
++	}
++}
 diff --git a/go/cmd/slavegui/suite-icons/128x128.png b/go/cmd/slavegui/suite-icons/128x128.png
 new file mode 100644
 index 0000000000000000000000000000000000000000..633b8e986c940144d9242424392228195957a7ef
@@ -15921,21 +17475,22 @@ index 0000000..1f74481
 +}
 diff --git a/go/cmd/slavegui/suite_enabled.go b/go/cmd/slavegui/suite_enabled.go
 new file mode 100644
-index 0000000..44a749f
+index 0000000..19b7c31
 --- /dev/null
 +++ b/go/cmd/slavegui/suite_enabled.go
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,14 @@
 +//go:build simlab_suite
 +
 +package main
 +
 +import (
++	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
 +	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
 +	"github.com/wailsapp/wails/v2/pkg/options"
 +)
 +
 +func configureSuite(app *options.App) error {
-+	app.Bind = append(app.Bind, suitehost.NewAppearance(true))
++	app.Bind = append(app.Bind, suitehost.NewAppearance(true, configstore.ReadJSON))
 +	return suitehost.Configure(app, "slave")
 +}
 diff --git a/go/cmd/slavegui/suite_enabled_test.go b/go/cmd/slavegui/suite_enabled_test.go
@@ -15996,8 +17551,129 @@ index 0000000..a17eda0
 +    "comments": "SimLab embedded ModbusSlave"
 +  }
 +}
+diff --git a/go/go.mod b/go/go.mod
+index 19a84d6..de0c2c0 100644
+--- a/go/go.mod
++++ b/go/go.mod
+@@ -11,6 +11,7 @@ require (
+ require (
+ 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
+ 	github.com/bep/debounce v1.2.1 // indirect
++	github.com/dustin/go-humanize v1.0.1 // indirect
+ 	github.com/go-ole/go-ole v1.3.0 // indirect
+ 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+ 	github.com/google/uuid v1.6.0 // indirect
+@@ -23,9 +24,11 @@ require (
+ 	github.com/leaanthony/slicer v1.6.0 // indirect
+ 	github.com/leaanthony/u v1.1.1 // indirect
+ 	github.com/mattn/go-colorable v0.1.13 // indirect
+-	github.com/mattn/go-isatty v0.0.20 // indirect
++	github.com/mattn/go-isatty v0.0.24 // indirect
++	github.com/ncruces/go-strftime v1.0.0 // indirect
+ 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+ 	github.com/pkg/errors v0.9.1 // indirect
++	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+ 	github.com/rivo/uniseg v0.4.7 // indirect
+ 	github.com/samber/lo v1.49.1 // indirect
+ 	github.com/tkrajina/go-reflector v0.5.8 // indirect
+@@ -37,4 +40,8 @@ require (
+ 	golang.org/x/net v0.58.0 // indirect
+ 	golang.org/x/sys v0.48.0 // indirect
+ 	golang.org/x/text v0.42.0 // indirect
++	modernc.org/libc v1.75.6 // indirect
++	modernc.org/mathutil v1.7.1 // indirect
++	modernc.org/memory v1.12.1 // indirect
++	modernc.org/sqlite v1.58.0 // indirect
+ )
+diff --git a/go/go.sum b/go/go.sum
+index 8d89d2c..8c6d201 100644
+--- a/go/go.sum
++++ b/go/go.sum
+@@ -4,6 +4,8 @@ github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=
+ github.com/bep/debounce v1.2.1/go.mod h1:H8yggRPQKLUhUoqrJC1bO2xNya7vanpDl7xR3ISbCJ0=
+ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
++github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
++github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
+ github.com/go-ole/go-ole v1.3.0 h1:Dt6ye7+vXGIKZ7Xtk4s6/xVdGDQynvom7xCFEdWr6uE=
+ github.com/go-ole/go-ole v1.3.0/go.mod h1:5LS6F96DhAwUc7C+1HLexzMXY1xGRSryjyPPKW6zv78=
+ github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
+@@ -36,12 +38,18 @@ github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovk
+ github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
+ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+ github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
++github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
++github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
++github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
++github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
+ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c h1:+mdjkGKdHQG3305AYmdv1U2eRNDiU2ErMBj1gwrq8eQ=
+ github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c/go.mod h1:7rwL4CYBLnjLxUqIJNnCWiEdr3bn6IUYi15bNlnbCCU=
+ github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
++github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
++github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
+ github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
+ github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
+ github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
+@@ -83,5 +91,13 @@ golang.org/x/text v0.42.0/go.mod h1:ojzP1Z+2QtioaF8DTtO8K5q7JWVVYwZKenzujK0Zd0E=
+ golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+ gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
++modernc.org/libc v1.75.6 h1:yKk8qo+Di4gkmvRboK8ocCqH22FiUCR6jRy2OwtCRus=
++modernc.org/libc v1.75.6/go.mod h1:bO5o2ztHxBb2rjz0PgdHN0sSMw57CgxGFLZ3Qd/QpVQ=
++modernc.org/mathutil v1.7.1 h1:GCZVGXdaN8gTqB1Mf/usp1Y/hSqgI2vAGGP4jZMCxOU=
++modernc.org/mathutil v1.7.1/go.mod h1:4p5IwJITfppl0G4sUEDtCr4DthTaT47/N3aT6MhfgJg=
++modernc.org/memory v1.12.1 h1:nFMiWrpStgZczNl6XI9GnIk/rWhYIyHGUaR04pGbp9g=
++modernc.org/memory v1.12.1/go.mod h1:/JP4VbVC+K5sU2wZi9bHoq2MAkCnrt2r98UGeSK7Mjw=
++modernc.org/sqlite v1.58.0 h1:38u40/bwkfM7f0Myhosl+SEMltSDxnGdQf8o6Kjmys0=
++modernc.org/sqlite v1.58.0/go.mod h1:rsD2CckafgObKC4DhBlGBf+RiHxkc3hINGt1Xw32tVY=
+ software.sslmate.com/src/go-pkcs12 v0.7.3 h1:JBQD3FDqYjTeyDAeZQklj2ar88ykBLtALloPJHyAauU=
+ software.sslmate.com/src/go-pkcs12 v0.7.3/go.mod h1:Qiz0EyvDRJjjxGyUQa2cCNZn/wMyzrRJ/qcDXOQazLI=
+diff --git a/go/internal/appstate/config_rollback_test.go b/go/internal/appstate/config_rollback_test.go
+new file mode 100644
+index 0000000..3cd1bd6
+--- /dev/null
++++ b/go/internal/appstate/config_rollback_test.go
+@@ -0,0 +1,35 @@
++package appstate
++
++import (
++	"github.com/Karl-Dai/ModbusSim/go/internal/project"
++	"testing"
++)
++
++func TestRestoreConnectionsKeepsUnrelatedObjects(t *testing.T) {
++	m := NewManager(Events{})
++	defer m.CloseAll()
++	req := CreateConnectionRequest{Transport: Transport{Type: project.TransportTCP, Host: "127.0.0.1", Port: 15020}, SlaveID: 1, RegisterRanges: []RegisterRange{}}
++	healthy, err := m.CreateConnection(req)
++	if err != nil {
++		t.Fatal(err)
++	}
++	req.Transport.Port++
++	target, err := m.CreateConnection(req)
++	if err != nil {
++		t.Fatal(err)
++	}
++	before := m.connections[healthy.ID]
++	old := m.Project()
++	if err = m.DeleteConnection(target.ID); err != nil {
++		t.Fatal(err)
++	}
++	if err = m.RestoreConnections(old, []string{target.ID}); err != nil {
++		t.Fatal(err)
++	}
++	if m.connections[healthy.ID] != before {
++		t.Fatal("rollback replaced unrelated listener/simulator")
++	}
++	if m.connections[target.ID] == nil || m.connections[target.ID].state != Stopped {
++		t.Fatal("target was not restored stopped")
++	}
++}
 diff --git a/go/internal/appstate/manager.go b/go/internal/appstate/manager.go
-index 6c22533..8f77f5d 100644
+index 6c22533..b9ba468 100644
 --- a/go/internal/appstate/manager.go
 +++ b/go/internal/appstate/manager.go
 @@ -38,6 +38,8 @@ type CreateConnectionRequest struct {
@@ -16033,7 +17709,29 @@ index 6c22533..8f77f5d 100644
  	if err := conn.server.AddDevice(device); err != nil {
  		return ConnectionInfo{}, fmt.Errorf("failed to add default device: %w", err)
  	}
-@@ -260,13 +260,14 @@ type DeviceInfo struct {
+@@ -72,6 +72,13 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
+ // transport is running: data sources keep advancing registers on a stopped
+ // connection, which is what the app-global Rust tick tasks do.
+ func (m *Manager) newConnection(id string, t Transport) *connection {
++	conn := m.buildConnection(id, t)
++	conn.simulator.Start()
++	return conn
++}
++
++// buildConnection prepares configuration without starting simulation or networking.
++func (m *Manager) buildConnection(id string, t Transport) *connection {
+ 	collector := logcol.NewCollector()
+ 	server := slave.NewServer()
+ 	server.Log = collector
+@@ -89,7 +96,6 @@ func (m *Manager) newConnection(id string, t Transport) *connection {
+ 	server.ChangeCallback = func(changes []slave.Change) { m.events.registerValueChanged(id, changes) }
+ 	collector.SetAppendCallback(func(logcol.Entry) { m.events.logAppended(id) })
+ 	conn.simulator.SetMutationEnabled(m.mutationR)
+-	conn.simulator.Start()
+ 	return conn
+ }
+ 
+@@ -260,13 +266,14 @@ type DeviceInfo struct {
  	RegisterCount int
  }
  
@@ -16054,7 +17752,7 @@ index 6c22533..8f77f5d 100644
  }
  
  // AddDevice registers a device on a connection.
-@@ -281,14 +282,9 @@ func (m *Manager) AddDevice(req AddDeviceRequest) (DeviceInfo, error) {
+@@ -281,14 +288,9 @@ func (m *Manager) AddDevice(req AddDeviceRequest) (DeviceInfo, error) {
  		return DeviceInfo{}, err
  	}
  
@@ -16072,6 +17770,100 @@ index 6c22533..8f77f5d 100644
  	}
  	count := len(device.RegisterDefs)
  	if err := conn.server.AddDevice(device); err != nil {
+diff --git a/go/internal/appstate/project.go b/go/internal/appstate/project.go
+index 44db7f2..d5f0ed1 100644
+--- a/go/internal/appstate/project.go
++++ b/go/internal/appstate/project.go
+@@ -149,24 +149,31 @@ func (m *Manager) ApplyProject(proj *project.Project) (int, error) {
+ 
+ 	m.mu.Lock()
+ 	defer m.mu.Unlock()
+-	m.closeLocked()
+-	m.connections = map[string]*connection{}
+-	m.order = nil
+-
++	staged := map[string]*connection{}
++	order := []string{}
+ 	devices := 0
+ 	for _, config := range proj.Connections {
+-		conn := m.newConnection(config.ID, config.Transport)
++		conn := m.buildConnection(config.ID, config.Transport)
+ 		for _, device := range config.Devices {
+ 			if err := conn.loadDevice(device); err != nil {
+ 				return 0, err
+ 			}
+ 			devices++
+ 		}
+-		m.connections[config.ID] = conn
+-		m.order = append(m.order, config.ID)
++		conn.simulator.SetMutationEnabled(false)
++		staged[config.ID] = conn
++		order = append(order, config.ID)
+ 	}
++	// Publish only after every connection/device has been built successfully.
++	m.closeLocked()
++	m.connections = staged
++	m.order = order
+ 	m.nextID = nextIDAfter(m.connections)
+ 	m.mutationR = false
++	for _, conn := range staged {
++		conn.simulator.Start()
++	}
++
+ 	return devices, nil
+ }
+ 
+@@ -252,3 +259,50 @@ func (m *Manager) CloseAll() {
+ 	m.nextID = 1
+ 	m.mutationR = false
+ }
++
++// RestoreConnections leaves healthy, unrelated listeners and simulations intact.
++// Rolled-back targets are recreated stopped and publish that stopped state.
++func (m *Manager) RestoreConnections(proj *project.Project, ids []string) error {
++	if err := proj.Validate(); err != nil {
++		return err
++	}
++	selected := map[string]bool{}
++	for _, id := range ids {
++		selected[id] = true
++	}
++	configs := map[string]*project.Connection{}
++	for _, config := range proj.Connections {
++		configs[config.ID] = config
++	}
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	for id := range selected {
++		if conn := m.connections[id]; conn != nil {
++			conn.stop()
++			conn.simulator.Stop()
++			delete(m.connections, id)
++		}
++		if config := configs[id]; config != nil {
++			conn := m.newConnection(config.ID, config.Transport)
++			for _, device := range config.Devices {
++				if err := conn.loadDevice(device); err != nil {
++					conn.stop()
++					conn.simulator.Stop()
++					return err
++				}
++			}
++			m.connections[id] = conn
++		}
++	}
++	m.order = nil
++	for _, config := range proj.Connections {
++		if m.connections[config.ID] != nil {
++			m.order = append(m.order, config.ID)
++		}
++	}
++	m.nextID = nextIDAfter(m.connections)
++	for id := range selected {
++		m.events.connectionStateChanged(id, Stopped)
++	}
++	return nil
++}
 diff --git a/go/internal/appstate/register_ranges.go b/go/internal/appstate/register_ranges.go
 new file mode 100644
 index 0000000..ce30227
@@ -16354,6 +18146,969 @@ index 0000000..a23df8b
 +	if err != nil || len(defs) != 65536 {
 +		t.Fatalf("full area: %d %v", len(defs), err)
 +	}
++}
+diff --git a/go/internal/configstore/schema.sql b/go/internal/configstore/schema.sql
+new file mode 100644
+index 0000000..220228d
+--- /dev/null
++++ b/go/internal/configstore/schema.sql
+@@ -0,0 +1,17 @@
++CREATE TABLE IF NOT EXISTS document (
++ id INTEGER PRIMARY KEY, role TEXT NOT NULL, key TEXT NOT NULL,
++ revision INTEGER NOT NULL CHECK(revision>0), UNIQUE(role,key)
++);
++CREATE TABLE IF NOT EXISTS field (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
++CREATE TABLE IF NOT EXISTS node (
++ document_id INTEGER NOT NULL REFERENCES document(id) ON DELETE CASCADE,
++ node_id INTEGER NOT NULL, parent_id INTEGER NOT NULL, slot INTEGER NOT NULL,
++ kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 8), value,
++ PRIMARY KEY(document_id,node_id)
++) WITHOUT ROWID;
++CREATE TABLE IF NOT EXISTS migration (
++ role TEXT NOT NULL, key TEXT NOT NULL, source TEXT NOT NULL, sha256 TEXT NOT NULL,
++ PRIMARY KEY(role,key,source)
++) WITHOUT ROWID;
++PRAGMA application_id=1396787535;
++PRAGMA user_version=1;
+diff --git a/go/internal/configstore/store.go b/go/internal/configstore/store.go
+new file mode 100644
+index 0000000..57b2bd6
+--- /dev/null
++++ b/go/internal/configstore/store.go
+@@ -0,0 +1,934 @@
++// Package configstore persists suite configuration as typed SQLite records.
++package configstore
++
++import (
++	"bytes"
++	"context"
++	"crypto/sha256"
++	"database/sql"
++	_ "embed"
++	"encoding/binary"
++	"encoding/hex"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"io"
++	"math"
++	"net/url"
++	"os"
++	"path/filepath"
++	"reflect"
++	"sort"
++	"strconv"
++	"strings"
++	"sync"
++	"unicode/utf8"
++
++	_ "modernc.org/sqlite"
++)
++
++//go:embed schema.sql
++var schema string
++
++const applicationID = 1396787535
++
++var ErrConflict = errors.New("configuration changed in another window; reload before saving")
++
++type Store struct {
++	db        *sql.DB
++	role      string
++	mu        sync.Mutex
++	revisions map[string]int64
++}
++type cell struct {
++	id, parent, slot int64
++	kind             int
++	value            any
++}
++type queryer interface {
++	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
++	QueryRowContext(context.Context, string, ...any) *sql.Row
++	ExecContext(context.Context, string, ...any) (sql.Result, error)
++}
++
++func validRole(role string) bool {
++	switch role {
++	case "launcher", "iec104.master", "iec104.slave", "modbus.master", "modbus.slave", "opcua.master", "opcua.server", "pmu.master", "pmu.sub":
++		return true
++	}
++	return false
++}
++func Open(root, role string) (*Store, error) {
++	if !filepath.IsAbs(root) || !validRole(role) {
++		return nil, fmt.Errorf("invalid configuration root or role")
++	}
++	if err := os.MkdirAll(root, 0700); err != nil {
++		return nil, err
++	}
++	return openFile(filepath.Join(root, "saio.db"), role, false)
++}
++func openFile(path, role string, readonly bool) (*Store, error) {
++	if !validRole(role) {
++		return nil, fmt.Errorf("invalid configuration role")
++	}
++	if !readonly {
++		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0600)
++		if err != nil {
++			return nil, err
++		}
++		if err = file.Close(); err != nil {
++			return nil, err
++		}
++	}
++	dsn := path
++	if readonly {
++		dsn = (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}).String()
++	}
++	db, err := sql.Open("sqlite", dsn)
++	if err != nil {
++		return nil, err
++	}
++	db.SetMaxOpenConns(1)
++	fail := func(e error) (*Store, error) { db.Close(); return nil, e }
++	if _, err = db.Exec("PRAGMA busy_timeout=5000"); err != nil {
++		return fail(err)
++	}
++	if _, err = db.Exec("PRAGMA foreign_keys=ON"); err != nil {
++		return fail(err)
++	}
++	if readonly {
++		if err = validate(db, false); err != nil {
++			return fail(err)
++		}
++	} else {
++		conn, e := db.Conn(context.Background())
++		if e != nil {
++			return fail(e)
++		}
++		if _, e = conn.ExecContext(context.Background(), "BEGIN IMMEDIATE"); e == nil {
++			e = validate(conn, true)
++			if e == nil {
++				_, e = conn.ExecContext(context.Background(), "COMMIT")
++			} else {
++				conn.ExecContext(context.Background(), "ROLLBACK")
++			}
++		}
++		conn.Close()
++		if e != nil {
++			return fail(e)
++		}
++		if _, err = db.Exec("PRAGMA journal_mode=WAL"); err != nil {
++			return fail(err)
++		}
++		if _, err = db.Exec("PRAGMA synchronous=FULL"); err != nil {
++			return fail(err)
++		}
++	}
++	return &Store{db: db, role: role, revisions: map[string]int64{}}, nil
++}
++func validate(q queryer, create bool) error {
++	var id, version, count int
++	ctx := context.Background()
++	if err := q.QueryRowContext(ctx, "PRAGMA application_id").Scan(&id); err != nil {
++		return err
++	}
++	if err := q.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
++		return err
++	}
++	if id == applicationID && version == 1 {
++		return nil
++	}
++	if create && id == 0 && version == 0 {
++		if err := q.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").Scan(&count); err != nil {
++			return err
++		}
++		if count == 0 {
++			_, err := q.ExecContext(ctx, schema)
++			return err
++		}
++	}
++	return fmt.Errorf("unsupported or unrelated configuration database (application=%d version=%d)", id, version)
++}
++func (s *Store) Close() error { return s.db.Close() }
++func normalize(v any) (any, error) {
++	b, e := json.Marshal(v)
++	if e != nil {
++		return nil, e
++	}
++	out, err := decodeJSON(b)
++	if err != nil {
++		return nil, err
++	}
++	return restoreFloatKinds(reflect.ValueOf(v), out), nil
++}
++
++// encoding/json emits integral floats as integers. Restore their source type.
++func restoreFloatKinds(v reflect.Value, out any) any {
++	for v.IsValid() && (v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface) {
++		if v.IsNil() {
++			return out
++		}
++		v = v.Elem()
++	}
++	if !v.IsValid() {
++		return out
++	}
++	switch v.Kind() {
++	case reflect.Float32, reflect.Float64:
++		return v.Float()
++	case reflect.Map:
++		if m, ok := out.(map[string]any); ok && v.Type().Key().Kind() == reflect.String {
++			it := v.MapRange()
++			for it.Next() {
++				key := it.Key().String()
++				if old, yes := m[key]; yes {
++					m[key] = restoreFloatKinds(it.Value(), old)
++				}
++			}
++		}
++	case reflect.Slice, reflect.Array:
++		if list, ok := out.([]any); ok {
++			for i := range list {
++				list[i] = restoreFloatKinds(v.Index(i), list[i])
++			}
++		}
++	case reflect.Struct:
++		if m, ok := out.(map[string]any); ok {
++			for i := 0; i < v.NumField(); i++ {
++				f := v.Type().Field(i)
++				if f.PkgPath != "" {
++					continue
++				}
++				name := strings.Split(f.Tag.Get("json"), ",")[0]
++				if name == "-" {
++					continue
++				}
++				if name == "" {
++					name = f.Name
++				}
++				if old, yes := m[name]; yes {
++					m[name] = restoreFloatKinds(v.Field(i), old)
++				}
++			}
++		}
++	}
++	return out
++}
++func decodeJSON(b []byte) (any, error) {
++	d := json.NewDecoder(bytes.NewReader(b))
++	d.UseNumber()
++	var v any
++	if e := d.Decode(&v); e != nil {
++		return nil, e
++	}
++	var extra any
++	if e := d.Decode(&extra); e != io.EOF {
++		return nil, fmt.Errorf("configuration has trailing content")
++	}
++	return v, nil
++}
++func assign(dst, v any) error {
++	switch target := dst.(type) {
++	case *any:
++		*target = v
++		return nil
++	case *map[string]any:
++		if m, ok := v.(map[string]any); ok {
++			*target = m
++			return nil
++		}
++	case *[]any:
++		if list, ok := v.([]any); ok {
++			*target = list
++			return nil
++		}
++	}
++	if dst == nil {
++		return nil
++	}
++	b, e := json.Marshal(v)
++	if e != nil {
++		return e
++	}
++	d := json.NewDecoder(bytes.NewReader(b))
++	d.UseNumber()
++	return d.Decode(dst)
++}
++func (s *Store) Load(key string, dst any) (bool, error) {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	delete(s.revisions, key)
++	tx, e := s.db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
++	if e != nil {
++		return false, e
++	}
++	defer tx.Rollback()
++	v, _, rev, _, e := read(tx, s.role, key)
++	if e != nil {
++		delete(s.revisions, key)
++		return false, e
++	}
++	if rev > 0 {
++		if e = assign(dst, v); e != nil {
++			delete(s.revisions, key)
++			return false, e
++		}
++	}
++	if e = tx.Commit(); e != nil {
++		delete(s.revisions, key)
++		return false, e
++	}
++	s.revisions[key] = rev
++	return rev > 0, nil
++}
++func read(q queryer, role, key string) (any, int64, int64, map[int64]cell, error) {
++	ctx := context.Background()
++	var id, rev int64
++	e := q.QueryRowContext(ctx, "SELECT id,revision FROM document WHERE role=? AND key=?", role, key).Scan(&id, &rev)
++	if e == sql.ErrNoRows {
++		return nil, 0, 0, nil, nil
++	}
++	if e != nil {
++		return nil, 0, 0, nil, e
++	}
++	rows, e := q.QueryContext(ctx, "SELECT node_id,parent_id,slot,kind,value FROM node WHERE document_id=?", id)
++	if e != nil {
++		return nil, 0, 0, nil, e
++	}
++	cells := map[int64]cell{}
++	children := map[int64][]cell{}
++	for rows.Next() {
++		var c cell
++		if e = rows.Scan(&c.id, &c.parent, &c.slot, &c.kind, &c.value); e != nil {
++			rows.Close()
++			return nil, 0, 0, nil, e
++		}
++		cells[c.id] = c
++		if c.id != 0 {
++			children[c.parent] = append(children[c.parent], c)
++		}
++	}
++	e = rows.Err()
++	rows.Close()
++	if e != nil {
++		return nil, 0, 0, nil, e
++	}
++	sqlCells := cells
++	cells = make(map[int64]cell, len(sqlCells))
++	for id, c := range sqlCells {
++		cells[id] = c
++	}
++	virtual := int64(-2)
++	for id, c := range sqlCells {
++		if c.kind == 7 || c.kind == 8 {
++			if c.value != nil {
++				packed, ok := c.value.([]byte)
++				if !ok {
++					return nil, 0, 0, nil, fmt.Errorf("invalid packed container")
++				}
++				leaves, err := unpackScalars(packed)
++				if err != nil {
++					return nil, 0, 0, nil, err
++				}
++				for _, leaf := range leaves {
++					leaf.id = virtual
++					leaf.parent = id
++					virtual--
++					cells[leaf.id] = leaf
++					children[id] = append(children[id], leaf)
++				}
++				c.value = nil
++				cells[id] = c
++			}
++		}
++	}
++	fields, e := readFields(q)
++	if e != nil {
++		return nil, 0, 0, nil, e
++	}
++	visited := map[int64]bool{}
++	var restore func(int64, int) (any, error)
++	restore = func(n int64, depth int) (any, error) {
++		if depth > 256 || visited[n] {
++			return nil, fmt.Errorf("invalid configuration node graph")
++		}
++		visited[n] = true
++		c, ok := cells[n]
++		if !ok {
++			return nil, fmt.Errorf("missing configuration node")
++		}
++		if (c.kind <= 2 || c.kind == 7 || c.kind == 8) && c.value != nil {
++			return nil, fmt.Errorf("invalid null/container scalar")
++		}
++		switch c.kind {
++		case 0:
++			return nil, nil
++		case 1:
++			return false, nil
++		case 2:
++			return true, nil
++		case 3:
++			v, ok := c.value.(int64)
++			if !ok {
++				return nil, fmt.Errorf("invalid signed integer")
++			}
++			return json.Number(strconv.FormatInt(v, 10)), nil
++		case 4:
++			v, ok := c.value.([]byte)
++			if !ok || len(v) != 8 {
++				return nil, fmt.Errorf("invalid unsigned integer")
++			}
++			return json.Number(strconv.FormatUint(binary.BigEndian.Uint64(v), 10)), nil
++		case 5:
++			v, ok := c.value.(float64)
++			if !ok {
++				if iv, yes := c.value.(int64); yes {
++					v = float64(iv)
++				} else {
++					return nil, fmt.Errorf("invalid floating point value")
++				}
++			}
++			if math.IsNaN(v) || math.IsInf(v, 0) {
++				return nil, fmt.Errorf("nonfinite configuration value")
++			}
++			return v, nil
++		case 6:
++			v, ok := c.value.(string)
++			if !ok {
++				return nil, fmt.Errorf("invalid text value")
++			}
++			return v, nil
++		case 7:
++			list := children[n]
++			sort.Slice(list, func(i, j int) bool { return list[i].slot > list[j].slot })
++			out := make([]any, len(list))
++			for i, ch := range list {
++				if ch.slot != -int64(i)-1 {
++					return nil, fmt.Errorf("invalid array ordering")
++				}
++				v, e := restore(ch.id, depth+1)
++				if e != nil {
++					return nil, e
++				}
++				out[i] = v
++			}
++			return out, nil
++		case 8:
++			out := map[string]any{}
++			for _, ch := range children[n] {
++				name, ok := fields[ch.slot]
++				if !ok || ch.slot <= 0 {
++					return nil, fmt.Errorf("invalid object field")
++				}
++				if _, dup := out[name]; dup {
++					return nil, fmt.Errorf("duplicate object field")
++				}
++				v, e := restore(ch.id, depth+1)
++				if e != nil {
++					return nil, e
++				}
++				out[name] = v
++			}
++			return out, nil
++		}
++		return nil, fmt.Errorf("unknown configuration type")
++	}
++	root, ok := cells[0]
++	if !ok || root.parent != -1 || root.slot != 0 {
++		return nil, 0, 0, nil, fmt.Errorf("invalid configuration root")
++	}
++	v, e := restore(0, 0)
++	if e == nil && len(visited) != len(cells) {
++		e = fmt.Errorf("orphan configuration records")
++	}
++	return v, id, rev, sqlCells, e
++}
++func readFields(q queryer) (map[int64]string, error) {
++	rows, e := q.QueryContext(context.Background(), "SELECT id,name FROM field")
++	if e != nil {
++		return nil, e
++	}
++	defer rows.Close()
++	out := map[int64]string{}
++	for rows.Next() {
++		var id int64
++		var n string
++		if e = rows.Scan(&id, &n); e != nil {
++			return nil, e
++		}
++		out[id] = n
++	}
++	return out, rows.Err()
++}
++func (s *Store) Save(key string, value any) error {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	expected, ok := s.revisions[key]
++	if !ok {
++		return fmt.Errorf("configuration must be loaded before saving")
++	}
++	v, e := normalize(value)
++	if e != nil {
++		return e
++	}
++	rev, e := s.write(key, v, expected, "", "")
++	if e == nil {
++		s.revisions[key] = rev
++	}
++	return e
++}
++func (s *Store) write(key string, v any, expected int64, source, digest string) (int64, error) {
++	ctx := context.Background()
++	conn, e := s.db.Conn(ctx)
++	if e != nil {
++		return 0, e
++	}
++	defer conn.Close()
++	if _, e = conn.ExecContext(ctx, "BEGIN IMMEDIATE"); e != nil {
++		return 0, e
++	}
++	defer conn.ExecContext(ctx, "ROLLBACK")
++	_, id, rev, old, e := read(conn, s.role, key)
++	if e != nil {
++		return 0, e
++	}
++	if rev != expected {
++		return 0, ErrConflict
++	}
++	if rev == 0 {
++		result, e := conn.ExecContext(ctx, "INSERT INTO document(role,key,revision) VALUES(?,?,1)", s.role, key)
++		if e != nil {
++			return 0, e
++		}
++		id, e = result.LastInsertId()
++		if e != nil {
++			return 0, e
++		}
++	}
++	allFields, e := readFields(conn)
++	if e != nil {
++		return 0, e
++	}
++	fieldIDs := map[string]int64{}
++	for id, name := range allFields {
++		fieldIDs[name] = id
++	}
++	nextID := int64(0)
++	edges := map[[2]int64]int64{}
++	for id, c := range old {
++		if id > nextID {
++			nextID = id
++		}
++		edges[[2]int64{c.parent, c.slot}] = id
++	}
++	nodes := map[int64]cell{}
++	var flatten func(any, int64, int64, int64, int) error
++	flatten = func(value any, id, parent, slot int64, depth int) error {
++		if depth > 256 {
++			return fmt.Errorf("configuration nesting exceeds 256")
++		}
++		c := cell{id: id, parent: parent, slot: slot}
++		var packed []cell
++		child := func(value any, slot int64) error {
++			switch value.(type) {
++			case []any, map[string]any:
++			default:
++				leaf, e := scalarCell(value)
++				if e != nil {
++					return e
++				}
++				leaf.slot = slot
++				packed = append(packed, leaf)
++				return nil
++			}
++			cid, ok := edges[[2]int64{id, slot}]
++			if !ok {
++				nextID++
++				cid = nextID
++			}
++			return flatten(value, cid, id, slot, depth+1)
++		}
++		switch x := value.(type) {
++		case nil:
++			c.kind = 0
++		case bool:
++			if x {
++				c.kind = 2
++			} else {
++				c.kind = 1
++			}
++		case string:
++			c.kind = 6
++			c.value = x
++		case json.Number:
++			raw := string(x)
++			if strings.ContainsAny(raw, ".eE") || raw == "-0" {
++				f, e := strconv.ParseFloat(raw, 64)
++				if e != nil || math.IsInf(f, 0) || math.IsNaN(f) {
++					return fmt.Errorf("invalid number %s", raw)
++				}
++				c.kind = 5
++				c.value = f
++			} else if i, e := strconv.ParseInt(raw, 10, 64); e == nil {
++				c.kind = 3
++				c.value = i
++			} else {
++				u, e := strconv.ParseUint(raw, 10, 64)
++				if e != nil {
++					return e
++				}
++				c.kind = 4
++				b := make([]byte, 8)
++				binary.BigEndian.PutUint64(b, u)
++				c.value = b
++			}
++		case float64:
++			if math.IsNaN(x) || math.IsInf(x, 0) {
++				return fmt.Errorf("nonfinite configuration value")
++			}
++			c.kind = 5
++			c.value = x
++		case []any:
++			c.kind = 7
++			for i, val := range x {
++				if e := child(val, -int64(i)-1); e != nil {
++					return e
++				}
++			}
++		case map[string]any:
++			c.kind = 8
++			names := make([]string, 0, len(x))
++			for n := range x {
++				names = append(names, n)
++			}
++			sort.Strings(names)
++			for _, name := range names {
++				fid, ok := fieldIDs[name]
++				if !ok {
++					if _, e := conn.ExecContext(ctx, "INSERT OR IGNORE INTO field(name) VALUES(?)", name); e != nil {
++						return e
++					}
++					if e := conn.QueryRowContext(ctx, "SELECT id FROM field WHERE name=?", name).Scan(&fid); e != nil {
++						return e
++					}
++					fieldIDs[name] = fid
++				}
++				if e := child(x[name], fid); e != nil {
++					return e
++				}
++			}
++		default:
++			return fmt.Errorf("unsupported configuration value %T", value)
++		}
++		if len(packed) > 0 {
++			c.value = packScalars(packed)
++		}
++		nodes[id] = c
++		return nil
++	}
++	if e = flatten(v, 0, -1, 0, 0); e != nil {
++		return 0, e
++	}
++	changed := rev == 0
++	for nid := range old {
++		if _, ok := nodes[nid]; !ok {
++			if _, e = conn.ExecContext(ctx, "DELETE FROM node WHERE document_id=? AND node_id=?", id, nid); e != nil {
++				return 0, e
++			}
++			changed = true
++		}
++	}
++	ids := make([]int64, 0, len(nodes))
++	for nid := range nodes {
++		ids = append(ids, nid)
++	}
++	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
++	for _, nid := range ids {
++		c := nodes[nid]
++		if prev, ok := old[nid]; ok && reflect.DeepEqual(prev, c) {
++			continue
++		}
++		if _, e = conn.ExecContext(ctx, "INSERT INTO node(document_id,node_id,parent_id,slot,kind,value) VALUES(?,?,?,?,?,?) ON CONFLICT(document_id,node_id) DO UPDATE SET parent_id=excluded.parent_id,slot=excluded.slot,kind=excluded.kind,value=excluded.value", id, nid, c.parent, c.slot, c.kind, c.value); e != nil {
++			return 0, e
++		}
++		changed = true
++	}
++	if rev == 0 {
++		rev = 1
++	} else if changed {
++		rev++
++		if _, e = conn.ExecContext(ctx, "UPDATE document SET revision=? WHERE id=?", rev, id); e != nil {
++			return 0, e
++		}
++	}
++	if source != "" {
++		if _, e = conn.ExecContext(ctx, "INSERT INTO migration(role,key,source,sha256) VALUES(?,?,?,?)", s.role, key, source, digest); e != nil {
++			return 0, e
++		}
++	}
++	if _, e = conn.ExecContext(ctx, "COMMIT"); e != nil {
++		return 0, e
++	}
++	return rev, nil
++}
++
++// MigrateJSON imports a retained legacy file only while this document is absent.
++// A nil payload captures absence without creating a document.
++func (s *Store) MigrateJSON(key string, data []byte, source string) (bool, error) {
++	var existing any
++	present, err := s.Load(key, &existing)
++	if err != nil || present || data == nil {
++		return present, err
++	}
++	value, err := decodeJSON(data)
++	if err != nil {
++		s.mu.Lock()
++		delete(s.revisions, key)
++		s.mu.Unlock()
++		return false, err
++	}
++	digest := sha256.Sum256(data)
++	s.mu.Lock()
++	rev, err := s.write(key, value, 0, source, hex.EncodeToString(digest[:]))
++	if err == nil {
++		s.revisions[key] = rev
++	} else {
++		delete(s.revisions, key)
++	}
++	s.mu.Unlock()
++	if errors.Is(err, ErrConflict) {
++		return s.Load(key, nil)
++	}
++	return err == nil, err
++}
++
++// ReadJSON reads the current document without retaining a write session.
++func ReadJSON(root, role, key string) ([]byte, bool, error) {
++	s, e := Open(root, role)
++	if e != nil {
++		return nil, false, e
++	}
++	defer s.Close()
++	var value any
++	present, e := s.Load(key, &value)
++	if e != nil || !present {
++		return nil, present, e
++	}
++	data, e := json.Marshal(value)
++	return data, true, e
++}
++
++// ExportProject writes one validated role/document as a portable SQLite file.
++func ExportProject(path, role, key string, value any) error {
++	if !validRole(role) || key == "" {
++		return fmt.Errorf("invalid project role or key")
++	}
++	if name := strings.ToLower(filepath.Base(path)); name == "saio.db" || name == "saio.db-wal" || name == "saio.db-shm" || name == "saio.db-journal" {
++		return fmt.Errorf("project export cannot replace the shared configuration database")
++	}
++	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
++		return err
++	}
++	temp, e := os.CreateTemp(filepath.Dir(path), ".saio-project-*")
++	if e != nil {
++		return e
++	}
++	name := temp.Name()
++	temp.Close()
++	defer os.Remove(name)
++	s, e := openFile(name, role, false)
++	if e != nil {
++		return e
++	}
++	_, e = s.Load(key, nil)
++	if e == nil {
++		e = s.Save(key, value)
++	}
++	if e == nil {
++		_, e = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
++	}
++	if e == nil {
++		_, e = s.db.Exec("PRAGMA journal_mode=DELETE")
++	}
++	closeErr := s.Close()
++	if e != nil {
++		return e
++	}
++	if closeErr != nil {
++		return closeErr
++	}
++	return os.Rename(name, path)
++}
++
++// ReadProject accepts the selected SQLite document or a legacy JSON document.
++func ReadProject(path, role, key string, dst any) error {
++	if !validRole(role) || key == "" {
++		return fmt.Errorf("invalid project role or key")
++	}
++	data, e := os.ReadFile(path)
++	if e != nil {
++		return e
++	}
++	if !bytes.HasPrefix(data, []byte("SQLite format 3\x00")) {
++		value, e := decodeJSON(data)
++		if e != nil {
++			return e
++		}
++		return assign(dst, value)
++	}
++	s, e := openFile(path, role, true)
++	if e != nil {
++		return e
++	}
++	defer s.Close()
++	var count int
++	if e = s.db.QueryRow("SELECT count(*) FROM document").Scan(&count); e != nil {
++		return e
++	}
++	if count != 1 {
++		return fmt.Errorf("project must contain exactly one document")
++	}
++	var value any
++	present, e := s.Load(key, &value)
++	if e != nil {
++		return e
++	}
++	if !present {
++		return fmt.Errorf("project role or document does not match")
++	}
++	return assign(dst, value)
++}
++
++func scalarCell(value any) (cell, error) {
++	c := cell{}
++	switch x := value.(type) {
++	case nil:
++		c.kind = 0
++	case bool:
++		if x {
++			c.kind = 2
++		} else {
++			c.kind = 1
++		}
++	case string:
++		c.kind = 6
++		c.value = x
++	case json.Number:
++		raw := string(x)
++		if strings.ContainsAny(raw, ".eE") || raw == "-0" {
++			f, e := strconv.ParseFloat(raw, 64)
++			if e != nil || math.IsInf(f, 0) || math.IsNaN(f) {
++				return cell{}, fmt.Errorf("invalid number %s", raw)
++			}
++			c.kind = 5
++			c.value = f
++		} else if i, e := strconv.ParseInt(raw, 10, 64); e == nil {
++			c.kind = 3
++			c.value = i
++		} else {
++			u, e := strconv.ParseUint(raw, 10, 64)
++			if e != nil {
++				return cell{}, e
++			}
++			c.kind = 4
++			b := make([]byte, 8)
++			binary.BigEndian.PutUint64(b, u)
++			c.value = b
++		}
++	case float64:
++		if math.IsNaN(x) || math.IsInf(x, 0) {
++			return cell{}, fmt.Errorf("nonfinite configuration value")
++		}
++		c.kind = 5
++		c.value = x
++	default:
++		return cell{}, fmt.Errorf("invalid packed scalar %T", value)
++	}
++	return c, nil
++}
++func packScalars(cells []cell) []byte {
++	sort.Slice(cells, func(i, j int) bool { return cells[i].slot < cells[j].slot })
++	out := []byte{'S', 1}
++	var scratch [10]byte
++	for _, c := range cells {
++		n := binary.PutVarint(scratch[:], c.slot)
++		out = append(out, scratch[:n]...)
++		out = append(out, byte(c.kind))
++		switch c.kind {
++		case 3:
++			n = binary.PutVarint(scratch[:], c.value.(int64))
++			out = append(out, scratch[:n]...)
++		case 4:
++			out = append(out, c.value.([]byte)...)
++		case 5:
++			var b [8]byte
++			binary.BigEndian.PutUint64(b[:], math.Float64bits(c.value.(float64)))
++			out = append(out, b[:]...)
++		case 6:
++			v := []byte(c.value.(string))
++			n = binary.PutUvarint(scratch[:], uint64(len(v)))
++			out = append(out, scratch[:n]...)
++			out = append(out, v...)
++		}
++	}
++	return out
++}
++func unpackScalars(data []byte) ([]cell, error) {
++	fail := func() ([]cell, error) { return nil, fmt.Errorf("invalid packed scalar record") }
++	if len(data) < 2 || data[0] != 'S' || data[1] != 1 {
++		return fail()
++	}
++	data = data[2:]
++	var out []cell
++	seen := map[int64]bool{}
++	for len(data) > 0 {
++		slot, n := binary.Varint(data)
++		if n <= 0 || slot == 0 || seen[slot] {
++			return fail()
++		}
++		seen[slot] = true
++		data = data[n:]
++		if len(data) == 0 {
++			return fail()
++		}
++		c := cell{slot: slot, kind: int(data[0])}
++		data = data[1:]
++		switch c.kind {
++		case 0, 1, 2:
++		case 3:
++			v, n := binary.Varint(data)
++			if n <= 0 {
++				return fail()
++			}
++			c.value = v
++			data = data[n:]
++		case 4:
++			if len(data) < 8 {
++				return fail()
++			}
++			c.value = append([]byte{}, data[:8]...)
++			data = data[8:]
++		case 5:
++			if len(data) < 8 {
++				return fail()
++			}
++			c.value = math.Float64frombits(binary.BigEndian.Uint64(data))
++			data = data[8:]
++		case 6:
++			size, n := binary.Uvarint(data)
++			if n <= 0 || size > uint64(len(data)-n) {
++				return fail()
++			}
++			data = data[n:]
++			if !utf8.Valid(data[:int(size)]) {
++				return fail()
++			}
++			c.value = string(data[:int(size)])
++			data = data[int(size):]
++		default:
++			return fail()
++		}
++		out = append(out, c)
++	}
++	return out, nil
 +}
 diff --git a/go/internal/master/master.go b/go/internal/master/master.go
 index 22e0e13..7ae285c 100644
@@ -16943,6 +19698,51 @@ index 7ec9018..d93960f 100644
  		}
  		if n == 0 {
  			break
+diff --git a/go/internal/masterstate/config_rollback_test.go b/go/internal/masterstate/config_rollback_test.go
+new file mode 100644
+index 0000000..92fb05c
+--- /dev/null
++++ b/go/internal/masterstate/config_rollback_test.go
+@@ -0,0 +1,39 @@
++package masterstate
++
++import "testing"
++
++func TestRestoreConnectionsKeepsUnrelatedLiveConnection(t *testing.T) {
++	h := serve(t, 0)
++	m, healthyID := newTestManager(t, h, Events{})
++	healthy, _ := m.get(healthyID)
++	target, err := m.CreateConnection(DefaultSettings())
++	if err != nil {
++		t.Fatal(err)
++	}
++	old, err := m.Project()
++	if err != nil {
++		t.Fatal(err)
++	}
++	changed := DefaultSettings()
++	changed.SlaveID = 7
++	if err = m.UpdateConnection(target.ID, changed); err != nil {
++		t.Fatal(err)
++	}
++	if err = m.RestoreConnections(old, []string{target.ID}); err != nil {
++		t.Fatal(err)
++	}
++	after, _ := m.get(healthyID)
++	if after != healthy {
++		t.Fatal("rollback replaced unrelated live engine")
++	}
++	healthy.mu.Lock()
++	state := healthy.state
++	healthy.mu.Unlock()
++	if state != "Connected" {
++		t.Fatalf("healthy state = %s", state)
++	}
++	restored, _ := m.GetSettings(target.ID)
++	if restored.SlaveID != 1 {
++		t.Fatalf("rollback slave id = %d", restored.SlaveID)
++	}
++}
 diff --git a/go/internal/masterstate/discovery.go b/go/internal/masterstate/discovery.go
 index ac600aa..09c6061 100644
 --- a/go/internal/masterstate/discovery.go
@@ -17454,10 +20254,33 @@ index 0000000..90683f8
 +	}
 +}
 diff --git a/go/internal/masterstate/project.go b/go/internal/masterstate/project.go
-index 97f53cd..515a218 100644
+index 97f53cd..0391447 100644
 --- a/go/internal/masterstate/project.go
 +++ b/go/internal/masterstate/project.go
-@@ -36,7 +36,7 @@ func (m *Manager) SaveProject(path string) error {
+@@ -7,13 +7,13 @@ import (
+ 	"strings"
+ )
+ 
+-func (m *Manager) SaveProject(path string) error {
++func (m *Manager) Project() (*project.Project, error) {
+ 	m.workspace.Lock()
+ 	defer m.workspace.Unlock()
+ 	m.mu.Lock()
+ 	if m.closed {
+ 		m.mu.Unlock()
+-		return fmt.Errorf("workspace closed")
++		return nil, fmt.Errorf("workspace closed")
+ 	}
+ 	list := []*connection{}
+ 	for _, id := range m.order {
+@@ -30,16 +30,23 @@ func (m *Manager) SaveProject(path string) error {
+ 		for _, g := range groups {
+ 			f, err := readFunction(g.Function)
+ 			if err != nil {
+-				return err
++				return nil, err
+ 			}
+ 			sid := s.SlaveID
  			if g.SlaveID != nil {
  				sid = *g.SlaveID
  			}
@@ -17466,7 +20289,32 @@ index 97f53cd..515a218 100644
  		}
  		p.Connections = append(p.Connections, s.project(c.id, pg))
  	}
-@@ -86,6 +86,9 @@ func (m *Manager) LoadProject(path string) (int, error) {
++	return p, nil
++}
++func (m *Manager) SaveProject(path string) error {
++	p, err := m.Project()
++	if err != nil {
++		return err
++	}
+ 	return project.SaveFile(path, p)
+ }
+ func (m *Manager) LoadProject(path string) (int, error) {
+@@ -47,6 +54,14 @@ func (m *Manager) LoadProject(path string) (int, error) {
+ 	if err != nil {
+ 		return 0, err
+ 	}
++	return m.ApplyProject(p)
++}
++
++// ApplyProject restores configurations stopped; it never reconnects or starts polling.
++func (m *Manager) ApplyProject(p *project.Project) (int, error) {
++	if err := p.Validate(); err != nil {
++		return 0, err
++	}
+ 	if p.Type != project.TypeMaster {
+ 		return 0, fmt.Errorf("project is not a master project")
+ 	}
+@@ -86,6 +101,9 @@ func (m *Manager) LoadProject(path string) (int, error) {
  			}
  			sid := pg.SlaveID
  			g := ScanGroup{ID: gid, Name: pg.Name, Function: fn, StartAddress: pg.StartAddress, Quantity: pg.Count, IntervalMS: pg.IntervalMS, Enabled: pg.Enabled, SlaveID: &sid}
@@ -17476,6 +20324,62 @@ index 97f53cd..515a218 100644
  			if _, err := g.engine(); err != nil {
  				return 0, err
  			}
+@@ -125,3 +143,55 @@ func (m *Manager) LoadProject(path string) (int, error) {
+ 	m.mu.Unlock()
+ 	return total, nil
+ }
++
++// RestoreConnections rolls back only configuration targets. Other connections
++// retain their engines, polling tasks and logs. Restored targets stay stopped.
++func (m *Manager) RestoreConnections(p *project.Project, ids []string) error {
++	staged := NewManager(Events{})
++	if _, err := staged.ApplyProject(p); err != nil {
++		return err
++	}
++	selected := map[string]bool{}
++	for _, id := range ids {
++		selected[id] = true
++	}
++	m.workspace.Lock()
++	defer m.workspace.Unlock()
++	m.mu.Lock()
++	old := []*connection{}
++	for id := range selected {
++		if c := m.connections[id]; c != nil {
++			old = append(old, c)
++		}
++	}
++	m.mu.Unlock()
++	for _, c := range old {
++		c.cancel()
++		c.disconnect(true)
++	}
++	m.mu.Lock()
++	for id := range selected {
++		delete(m.connections, id)
++		if c := staged.connections[id]; c != nil {
++			c.owner = m
++			m.connections[id] = c
++		}
++	}
++	order := []string{}
++	for _, c := range p.Connections {
++		if m.connections[c.ID] != nil {
++			order = append(order, c.ID)
++		}
++	}
++	m.order = order
++	if staged.nextID > m.nextID {
++		m.nextID = staged.nextID
++	}
++	m.mu.Unlock()
++	for id := range selected {
++		if m.events.Emit != nil {
++			m.events.Emit("master-connection-state", ConnectionStateEvent{id, "Disconnected"})
++		}
++	}
++	return nil
++}
 diff --git a/go/internal/masterstate/tls_identity_test.go b/go/internal/masterstate/tls_identity_test.go
 new file mode 100644
 index 0000000..dc46912
@@ -17709,10 +20613,31 @@ index 7bcbd45..201fb4f 100644
  
  // RequestSettings mirrors request.rs's RequestSettings.
 diff --git a/go/internal/project/validate.go b/go/internal/project/validate.go
-index 8ae77b2..f607fd5 100644
+index 8ae77b2..42a3fb6 100644
 --- a/go/internal/project/validate.go
 +++ b/go/internal/project/validate.go
-@@ -50,6 +50,13 @@ func (c *Connection) Validate() error {
+@@ -14,11 +14,20 @@ import (
+ // device point definitions and their generated-value sources, scan groups, and
+ // the request/reconnect/proxy limits.
+ func (p *Project) Validate() error {
++	if p == nil {
++		return fmt.Errorf("project is missing")
++	}
++	if p.Version != CurrentVersion {
++		return fmt.Errorf("unsupported project version: %d", p.Version)
++	}
+ 	if p.Type != TypeSlave && p.Type != TypeMaster {
+ 		return fmt.Errorf("project type must be slave or master")
+ 	}
+ 	seen := map[string]bool{}
+ 	for i, conn := range p.Connections {
++		if conn == nil {
++			return fmt.Errorf("connection %d is null", i)
++		}
+ 		if err := conn.Validate(); err != nil {
+ 			return fmt.Errorf("connection %d: %w", i, err)
+ 		}
+@@ -50,6 +59,13 @@ func (c *Connection) Validate() error {
  			return fmt.Errorf("serial port is required for the %s transport", c.Transport.Type)
  		}
  	}
@@ -17726,12 +20651,46 @@ index 8ae77b2..f607fd5 100644
  	if c.Transport.Type == TransportTCPTLS && c.Transport.ServerTLS != nil {
  		if err := validateServerTLS(*c.Transport.ServerTLS); err != nil {
  			return err
+@@ -77,12 +93,23 @@ func (c *Connection) Validate() error {
+ 			return fmt.Errorf("SOCKS5 username and password must either both be set or both be empty")
+ 		}
+ 	}
++	seenDevices := map[uint8]bool{}
+ 	for _, dev := range c.Devices {
++		if dev == nil {
++			return fmt.Errorf("device is null")
++		}
++		if seenDevices[dev.SlaveID] {
++			return fmt.Errorf("duplicate slave ID %d", dev.SlaveID)
++		}
++		seenDevices[dev.SlaveID] = true
+ 		if err := dev.Validate(); err != nil {
+ 			return err
+ 		}
+ 	}
+ 	for _, group := range c.ScanGroups {
++		if group == nil {
++			return fmt.Errorf("scan group is null")
++		}
+ 		if err := group.Validate(); err != nil {
+ 			return err
+ 		}
+@@ -97,6 +124,9 @@ func (d *Device) Validate() error {
+ 	}
+ 	defs := make([]register.RegisterDef, 0, len(d.Points))
+ 	for _, pt := range d.Points {
++		if pt == nil {
++			return fmt.Errorf("point definition is null")
++		}
+ 		defs = append(defs, pt.ToDef())
+ 		if pt.Mutation != nil && pt.Mutation.Enabled && pt.DataSource != nil {
+ 			return fmt.Errorf("register %s@%d cannot use mutation and a data source simultaneously",
 diff --git a/go/internal/suitehost/appearance.go b/go/internal/suitehost/appearance.go
 new file mode 100644
-index 0000000..c9e1148
+index 0000000..1dda22e
 --- /dev/null
 +++ b/go/internal/suitehost/appearance.go
-@@ -0,0 +1,89 @@
+@@ -0,0 +1,114 @@
 +package suitehost
 +
 +import (
@@ -17742,10 +20701,35 @@ index 0000000..c9e1148
 +)
 +
 +// Appearance exposes read-only display preferences to the suite webview.
-+type Appearance struct{ suiteMode bool }
++type Appearance struct {
++	suiteMode bool
++	reader    func(string, string, string) ([]byte, bool, error)
++}
 +
 +// Both build modes expose stable bindings, but only a suite build may read its settings.
-+func NewAppearance(suiteMode bool) *Appearance { return &Appearance{suiteMode: suiteMode} }
++func NewAppearance(suiteMode bool, readers ...func(string, string, string) ([]byte, bool, error)) *Appearance {
++	a := &Appearance{suiteMode: suiteMode}
++	if len(readers) > 0 {
++		a.reader = readers[0]
++	}
++	return a
++}
++func (a *Appearance) read(root string) ([]byte, error) {
++	if a.reader != nil {
++		data, present, err := a.reader(root, "launcher", "preferences")
++		if err != nil {
++			return nil, err
++		}
++		if present {
++			return data, nil
++		}
++	}
++	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
++	if os.IsNotExist(err) {
++		return nil, nil
++	}
++	return data, err
++}
 +
 +// AppearanceV1 deliberately excludes private launcher and protocol state.
 +type AppearanceV1 struct {
@@ -17763,8 +20747,8 @@ index 0000000..c9e1148
 +	if !filepath.IsAbs(root) {
 +		return result, fmt.Errorf("SIMLAB_DATA_DIR must be absolute")
 +	}
-+	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
-+	if os.IsNotExist(err) {
++	data, err := a.read(root)
++	if err == nil && data == nil {
 +		return result, nil
 +	}
 +	if err != nil {
@@ -17803,8 +20787,8 @@ index 0000000..c9e1148
 +	if !filepath.IsAbs(root) {
 +		return "", fmt.Errorf("SIMLAB_DATA_DIR must be absolute")
 +	}
-+	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
-+	if os.IsNotExist(err) {
++	data, err := a.read(root)
++	if err == nil && data == nil {
 +		return "system", nil
 +	}
 +	if err != nil {
@@ -18590,6 +21574,37 @@ index 3e6de11..f366d50 100644
  * {
    margin: 0;
    padding: 0;
+diff --git a/master-frontend/src/bootstrap.ts b/master-frontend/src/bootstrap.ts
+new file mode 100644
+index 0000000..c812ef1
+--- /dev/null
++++ b/master-frontend/src/bootstrap.ts
+@@ -0,0 +1,25 @@
++import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { createSuiteAppearance, suiteAppearanceKey } from './suiteAppearance'
++import { ReadAppearance } from '../wailsjs/go/suitehost/Appearance'
++import { parseAppearance } from './simlab-ui/contracts/appearance'
++import { GetVersion } from '../wailsjs/go/main/App'
++import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
++import 'shared-frontend/src/styles/tokens.css'
++import 'shared-frontend/src/styles/toolbar.css'
++import { desktopServicesKey, initTheme } from 'shared-frontend'
++import { createApp } from 'vue'
++import App from './App.vue'
++
++initTheme()
++const appearance = createSuiteAppearance(import.meta.env.VITE_SIMLAB_SUITE === '1', {
++  readAppearance: async () => parseAppearance(await ReadAppearance()),
++})
++createApp(App)
++  .provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL })
++  .provide(suiteAppearanceKey, appearance)
++  .mount('#app')
++if (import.meta.hot) import.meta.hot.dispose(() => appearance?.dispose())
++
++void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
 diff --git a/master-frontend/src/components/ConnectionTree.vue b/master-frontend/src/components/ConnectionTree.vue
 index 02728ec..58c6f42 100644
 --- a/master-frontend/src/components/ConnectionTree.vue
@@ -19430,6 +22445,49 @@ index bfaa8f2..5e89365 100644
 +button:disabled { opacity: .5; cursor: not-allowed; }
  .status-text { font-size: 12px; color: var(--c-blue); text-align: center; padding: 6px; }
  </style>
+diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
+index 736fd40..9cddb8f 100644
+--- a/master-frontend/src/components/Toolbar.vue
++++ b/master-frontend/src/components/Toolbar.vue
+@@ -46,6 +46,9 @@ const shortcuts = useProjectShortcuts({
+   save: () => run(saveProject),
+   saveAs: () => run(saveProjectAs),
+ })
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1"
++const projectExtensions = suiteBuild ? ["saioproj", "modbusproj", "json"] : ["modbusproj"]
++const saveExtensions = suiteBuild ? ["saioproj"] : ["modbusproj"]
+ const currentProjectPath = ref<string | null>(null)
+ const showNewConn = ref(false)
+ const editingConnectionId = ref<string | null>(null)
+@@ -54,13 +57,13 @@ const showWriteModal = ref(false)
+ const showScanDialog = ref(false)
+ 
+ const workspaceReplaced = inject<() => void>('workspaceReplaced', refreshTree)
+-const projectFilters = [{ Name: 'Modbus Project', Extensions: ['modbusproj'] }]
++const projectFilters = [{ Name: 'Modbus Project', Extensions: projectExtensions }]
+ async function openProject() {
+   try {
+     const path = await App.OpenFileDialog(projectFilters)
+     if (!path) return
+     await App.LoadProject(path)
+-    currentProjectPath.value = path
++    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
+     workspaceReplaced()
+   } catch (e) { await showAlert(String(e)) }
+ }
+@@ -74,10 +77,10 @@ async function saveProject() {
+ 
+ async function saveProjectAs() {
+   try {
+-    const path = await App.SaveFileDialog('untitled.modbusproj', projectFilters)
++    const path = await App.SaveFileDialog(suiteBuild ? "untitled.saioproj" : "untitled.modbusproj", [{ Name: "SAIO Project", Extensions: saveExtensions }])
+     if (!path) return
+     await App.SaveProject(path)
+-    currentProjectPath.value = path
++    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
+   } catch (e) { await showAlert(String(e)) }
+ }
+ 
 diff --git a/master-frontend/src/components/WriteDialog.vue b/master-frontend/src/components/WriteDialog.vue
 index 124e4d6..1c1432c 100644
 --- a/master-frontend/src/components/WriteDialog.vue
@@ -19702,49 +22760,53 @@ index 124e4d6..1c1432c 100644
 -.preview-error td { color: var(--c-red); }
  </style>
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
-index 8f74f8b..c812ef1 100644
+index 8f74f8b..9804354 100644
 --- a/master-frontend/src/main.ts
 +++ b/master-frontend/src/main.ts
-@@ -1,3 +1,9 @@
-+import { startNativeWindowTheme } from 'shared-frontend/src/composables/nativeWindowTheme'
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { createSuiteAppearance, suiteAppearanceKey } from './suiteAppearance'
-+import { ReadAppearance } from '../wailsjs/go/suitehost/Appearance'
-+import { parseAppearance } from './simlab-ui/contracts/appearance'
- import { GetVersion } from '../wailsjs/go/main/App'
- import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
- import 'shared-frontend/src/styles/tokens.css'
-@@ -7,4 +13,13 @@ import { createApp } from 'vue'
- import App from './App.vue'
+@@ -1,10 +1,16 @@
+-import { GetVersion } from '../wailsjs/go/main/App'
+-import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
+-import 'shared-frontend/src/styles/tokens.css'
+-import 'shared-frontend/src/styles/toolbar.css'
+-import { desktopServicesKey, initTheme } from 'shared-frontend'
+-import { createApp } from 'vue'
+-import App from './App.vue'
++import { installWailsConfigurationClose } from './simlab-ui/configClose'
++import { EventsOn } from '../wailsjs/runtime/runtime'
++import { installSuitePreferences } from './simlab-ui/configPreferences'
  
- initTheme()
+-initTheme()
 -createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
-+const appearance = createSuiteAppearance(import.meta.env.VITE_SIMLAB_SUITE === '1', {
-+  readAppearance: async () => parseAppearance(await ReadAppearance()),
++async function start() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installWailsConfigurationClose(EventsOn)
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('modbus.master')
++  await import('./bootstrap')
++}
++void start().catch(error => {
++  console.error('Application initialization failed', error)
++  const message = document.createElement('div')
++  message.setAttribute('role', 'alert')
++  message.textContent = String(error)
++  document.body.append(message)
 +})
-+createApp(App)
-+  .provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL })
-+  .provide(suiteAppearanceKey, appearance)
-+  .mount('#app')
-+if (import.meta.hot) import.meta.hot.dispose(() => appearance?.dispose())
-+
-+void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
 diff --git a/master-frontend/src/simlab-ui/.source.json b/master-frontend/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/master-frontend/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -20198,6 +23260,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/master-frontend/src/simlab-ui/configClose.ts b/master-frontend/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/master-frontend/src/simlab-ui/configInvoke.ts b/master-frontend/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/master-frontend/src/simlab-ui/configPreferences.ts b/master-frontend/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/master-frontend/src/simlab-ui/contracts/appearance-cases.json b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -20641,27 +23991,23 @@ index 85b1c68..91a02d9 100644
  export interface FoundRegisterDto { Address: number; Value: number }
 -export interface RegisterScanEvent { ConnectionID: string; TaskID: string; CurrentAddress: number; EndAddress: number; FoundCount: number; FoundRegisters: FoundRegisterDto[]; Done: boolean; Cancelled: boolean }
 +export interface RegisterScanEvent { ConnectionID: string; TaskID: string; CurrentAddress: number; Completed: number; Total: number; Error?: string; EndAddress: number; FoundCount: number; FoundRegisters: FoundRegisterDto[]; Done: boolean; Cancelled: boolean }
+diff --git a/master-frontend/tsconfig.app.json b/master-frontend/tsconfig.app.json
+index 4437ae7..a8148cb 100644
+--- a/master-frontend/tsconfig.app.json
++++ b/master-frontend/tsconfig.app.json
+@@ -10,5 +10,6 @@
+     "noFallthroughCasesInSwitch": true,
+     "noUncheckedSideEffectImports": true
+   },
+-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
++  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
++  "exclude": ["src/simlab-ui/configInvoke.ts"]
+ }
 diff --git a/master-frontend/wailsjs/go/models.ts b/master-frontend/wailsjs/go/models.ts
-index d566b2c..d39878b 100755
+index d566b2c..997eb63 100755
 --- a/master-frontend/wailsjs/go/models.ts
 +++ b/master-frontend/wailsjs/go/models.ts
-@@ -1,5 +1,5 @@
- export namespace main {
--
-+	
- 	export interface FileFilter {
- 	    Name: string;
- 	    Extensions: string[];
-@@ -12,7 +12,7 @@ export namespace main {
- }
- 
- export namespace masterstate {
--
-+	
- 	export interface ConnectionInfo {
- 	    ID: string;
- 	    TargetAddress: string;
-@@ -42,13 +42,14 @@ export namespace masterstate {
+@@ -42,6 +42,7 @@ export namespace masterstate {
  	    Error?: string;
  	}
  	export interface RegisterScanRequest {
@@ -20669,20 +24015,9 @@ index d566b2c..d39878b 100755
  	    Function: string;
  	    StartAddress: number;
  	    EndAddress: number;
- 	    ChunkSize: number;
- 	    TimeoutMS: number;
- 	}
--
-+	
- 	export interface ScanGroup {
- 	    ID: string;
- 	    Name: string;
-@@ -77,8 +78,9 @@ export namespace masterstate {
- }
- 
+@@ -79,6 +80,7 @@ export namespace masterstate {
  export namespace project {
--
-+	
+ 
  	export interface ClientTLS {
 +	    Version?: string;
  	    Enabled: boolean;
@@ -20696,13 +24031,13 @@ index d566b2c..d39878b 100755
  	}
  	export interface ReconnectPolicy {
  	    Enabled: boolean;
-@@ -131,3 +134,14 @@ export namespace project {
+@@ -131,3 +134,13 @@ export namespace project {
  	}
  
  }
 +
 +export namespace suitehost {
-+	
++
 +	export interface AppearanceV1 {
 +	    schemaVersion: number;
 +	    theme: string;
@@ -20710,7 +24045,6 @@ index d566b2c..d39878b 100755
 +	}
 +
 +}
-+
 diff --git a/master-frontend/wailsjs/go/suitehost/Appearance.d.ts b/master-frontend/wailsjs/go/suitehost/Appearance.d.ts
 new file mode 100755
 index 0000000..480ad81
@@ -20917,6 +24251,60 @@ index 0000000..19f8cbe
 +  observer.observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-simlab-theme'] })
 +  apply()
 +  return () => observer.disconnect()
++}
+diff --git a/shared-frontend/src/composables/useValueFormat.ts b/shared-frontend/src/composables/useValueFormat.ts
+index d431f8e..11138c1 100644
+--- a/shared-frontend/src/composables/useValueFormat.ts
++++ b/shared-frontend/src/composables/useValueFormat.ts
+@@ -146,3 +146,49 @@ export function float32ToU16Pair(value: number, byteOrder: ByteOrder): [number,
+   }
+   return map[byteOrder]
+ }
++
++export type RegisterWriteType = 'raw' | 'uint16' | 'int16' | 'uint32' | 'int32' | 'uint64' | 'int64' | 'float32' | 'float64'
++
++export function registerWriteWidth(type: RegisterWriteType): number {
++  if (type.endsWith('64')) return 4
++  if (type.endsWith('32')) return 2
++  return 1
++}
++
++/** Letters describe the transmitted byte sequence of one value, high byte first. */
++export function registerWriteOrders(type: RegisterWriteType): string[] {
++  const width = registerWriteWidth(type)
++  if (width === 1) return ['AB', 'BA']
++  if (width === 2) return ['ABCD', 'CDAB', 'BADC', 'DCBA']
++  return ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']
++}
++
++/** Parse text before encoding so 64-bit integers never pass through Number. */
++export function encodeRegisterWrite(input: string, type: RegisterWriteType, order: string): number[] {
++  if (!registerWriteOrders(type).includes(order)) throw new Error('Invalid byte order')
++  const text = input.trim()
++  const width = registerWriteWidth(type)
++  const view = new DataView(new ArrayBuffer(width * 2))
++  if (type === 'float32' || type === 'float64') {
++    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) throw new Error('Invalid float')
++    const value = Number(text)
++    if (!Number.isFinite(value)) throw new Error('Float overflow')
++    if (type === 'float32') {
++      if (!Number.isFinite(Math.fround(value))) throw new Error('Float32 overflow')
++      view.setFloat32(0, value)
++    } else view.setFloat64(0, value)
++  } else {
++    if (!/^(?:[+-]?\d+|0x[\da-f]+)$/i.test(text)) throw new Error('Invalid integer')
++    const value = BigInt(text)
++    const bits = BigInt(width * 16)
++    const signed = type.startsWith('int')
++    const min = signed ? -(1n << (bits - 1n)) : 0n
++    const max = signed ? (1n << (bits - 1n)) - 1n : (1n << bits) - 1n
++    if (value < min || value > max) throw new Error('Integer out of range')
++    if (width === 4) view.setBigUint64(0, BigInt.asUintN(64, value))
++    else if (width === 2) view.setUint32(0, Number(BigInt.asUintN(32, value)))
++    else view.setUint16(0, Number(BigInt.asUintN(16, value)))
++  }
++  const bytes = [...order].map(letter => view.getUint8(letter.charCodeAt(0) - 65))
++  return Array.from({ length: width }, (_, index) => bytes[index * 2]! * 256 + bytes[index * 2 + 1]!)
 +}
 diff --git a/shared-frontend/src/directives/modal.ts b/shared-frontend/src/directives/modal.ts
 index 11e2b6e..8805d94 100644
@@ -21227,6 +24615,26 @@ index 955f0b4..67d978b 100644
    batchAdd: {
      title: '批量导入寄存器',
      namePrefix: '名称前缀（可选）',
+diff --git a/shared-frontend/src/index.ts b/shared-frontend/src/index.ts
+index 4af737b..8745335 100644
+--- a/shared-frontend/src/index.ts
++++ b/shared-frontend/src/index.ts
+@@ -20,11 +20,15 @@ export {
+   swapBytes16,
+   toFloat32,
+   float32ToU16Pair,
++  encodeRegisterWrite,
++  registerWriteOrders,
++  registerWriteWidth,
+   use16BitFormat,
+   use32BitFormat,
+   use64BitFormat,
+ } from './composables/useValueFormat'
+ export type { ByteOrder } from './composables/useValueFormat'
++export type { RegisterWriteType } from './composables/useValueFormat'
+ 
+ // Address formatting
+ export { formatAddress } from './composables/useAddressFormat'
 diff --git a/shared-frontend/tests/dialogBackdrop.spec.ts b/shared-frontend/tests/dialogBackdrop.spec.ts
 new file mode 100644
 index 0000000..955d500
@@ -21502,6 +24910,19 @@ index 0000000..019a31f
 + await button('下一页').trigger('click')
 + expect(wrapper.find('.result-table tbody td').text()).toBe('100')
 +})
+diff --git a/shared-frontend/tests/masterWriteDialog.spec.ts b/shared-frontend/tests/masterWriteDialog.spec.ts
+index f35ff57..3649f4a 100644
+--- a/shared-frontend/tests/masterWriteDialog.spec.ts
++++ b/shared-frontend/tests/masterWriteDialog.spec.ts
+@@ -139,7 +139,7 @@ describe('FC15 coil editing', () => {
+     await flushPromises()
+     expect(App.WriteSingleCoilSlave).toHaveBeenLastCalledWith('test-connection', null, 0, true)
+     await wrapper.get('select').setValue('write_multiple_registers')
+-    await wrapper.get('input[type="text"]').setValue('10,20')
++    await valuesInput().setValue('10,20')
+     await writeButton().trigger('click')
+     await flushPromises()
+     expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('test-connection', null, 0, [10, 20])
 diff --git a/shared-frontend/tests/nativeWindowTheme.spec.ts b/shared-frontend/tests/nativeWindowTheme.spec.ts
 new file mode 100644
 index 0000000..a4fbeb7
@@ -21548,6 +24969,188 @@ index 0000000..a4fbeb7
 +})
 +it('allows browser previews without a native bridge', async () => {
 + await expect(startNativeWindowTheme()).resolves.toBeTypeOf('function')
++})
+diff --git a/shared-frontend/tests/registerWrite.spec.ts b/shared-frontend/tests/registerWrite.spec.ts
+new file mode 100644
+index 0000000..55f6c18
+--- /dev/null
++++ b/shared-frontend/tests/registerWrite.spec.ts
+@@ -0,0 +1,176 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
++import { mount, flushPromises } from '@vue/test-utils'
++import { useI18n } from '../src/i18n'
++import { encodeRegisterWrite, type RegisterWriteType } from '../src/composables/useValueFormat'
++import WriteDialog from '../../master-frontend/src/components/WriteDialog.vue'
++import * as App from '../../master-frontend/wailsjs/go/main/App'
++
++vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({
++  WriteSingleRegisterSlave: vi.fn(), WriteSingleCoilSlave: vi.fn(),
++  WriteMultipleRegistersSlave: vi.fn(), WriteMultipleCoilsSlave: vi.fn(),
++}))
++let wrapper: ReturnType<typeof mount>
++const button = () => wrapper.get<HTMLButtonElement>('.btn-primary')
++const address = () => wrapper.get('input[type="number"]')
++const values = () => wrapper.get('textarea')
++const typeSelect = () => wrapper.findAll('select')[1]!
++const orderSelect = () => wrapper.findAll('select')[2]!
++async function select(type: RegisterWriteType, order?: string) {
++  await typeSelect().setValue(type)
++  if (order) await orderSelect().setValue(order)
++}
++beforeEach(async () => {
++  vi.resetAllMocks()
++  useI18n().setLocale('zh-CN')
++  wrapper = mount(WriteDialog, {
++    props: { show: true, connectionId: 'connection', slaveId: 7 },
++    global: { stubs: { teleport: true } },
++  })
++  await wrapper.get('select').setValue('write_multiple_registers')
++})
++afterEach(() => wrapper.unmount())
++
++describe('FC16 typed writes', () => {
++  it('offers all types and changes byte orders with the value width', async () => {
++    expect(typeSelect().findAll('option').map(o => o.element.value))
++      .toEqual(['raw', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64'])
++    for (const [type, orders] of [
++      ['int16', ['AB', 'BA']], ['float32', ['ABCD', 'CDAB', 'BADC', 'DCBA']],
++      ['float64', ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']],
++    ] as const) {
++      await select(type)
++      expect(orderSelect().findAll('option').map(o => o.element.value)).toEqual(orders)
++      expect(orderSelect().element.value).toBe(orders[0])
++    }
++  })
++
++  it.each<[RegisterWriteType, string, string, number[]]>([
++    ['raw', 'AB', '0x1234, 65535', [0x1234, 0xffff]],
++    ['uint16', 'BA', '0x1234', [0x3412]],
++    ['int16', 'AB', '-32768, 32767', [0x8000, 0x7fff]],
++    ['int32', 'CDAB', '-2147483648', [0, 0x8000]],
++    ['uint32', 'BADC', '0x12345678', [0x3412, 0x7856]],
++    ['int64', 'ABCDEFGH', '-9223372036854775808', [0x8000, 0, 0, 0]],
++    ['uint64', 'ABCDEFGH', '9007199254740993', [0x20, 0, 0, 1]],
++    ['uint64', 'HGFEDCBA', '18446744073709551615', [0xffff, 0xffff, 0xffff, 0xffff]],
++    ['float32', 'DCBA', '1', [0, 0x803f]],
++    ['float64', 'GHEFCDAB', '-2.5', [0, 0, 0, 0xc004]],
++  ])('previews and sends %s in %s order', async (type, order, input, expected) => {
++    await select(type, order)
++    await address().setValue('100')
++    await values().setValue(input)
++    expect(wrapper.get('[role="status"]').text()).toContain(`100–${100 + expected.length - 1}`)
++    const words = wrapper.findAll('.preview-table tbody tr').flatMap(row => row.findAll('td')[2]!.text().split(' '))
++    expect(words).toEqual(expected.map(word => '0x' + word.toString(16).toUpperCase().padStart(4, '0')))
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledExactlyOnceWith('connection', 7, 100, expected)
++    expect(wrapper.emitted('close')).toHaveLength(1)
++  })
++
++  it.each<[RegisterWriteType, string]>([
++    ['raw', ''], ['raw', '1,,2'], ['raw', '1,'], ['raw', '-1'], ['raw', '65536'],
++    ['int16', '-32769'], ['int16', '32768'], ['uint32', '4294967296'], ['int32', '2147483648'],
++    ['int64', '-9223372036854775809'], ['int64', '9223372036854775808'], ['uint64', '18446744073709551616'],
++    ['uint64', '1.5'], ['uint64', '1e3'], ['float32', '3.5e38'], ['float32', '12abc'],
++    ['float64', 'Infinity'], ['float64', 'NaN'], ['float64', '1e309'],
++  ])('blocks invalid %s input %j', async (type, input) => {
++    await select(type)
++    await values().setValue(input)
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('[role="alert"]').text()).not.toBe('')
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++    expect(wrapper.emitted('close')).toBeUndefined()
++  })
++
++  it.each(['-1', '0.5', '', '65536'])('blocks invalid address %j', async input => {
++    await values().setValue('1')
++    await address().setValue(input)
++    expect(button().element.disabled).toBe(true)
++    expect(address().attributes('aria-invalid')).toBe('true')
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++  })
++
++  it('accepts pasted separators and advances addresses by the type width', async () => {
++    await select('float32')
++    await values().setValue('1，2\n3 4')
++    expect(wrapper.findAll('.preview-table tbody tr').map(row => row.findAll('td')[0]!.text())).toEqual(['0', '2', '4', '6'])
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('connection', 7, 0, [0x3f80, 0, 0x4000, 0, 0x4040, 0, 0x4080, 0])
++  })
++
++  it.each<[RegisterWriteType, number, number]>([['raw', 123, 65535], ['float32', 61, 65534], ['float64', 30, 65532]])
++  ('enforces quantity and address boundaries for %s', async (type, limit, lastStart) => {
++    await select(type)
++    await values().setValue(Array(limit).fill('1').join(','))
++    expect(button().element.disabled).toBe(false)
++    await values().setValue(Array(limit + 1).fill('1').join(','))
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('[role="alert"]').text()).toContain('123')
++    await values().setValue('1')
++    await address().setValue(String(lastStart))
++    expect(button().element.disabled).toBe(false)
++    await address().setValue(String(lastStart + 1))
++    expect(button().element.disabled).toBe(true)
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
++  })
++
++  it('prevents editing and duplicate submissions while the request is pending', async () => {
++    await select('int64')
++    await values().setValue('-1')
++    let finish!: () => void
++    vi.mocked(App.WriteMultipleRegistersSlave).mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(undefined) }))
++    await button().trigger('click')
++    expect(button().element.disabled).toBe(true)
++    expect(wrapper.get('fieldset').element.disabled).toBe(true)
++    await button().trigger('click')
++    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledTimes(1)
++    finish()
++    await flushPromises()
++    expect(wrapper.emitted('close')).toHaveLength(1)
++  })
++
++  it('resets on reopen, keeps FC06 working and translates labels and errors', async () => {
++    await select('float64', 'HGFEDCBA')
++    await wrapper.setProps({ show: false })
++    await wrapper.setProps({ show: true })
++    expect(wrapper.findAll('select')).toHaveLength(1)
++    await wrapper.get('input[type="text"]').setValue('123')
++    await button().trigger('click')
++    await flushPromises()
++    expect(App.WriteSingleRegisterSlave).toHaveBeenLastCalledWith('connection', 7, 0, 123)
++    useI18n().setLocale('en-US')
++    await wrapper.get('select').setValue('write_multiple_registers')
++    expect(orderSelect().element.value).toBe('AB')
++    await select('uint64')
++    expect(typeSelect().text()).toContain('UInt64 (unsigned 64-bit)')
++    await values().setValue('-1')
++    expect(wrapper.get('[role="alert"]').text()).toContain('outside the uint64 range')
++  })
++})
++
++describe('register encoding known vectors', () => {
++  it.each([
++    ['ABCD', [0x1234, 0x5678]], ['CDAB', [0x5678, 0x1234]],
++    ['BADC', [0x3412, 0x7856]], ['DCBA', [0x7856, 0x3412]],
++  ] as const)('encodes distinct UInt32 bytes in %s order', (order, expected) => {
++    expect(encodeRegisterWrite('0x12345678', 'uint32', order)).toEqual(expected)
++  })
++  it.each([
++    ['ABCDEFGH', [0x1234, 0x5678, 0x9abc, 0xdef0]], ['GHEFCDAB', [0xdef0, 0x9abc, 0x5678, 0x1234]],
++    ['BADCFEHG', [0x3412, 0x7856, 0xbc9a, 0xf0de]], ['HGFEDCBA', [0xf0de, 0xbc9a, 0x7856, 0x3412]],
++  ] as const)('preserves every UInt64 byte in %s order', (order, expected) => {
++    expect(encodeRegisterWrite('0x123456789ABCDEF0', 'uint64', order)).toEqual(expected)
++  })
++  it('preserves integer precision, float sign and scientific notation', () => {
++    expect(encodeRegisterWrite('9223372036854775807', 'int64', 'ABCDEFGH')).toEqual([0x7fff, 0xffff, 0xffff, 0xffff])
++    expect(encodeRegisterWrite('-1', 'int64', 'ABCDEFGH')).toEqual([0xffff, 0xffff, 0xffff, 0xffff])
++    expect(encodeRegisterWrite('-0', 'float32', 'ABCD')).toEqual([0x8000, 0])
++    expect(encodeRegisterWrite('1.25e2', 'float64', 'ABCDEFGH')).toEqual([0x405f, 0x4000, 0, 0])
++    expect(() => encodeRegisterWrite('1', 'uint16', 'ABCD')).toThrow('byte order')
++  })
 +})
 diff --git a/shared-frontend/tests/suiteAppearance.spec.ts b/shared-frontend/tests/suiteAppearance.spec.ts
 new file mode 100644
@@ -21798,273 +25401,4 @@ index 917dd57..6ccb602 100644
 +  await flushPromises()
 +  expect(nameCheck().disabled).toBe(false)
 +  expect(nameCheck().checked).toBe(true)
-+})
-diff --git a/shared-frontend/tests/masterWriteDialog.spec.ts b/shared-frontend/tests/masterWriteDialog.spec.ts
-index f35ff57..3649f4a 100644
---- a/shared-frontend/tests/masterWriteDialog.spec.ts
-+++ b/shared-frontend/tests/masterWriteDialog.spec.ts
-@@ -139,7 +139,7 @@ describe('FC15 coil editing', () => {
-     await flushPromises()
-     expect(App.WriteSingleCoilSlave).toHaveBeenLastCalledWith('test-connection', null, 0, true)
-     await wrapper.get('select').setValue('write_multiple_registers')
--    await wrapper.get('input[type="text"]').setValue('10,20')
-+    await valuesInput().setValue('10,20')
-     await writeButton().trigger('click')
-     await flushPromises()
-     expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('test-connection', null, 0, [10, 20])
-diff --git a/shared-frontend/src/index.ts b/shared-frontend/src/index.ts
-index 4af737b..8745335 100644
---- a/shared-frontend/src/index.ts
-+++ b/shared-frontend/src/index.ts
-@@ -20,11 +20,15 @@ export {
-   swapBytes16,
-   toFloat32,
-   float32ToU16Pair,
-+  encodeRegisterWrite,
-+  registerWriteOrders,
-+  registerWriteWidth,
-   use16BitFormat,
-   use32BitFormat,
-   use64BitFormat,
- } from './composables/useValueFormat'
- export type { ByteOrder } from './composables/useValueFormat'
-+export type { RegisterWriteType } from './composables/useValueFormat'
- 
- // Address formatting
- export { formatAddress } from './composables/useAddressFormat'
-diff --git a/shared-frontend/src/composables/useValueFormat.ts b/shared-frontend/src/composables/useValueFormat.ts
-index d431f8e..11138c1 100644
---- a/shared-frontend/src/composables/useValueFormat.ts
-+++ b/shared-frontend/src/composables/useValueFormat.ts
-@@ -146,3 +146,49 @@ export function float32ToU16Pair(value: number, byteOrder: ByteOrder): [number,
-   }
-   return map[byteOrder]
- }
-+
-+export type RegisterWriteType = 'raw' | 'uint16' | 'int16' | 'uint32' | 'int32' | 'uint64' | 'int64' | 'float32' | 'float64'
-+
-+export function registerWriteWidth(type: RegisterWriteType): number {
-+  if (type.endsWith('64')) return 4
-+  if (type.endsWith('32')) return 2
-+  return 1
-+}
-+
-+/** Letters describe the transmitted byte sequence of one value, high byte first. */
-+export function registerWriteOrders(type: RegisterWriteType): string[] {
-+  const width = registerWriteWidth(type)
-+  if (width === 1) return ['AB', 'BA']
-+  if (width === 2) return ['ABCD', 'CDAB', 'BADC', 'DCBA']
-+  return ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']
-+}
-+
-+/** Parse text before encoding so 64-bit integers never pass through Number. */
-+export function encodeRegisterWrite(input: string, type: RegisterWriteType, order: string): number[] {
-+  if (!registerWriteOrders(type).includes(order)) throw new Error('Invalid byte order')
-+  const text = input.trim()
-+  const width = registerWriteWidth(type)
-+  const view = new DataView(new ArrayBuffer(width * 2))
-+  if (type === 'float32' || type === 'float64') {
-+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) throw new Error('Invalid float')
-+    const value = Number(text)
-+    if (!Number.isFinite(value)) throw new Error('Float overflow')
-+    if (type === 'float32') {
-+      if (!Number.isFinite(Math.fround(value))) throw new Error('Float32 overflow')
-+      view.setFloat32(0, value)
-+    } else view.setFloat64(0, value)
-+  } else {
-+    if (!/^(?:[+-]?\d+|0x[\da-f]+)$/i.test(text)) throw new Error('Invalid integer')
-+    const value = BigInt(text)
-+    const bits = BigInt(width * 16)
-+    const signed = type.startsWith('int')
-+    const min = signed ? -(1n << (bits - 1n)) : 0n
-+    const max = signed ? (1n << (bits - 1n)) - 1n : (1n << bits) - 1n
-+    if (value < min || value > max) throw new Error('Integer out of range')
-+    if (width === 4) view.setBigUint64(0, BigInt.asUintN(64, value))
-+    else if (width === 2) view.setUint32(0, Number(BigInt.asUintN(32, value)))
-+    else view.setUint16(0, Number(BigInt.asUintN(16, value)))
-+  }
-+  const bytes = [...order].map(letter => view.getUint8(letter.charCodeAt(0) - 65))
-+  return Array.from({ length: width }, (_, index) => bytes[index * 2]! * 256 + bytes[index * 2 + 1]!)
-+}
-diff --git a/shared-frontend/tests/registerWrite.spec.ts b/shared-frontend/tests/registerWrite.spec.ts
-new file mode 100644
-index 0000000..55f6c18
---- /dev/null
-+++ b/shared-frontend/tests/registerWrite.spec.ts
-@@ -0,0 +1,176 @@
-+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-+import { mount, flushPromises } from '@vue/test-utils'
-+import { useI18n } from '../src/i18n'
-+import { encodeRegisterWrite, type RegisterWriteType } from '../src/composables/useValueFormat'
-+import WriteDialog from '../../master-frontend/src/components/WriteDialog.vue'
-+import * as App from '../../master-frontend/wailsjs/go/main/App'
-+
-+vi.mock('../../master-frontend/wailsjs/go/main/App', () => ({
-+  WriteSingleRegisterSlave: vi.fn(), WriteSingleCoilSlave: vi.fn(),
-+  WriteMultipleRegistersSlave: vi.fn(), WriteMultipleCoilsSlave: vi.fn(),
-+}))
-+let wrapper: ReturnType<typeof mount>
-+const button = () => wrapper.get<HTMLButtonElement>('.btn-primary')
-+const address = () => wrapper.get('input[type="number"]')
-+const values = () => wrapper.get('textarea')
-+const typeSelect = () => wrapper.findAll('select')[1]!
-+const orderSelect = () => wrapper.findAll('select')[2]!
-+async function select(type: RegisterWriteType, order?: string) {
-+  await typeSelect().setValue(type)
-+  if (order) await orderSelect().setValue(order)
-+}
-+beforeEach(async () => {
-+  vi.resetAllMocks()
-+  useI18n().setLocale('zh-CN')
-+  wrapper = mount(WriteDialog, {
-+    props: { show: true, connectionId: 'connection', slaveId: 7 },
-+    global: { stubs: { teleport: true } },
-+  })
-+  await wrapper.get('select').setValue('write_multiple_registers')
-+})
-+afterEach(() => wrapper.unmount())
-+
-+describe('FC16 typed writes', () => {
-+  it('offers all types and changes byte orders with the value width', async () => {
-+    expect(typeSelect().findAll('option').map(o => o.element.value))
-+      .toEqual(['raw', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64'])
-+    for (const [type, orders] of [
-+      ['int16', ['AB', 'BA']], ['float32', ['ABCD', 'CDAB', 'BADC', 'DCBA']],
-+      ['float64', ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']],
-+    ] as const) {
-+      await select(type)
-+      expect(orderSelect().findAll('option').map(o => o.element.value)).toEqual(orders)
-+      expect(orderSelect().element.value).toBe(orders[0])
-+    }
-+  })
-+
-+  it.each<[RegisterWriteType, string, string, number[]]>([
-+    ['raw', 'AB', '0x1234, 65535', [0x1234, 0xffff]],
-+    ['uint16', 'BA', '0x1234', [0x3412]],
-+    ['int16', 'AB', '-32768, 32767', [0x8000, 0x7fff]],
-+    ['int32', 'CDAB', '-2147483648', [0, 0x8000]],
-+    ['uint32', 'BADC', '0x12345678', [0x3412, 0x7856]],
-+    ['int64', 'ABCDEFGH', '-9223372036854775808', [0x8000, 0, 0, 0]],
-+    ['uint64', 'ABCDEFGH', '9007199254740993', [0x20, 0, 0, 1]],
-+    ['uint64', 'HGFEDCBA', '18446744073709551615', [0xffff, 0xffff, 0xffff, 0xffff]],
-+    ['float32', 'DCBA', '1', [0, 0x803f]],
-+    ['float64', 'GHEFCDAB', '-2.5', [0, 0, 0, 0xc004]],
-+  ])('previews and sends %s in %s order', async (type, order, input, expected) => {
-+    await select(type, order)
-+    await address().setValue('100')
-+    await values().setValue(input)
-+    expect(wrapper.get('[role="status"]').text()).toContain(`100–${100 + expected.length - 1}`)
-+    const words = wrapper.findAll('.preview-table tbody tr').flatMap(row => row.findAll('td')[2]!.text().split(' '))
-+    expect(words).toEqual(expected.map(word => '0x' + word.toString(16).toUpperCase().padStart(4, '0')))
-+    await button().trigger('click')
-+    await flushPromises()
-+    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledExactlyOnceWith('connection', 7, 100, expected)
-+    expect(wrapper.emitted('close')).toHaveLength(1)
-+  })
-+
-+  it.each<[RegisterWriteType, string]>([
-+    ['raw', ''], ['raw', '1,,2'], ['raw', '1,'], ['raw', '-1'], ['raw', '65536'],
-+    ['int16', '-32769'], ['int16', '32768'], ['uint32', '4294967296'], ['int32', '2147483648'],
-+    ['int64', '-9223372036854775809'], ['int64', '9223372036854775808'], ['uint64', '18446744073709551616'],
-+    ['uint64', '1.5'], ['uint64', '1e3'], ['float32', '3.5e38'], ['float32', '12abc'],
-+    ['float64', 'Infinity'], ['float64', 'NaN'], ['float64', '1e309'],
-+  ])('blocks invalid %s input %j', async (type, input) => {
-+    await select(type)
-+    await values().setValue(input)
-+    expect(button().element.disabled).toBe(true)
-+    expect(wrapper.get('[role="alert"]').text()).not.toBe('')
-+    await button().trigger('click')
-+    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
-+    expect(wrapper.emitted('close')).toBeUndefined()
-+  })
-+
-+  it.each(['-1', '0.5', '', '65536'])('blocks invalid address %j', async input => {
-+    await values().setValue('1')
-+    await address().setValue(input)
-+    expect(button().element.disabled).toBe(true)
-+    expect(address().attributes('aria-invalid')).toBe('true')
-+    await button().trigger('click')
-+    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
-+  })
-+
-+  it('accepts pasted separators and advances addresses by the type width', async () => {
-+    await select('float32')
-+    await values().setValue('1，2\n3 4')
-+    expect(wrapper.findAll('.preview-table tbody tr').map(row => row.findAll('td')[0]!.text())).toEqual(['0', '2', '4', '6'])
-+    await button().trigger('click')
-+    await flushPromises()
-+    expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('connection', 7, 0, [0x3f80, 0, 0x4000, 0, 0x4040, 0, 0x4080, 0])
-+  })
-+
-+  it.each<[RegisterWriteType, number, number]>([['raw', 123, 65535], ['float32', 61, 65534], ['float64', 30, 65532]])
-+  ('enforces quantity and address boundaries for %s', async (type, limit, lastStart) => {
-+    await select(type)
-+    await values().setValue(Array(limit).fill('1').join(','))
-+    expect(button().element.disabled).toBe(false)
-+    await values().setValue(Array(limit + 1).fill('1').join(','))
-+    expect(button().element.disabled).toBe(true)
-+    expect(wrapper.get('[role="alert"]').text()).toContain('123')
-+    await values().setValue('1')
-+    await address().setValue(String(lastStart))
-+    expect(button().element.disabled).toBe(false)
-+    await address().setValue(String(lastStart + 1))
-+    expect(button().element.disabled).toBe(true)
-+    await button().trigger('click')
-+    expect(App.WriteMultipleRegistersSlave).not.toHaveBeenCalled()
-+  })
-+
-+  it('prevents editing and duplicate submissions while the request is pending', async () => {
-+    await select('int64')
-+    await values().setValue('-1')
-+    let finish!: () => void
-+    vi.mocked(App.WriteMultipleRegistersSlave).mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(undefined) }))
-+    await button().trigger('click')
-+    expect(button().element.disabled).toBe(true)
-+    expect(wrapper.get('fieldset').element.disabled).toBe(true)
-+    await button().trigger('click')
-+    expect(App.WriteMultipleRegistersSlave).toHaveBeenCalledTimes(1)
-+    finish()
-+    await flushPromises()
-+    expect(wrapper.emitted('close')).toHaveLength(1)
-+  })
-+
-+  it('resets on reopen, keeps FC06 working and translates labels and errors', async () => {
-+    await select('float64', 'HGFEDCBA')
-+    await wrapper.setProps({ show: false })
-+    await wrapper.setProps({ show: true })
-+    expect(wrapper.findAll('select')).toHaveLength(1)
-+    await wrapper.get('input[type="text"]').setValue('123')
-+    await button().trigger('click')
-+    await flushPromises()
-+    expect(App.WriteSingleRegisterSlave).toHaveBeenLastCalledWith('connection', 7, 0, 123)
-+    useI18n().setLocale('en-US')
-+    await wrapper.get('select').setValue('write_multiple_registers')
-+    expect(orderSelect().element.value).toBe('AB')
-+    await select('uint64')
-+    expect(typeSelect().text()).toContain('UInt64 (unsigned 64-bit)')
-+    await values().setValue('-1')
-+    expect(wrapper.get('[role="alert"]').text()).toContain('outside the uint64 range')
-+  })
-+})
-+
-+describe('register encoding known vectors', () => {
-+  it.each([
-+    ['ABCD', [0x1234, 0x5678]], ['CDAB', [0x5678, 0x1234]],
-+    ['BADC', [0x3412, 0x7856]], ['DCBA', [0x7856, 0x3412]],
-+  ] as const)('encodes distinct UInt32 bytes in %s order', (order, expected) => {
-+    expect(encodeRegisterWrite('0x12345678', 'uint32', order)).toEqual(expected)
-+  })
-+  it.each([
-+    ['ABCDEFGH', [0x1234, 0x5678, 0x9abc, 0xdef0]], ['GHEFCDAB', [0xdef0, 0x9abc, 0x5678, 0x1234]],
-+    ['BADCFEHG', [0x3412, 0x7856, 0xbc9a, 0xf0de]], ['HGFEDCBA', [0xf0de, 0xbc9a, 0x7856, 0x3412]],
-+  ] as const)('preserves every UInt64 byte in %s order', (order, expected) => {
-+    expect(encodeRegisterWrite('0x123456789ABCDEF0', 'uint64', order)).toEqual(expected)
-+  })
-+  it('preserves integer precision, float sign and scientific notation', () => {
-+    expect(encodeRegisterWrite('9223372036854775807', 'int64', 'ABCDEFGH')).toEqual([0x7fff, 0xffff, 0xffff, 0xffff])
-+    expect(encodeRegisterWrite('-1', 'int64', 'ABCDEFGH')).toEqual([0xffff, 0xffff, 0xffff, 0xffff])
-+    expect(encodeRegisterWrite('-0', 'float32', 'ABCD')).toEqual([0x8000, 0])
-+    expect(encodeRegisterWrite('1.25e2', 'float64', 'ABCDEFGH')).toEqual([0x405f, 0x4000, 0, 0])
-+    expect(() => encodeRegisterWrite('1', 'uint16', 'ABCD')).toThrow('byte order')
-+  })
 +})

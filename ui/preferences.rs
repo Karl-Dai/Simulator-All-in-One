@@ -15,12 +15,18 @@ fn read_appearance(root: &std::path::Path) -> Result<AppearanceV1, String> {
         theme: "system".into(),
         language: "en".into(),
     };
-    let data = match std::fs::read(root.join("launcher.json")) {
-        Ok(data) => data,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
-        Err(error) => return Err(error.to_string()),
+    #[cfg(feature = "simlab-suite")]
+    let stored = crate::config_store::read_json(root, "launcher", "preferences")?;
+    #[cfg(not(feature = "simlab-suite"))]
+    let stored: Option<serde_json::Value> = None;
+    let value = match stored {
+        Some(value) => value,
+        None => match std::fs::read(root.join("launcher.json")) {
+            Ok(data) => serde_json::from_slice(&data).map_err(|e| e.to_string())?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
+            Err(error) => return Err(error.to_string()),
+        },
     };
-    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
     if !value.is_object()
         || value.get("schemaVersion").is_some_and(|v| v.as_u64() != Some(1))
     {
@@ -58,17 +64,7 @@ pub(crate) fn simlab_theme() -> Result<String, String> {
     if !root.is_absolute() {
         return Err("SIMLAB_DATA_DIR must be absolute".into());
     }
-    let data = match std::fs::read(root.join("launcher.json")) {
-        Ok(data) => data,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("system".into()),
-        Err(error) => return Err(error.to_string()),
-    };
-    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
-    match value["theme"].as_str() {
-        Some("light") => Ok("light".into()),
-        Some("dark") => Ok("dark".into()),
-        _ => Ok("system".into()),
-    }
+    Ok(read_appearance(&root)?.theme)
 }
 
 #[cfg(test)]

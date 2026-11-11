@@ -54,8 +54,14 @@ def assets(workspace, root=ROOT):
     for identity, repo in repos.items():
         if identity == "modbus":
             yield root / "ui/preferences.go", repo / "go/internal/suitehost/appearance.go"
+            for source in (root / "storage/go").glob("*"):
+                if source.suffix in (".go", ".sql") and not source.name.endswith("_test.go"):
+                    yield source, repo / "go/internal/configstore" / source.name
         else:
             yield root / "ui/preferences.rs", repo / "crates/shared/simlab_preferences.rs"
+            yield root / "storage/rust/config_store.rs", repo / "crates/shared/config_store.rs"
+            yield root / "storage/rust/config_close.rs", repo / "crates/shared/config_close.rs"
+            yield root / "storage/go/schema.sql", repo / "crates/shared/config_schema.sql"
             yield root / "ui/contracts/appearance-cases.json", repo / "crates/shared/contracts/appearance-cases.json"
 
 

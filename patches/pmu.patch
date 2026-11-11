@@ -1,8 +1,368 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index afd5ccb..6d92df9 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -357,7 +357,7 @@ dependencies = [
+  "semver",
+  "serde",
+  "serde_json",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -875,6 +875,18 @@ dependencies = [
+  "windows-sys 0.61.2",
+ ]
+ 
++[[package]]
++name = "fallible-iterator"
++version = "0.3.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
++
++[[package]]
++name = "fallible-streaming-iterator"
++version = "0.1.9"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
++
+ [[package]]
+ name = "fastrand"
+ version = "2.4.1"
+@@ -1412,6 +1424,18 @@ name = "hashbrown"
+ version = "0.17.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
++dependencies = [
++ "foldhash 0.2.0",
++]
++
++[[package]]
++name = "hashlink"
++version = "0.12.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
++dependencies = [
++ "hashbrown 0.17.0",
++]
+ 
+ [[package]]
+ name = "heck"
+@@ -1932,6 +1956,17 @@ dependencies = [
+  "libc",
+ ]
+ 
++[[package]]
++name = "libsqlite3-sys"
++version = "0.39.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "14a5f01b87b92705d07b433c06f96cbc764637d81a0bffb5734ce17cf0f9a2b3"
++dependencies = [
++ "cc",
++ "pkg-config",
++ "vcpkg",
++]
++
+ [[package]]
+ name = "linux-raw-sys"
+ version = "0.12.1"
+@@ -2075,7 +2110,7 @@ dependencies = [
+  "once_cell",
+  "png",
+  "serde",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows-sys 0.60.2",
+ ]
+ 
+@@ -2332,7 +2367,7 @@ dependencies = [
+  "objc2-osa-kit",
+  "serde",
+  "serde_json",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -2608,8 +2643,10 @@ dependencies = [
+  "chrono",
+  "log",
+  "pmusim-core",
++ "rusqlite",
+  "serde",
+  "serde_json",
++ "sha2",
+  "tauri",
+  "tauri-build",
+  "tauri-plugin-dialog",
+@@ -2617,6 +2654,7 @@ dependencies = [
+  "tauri-plugin-process",
+  "tauri-plugin-store",
+  "tauri-plugin-updater",
++ "tempfile",
+  "tokio",
+ ]
+ 
+@@ -2626,7 +2664,7 @@ version = "0.1.0"
+ dependencies = [
+  "encoding_rs",
+  "hex",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -2637,12 +2675,16 @@ dependencies = [
+  "log",
+  "pmusim-app",
+  "pmusim-core",
++ "rusqlite",
+  "serde",
+  "serde_json",
++ "sha2",
+  "tauri",
+  "tauri-build",
++ "tauri-plugin-dialog",
+  "tauri-plugin-log",
+  "tauri-plugin-store",
++ "tempfile",
+  "tokio",
+ ]
+ 
+@@ -2927,7 +2969,7 @@ checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
+ dependencies = [
+  "getrandom 0.2.17",
+  "libredox",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -3094,6 +3136,30 @@ dependencies = [
+  "syn 1.0.109",
+ ]
+ 
++[[package]]
++name = "rsqlite-vfs"
++version = "0.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "353b74f9810d5b085b6c42c9d86a5f0fdb795553235cdd48753b32e3809d18a7"
++dependencies = [
++ "thiserror 2.0.21",
++]
++
++[[package]]
++name = "rusqlite"
++version = "0.41.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9c026b4444579e8d754556c6c75d040d69c4a44283cdb648ab8a8d5965c2cfa8"
++dependencies = [
++ "bitflags 2.11.1",
++ "fallible-iterator",
++ "fallible-streaming-iterator",
++ "hashlink",
++ "libsqlite3-sys",
++ "smallvec",
++ "sqlite-wasm-rs",
++]
++
+ [[package]]
+ name = "rust_decimal"
+ version = "1.41.0"
+@@ -3657,6 +3723,16 @@ dependencies = [
+  "system-deps",
+ ]
+ 
++[[package]]
++name = "sqlite-wasm-rs"
++version = "0.6.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a6cd504cecbfe7eef649988840f9a6cb768d11085efec138f8e99f160632d867"
++dependencies = [
++ "cc",
++ "rsqlite-vfs",
++]
++
+ [[package]]
+ name = "stable_deref_trait"
+ version = "1.2.1"
+@@ -3757,6 +3833,17 @@ dependencies = [
+  "unicode-ident",
+ ]
+ 
++[[package]]
++name = "syn"
++version = "3.0.10"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "4ae9ccbea3a7b0b09443036490c8f34a8b1b760fd345e5c0dae0aac718faea79"
++dependencies = [
++ "proc-macro2",
++ "quote",
++ "unicode-ident",
++]
++
+ [[package]]
+ name = "sync_wrapper"
+ version = "1.0.2"
+@@ -3903,7 +3990,7 @@ dependencies = [
+  "tauri-runtime",
+  "tauri-runtime-wry",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "tokio",
+  "tray-icon",
+  "url",
+@@ -3955,7 +4042,7 @@ dependencies = [
+  "sha2",
+  "syn 2.0.117",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+  "url",
+  "uuid",
+@@ -4007,7 +4094,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tauri-plugin-fs",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+ ]
+ 
+@@ -4030,7 +4117,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "toml 1.1.2+spec-1.1.0",
+  "url",
+ ]
+@@ -4053,7 +4140,7 @@ dependencies = [
+  "swift-rs",
+  "tauri",
+  "tauri-plugin",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+ ]
+ 
+@@ -4078,7 +4165,7 @@ dependencies = [
+  "serde_json",
+  "tauri",
+  "tauri-plugin",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "tokio",
+  "tracing",
+ ]
+@@ -4108,7 +4195,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tempfile",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+  "tokio",
+  "url",
+@@ -4134,7 +4221,7 @@ dependencies = [
+  "serde",
+  "serde_json",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+  "webkit2gtk",
+  "webview2-com",
+@@ -4197,7 +4284,7 @@ dependencies = [
+  "serde_json",
+  "serde_with",
+  "swift-rs",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "toml 0.9.12+spec-1.1.0",
+  "url",
+  "urlpattern",
+@@ -4261,11 +4348,11 @@ dependencies = [
+ 
+ [[package]]
+ name = "thiserror"
+-version = "2.0.18"
++version = "2.0.21"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
++checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
+ dependencies = [
+- "thiserror-impl 2.0.18",
++ "thiserror-impl 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -4281,13 +4368,13 @@ dependencies = [
+ 
+ [[package]]
+ name = "thiserror-impl"
+-version = "2.0.18"
++version = "2.0.21"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ebc4ee7f67670e9b64d05fa4253e753e016c6c95ff35b89b7941d6b856dec1d5"
++checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.117",
++ "syn 3.0.10",
+ ]
+ 
+ [[package]]
+@@ -4613,7 +4700,7 @@ dependencies = [
+  "once_cell",
+  "png",
+  "serde",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows-sys 0.60.2",
+ ]
+ 
+@@ -4761,6 +4848,12 @@ version = "1.12.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "7ba6f5989077681266825251a52748b8c1d8a4ad098cc37e440103d0ea717fc0"
+ 
++[[package]]
++name = "vcpkg"
++version = "0.2.15"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
++
+ [[package]]
+ name = "version-compare"
+ version = "0.2.1"
+@@ -5050,7 +5143,7 @@ version = "0.38.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "381336cfffd772377d291702245447a5251a2ffa5bad679c99e61bc48bacbf9c"
+ dependencies = [
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows",
+  "windows-core 0.61.2",
+ ]
+@@ -5650,7 +5743,7 @@ dependencies = [
+  "sha2",
+  "soup3",
+  "tao-macros",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+  "webkit2gtk",
+  "webkit2gtk-sys",
 diff --git a/crates/pmusim-app/Cargo.toml b/crates/pmusim-app/Cargo.toml
-index 744b0d7..217499e 100644
+index 744b0d7..248c92b 100644
 --- a/crates/pmusim-app/Cargo.toml
 +++ b/crates/pmusim-app/Cargo.toml
-@@ -7,6 +7,9 @@ edition = "2021"
+@@ -7,7 +7,13 @@ edition = "2021"
  name = "pmusim_app"
  crate-type = ["staticlib", "cdylib", "rlib"]
  
@@ -10,32 +370,51 @@ index 744b0d7..217499e 100644
 +simlab-suite = []
 +
  [dependencies]
++rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
++sha2 = "0.10"
++tempfile = "3"
  pmusim-core = { path = "../pmusim-core" }
  serde = { version = "1.0", features = ["derive"] }
+ serde_json = "1.0"
 diff --git a/crates/pmusim-app/src/lib.rs b/crates/pmusim-app/src/lib.rs
-index 8f72797..1a7d3da 100644
+index 8f72797..f05984d 100644
 --- a/crates/pmusim-app/src/lib.rs
 +++ b/crates/pmusim-app/src/lib.rs
-@@ -2,4 +2,5 @@ pub mod commands;
+@@ -2,4 +2,9 @@ pub mod commands;
  pub mod events;
  pub mod network;
  pub mod state;
 +#[cfg(not(feature = "simlab-suite"))]
  pub mod update;
++
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/pmu_storage.rs"]
++pub mod suite_storage;
 diff --git a/crates/pmusim-app/src/main.rs b/crates/pmusim-app/src/main.rs
-index 75a60ae..de0ad5a 100644
+index 75a60ae..324fa4f 100644
 --- a/crates/pmusim-app/src/main.rs
 +++ b/crates/pmusim-app/src/main.rs
-@@ -1,17 +1,26 @@
+@@ -1,17 +1,57 @@
  #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
  
 -use pmusim_app::{commands, state::AppState, update};
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_close.rs"]
++mod config_close;
++
 +#[path = "../../shared/simlab_preferences.rs"]
 +mod simlab_preferences;
++
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_store.rs"]
++mod config_store;
 +
 +#[cfg(not(feature = "simlab-suite"))]
 +use pmusim_app::update;
 +use pmusim_app::{commands, state::AppState};
++
++#[cfg(feature = "simlab-suite")]
++use pmusim_app::suite_storage;
  
  fn main() {
 -    tauri::Builder::default()
@@ -48,17 +427,37 @@ index 75a60ae..de0ad5a 100644
 -        .manage(AppState::default())
 -        .manage(update::UpdateState::default())
 +        .manage(AppState::default());
++    #[cfg(feature = "simlab-suite")]
++    let builder = builder.manage(suite_storage::SuiteStorage::new("pmu.master"));
 +    #[cfg(not(feature = "simlab-suite"))]
 +    let builder = builder
 +        .plugin(tauri_plugin_updater::Builder::new().build())
 +        .manage(update::UpdateState::default());
-+    builder
++    #[cfg(feature = "simlab-suite")]
++    let builder = config_close::protect(builder);
++    let builder = builder
          .invoke_handler(tauri::generate_handler![
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_enable_configuration_close,
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_confirm_configuration_close,
 +            simlab_preferences::simlab_theme,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_load_preferences,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_save_preferences,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_load_document,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_save_document,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_export_document,
++            #[cfg(feature = "simlab-suite")]
++            suite_storage::simlab_import_document,
              commands::start_server,
              commands::stop_server,
              commands::connect_substation,
-@@ -22,18 +31,25 @@ fn main() {
+@@ -22,20 +62,34 @@ fn main() {
              commands::set_heartbeat_interval,
              commands::poll_events,
              commands::open_url,
@@ -89,8 +488,19 @@ index 75a60ae..de0ad5a 100644
 +                });
 +            }
              Ok(())
-         })
+-        })
++        });
++    #[cfg(feature = "simlab-suite")]
++    builder
++        .build(tauri::generate_context!())
++        .expect("error while building suite application")
++        .run(config_close::on_run_event);
++    #[cfg(not(feature = "simlab-suite"))]
++    builder
          .run(tauri::generate_context!())
+-        .expect("error while running PmuSim");
++        .expect("error while running application");
+ }
 diff --git a/crates/pmusim-app/suite-icons/128x128.png b/crates/pmusim-app/suite-icons/128x128.png
 new file mode 100644
 index 0000000000000000000000000000000000000000..08ae00c73fa1dac75f593cfe746a89be1d65dd87
@@ -7030,11 +7440,20 @@ index 0000000..c644eb0
 +    ]
 +  }
 +}
+diff --git a/crates/pmusim-app/tests/update_helpers.rs b/crates/pmusim-app/tests/update_helpers.rs
+index 99bfb54..1d7a096 100644
+--- a/crates/pmusim-app/tests/update_helpers.rs
++++ b/crates/pmusim-app/tests/update_helpers.rs
+@@ -1,3 +1,4 @@
++#![cfg(not(feature = "simlab-suite"))]
+ use chrono::{DateTime, Duration, Utc};
+ use pmusim_app::update::{is_skipped, should_check};
+ 
 diff --git a/crates/pmusim-sub/Cargo.toml b/crates/pmusim-sub/Cargo.toml
-index 5ad7243..255f7a7 100644
+index 5ad7243..4fd1c8e 100644
 --- a/crates/pmusim-sub/Cargo.toml
 +++ b/crates/pmusim-sub/Cargo.toml
-@@ -7,6 +7,9 @@ edition = "2021"
+@@ -7,7 +7,14 @@ edition = "2021"
  name = "pmusim_sub"
  crate-type = ["staticlib", "cdylib", "rlib"]
  
@@ -7042,43 +7461,131 @@ index 5ad7243..255f7a7 100644
 +simlab-suite = []
 +
  [dependencies]
++tauri-plugin-dialog = "2"
++rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
++sha2 = "0.10"
++tempfile = "3"
  pmusim-core = { path = "../pmusim-core" }
  serde = { version = "1.0", features = ["derive"] }
+ serde_json = "1.0"
+diff --git a/crates/pmusim-sub/capabilities/default.json b/crates/pmusim-sub/capabilities/default.json
+index a4b0b47..64cb816 100644
+--- a/crates/pmusim-sub/capabilities/default.json
++++ b/crates/pmusim-sub/capabilities/default.json
+@@ -2,9 +2,12 @@
+   "$schema": "../gen/schemas/desktop-schema.json",
+   "identifier": "default",
+   "description": "enables the default permissions",
+-  "windows": ["main"],
++  "windows": [
++    "main"
++  ],
+   "permissions": [
+     "core:default",
+-    "store:default"
++    "store:default",
++    "dialog:default"
+   ]
+ }
 diff --git a/crates/pmusim-sub/src/lib.rs b/crates/pmusim-sub/src/lib.rs
-index 23014cd..07945d7 100644
+index 23014cd..9ef84e7 100644
 --- a/crates/pmusim-sub/src/lib.rs
 +++ b/crates/pmusim-sub/src/lib.rs
-@@ -3,3 +3,5 @@ pub mod datagen;
+@@ -3,3 +3,9 @@ pub mod datagen;
  pub mod events;
  pub mod network;
  pub mod state;
 +#[cfg(feature = "simlab-suite")]
 +pub mod suite;
++
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/pmu_storage.rs"]
++pub mod suite_storage;
 diff --git a/crates/pmusim-sub/src/main.rs b/crates/pmusim-sub/src/main.rs
-index 7280bec..19e48bc 100644
+index 7280bec..27884f0 100644
 --- a/crates/pmusim-sub/src/main.rs
 +++ b/crates/pmusim-sub/src/main.rs
-@@ -1,5 +1,10 @@
+@@ -1,21 +1,68 @@
  #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
  
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_close.rs"]
++mod config_close;
++
 +#[path = "../../shared/simlab_preferences.rs"]
 +mod simlab_preferences;
++
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_store.rs"]
++mod config_store;
 +
 +#[cfg(feature = "simlab-suite")]
 +use pmusim_sub::suite;
  use pmusim_sub::{commands, state::AppState};
  
++#[cfg(feature = "simlab-suite")]
++use pmusim_sub::suite_storage;
++
  fn main() {
-@@ -8,6 +13,9 @@ fn main() {
+-    tauri::Builder::default()
++    let builder = tauri::Builder::default()
+         .plugin(tauri_plugin_log::Builder::new().build())
          .plugin(tauri_plugin_store::Builder::new().build())
-         .manage(AppState::default())
-         .invoke_handler(tauri::generate_handler![
-+            simlab_preferences::simlab_theme,
-+            #[cfg(feature = "simlab-suite")]
-+            suite::preset_store_path,
-             commands::start_substation,
-             commands::stop_substation,
-             commands::update_config,
+-        .manage(AppState::default())
+-        .invoke_handler(tauri::generate_handler![
+-            commands::start_substation,
+-            commands::stop_substation,
+-            commands::update_config,
+-            commands::update_gen,
+-            commands::fire_trigger,
+-            commands::poll_events,
+-            commands::open_url,
+-        ])
++        .plugin(tauri_plugin_dialog::init())
++        .manage(AppState::default());
++    #[cfg(feature = "simlab-suite")]
++    let builder = builder.manage(suite_storage::SuiteStorage::new("pmu.sub"));
++    #[cfg(feature = "simlab-suite")]
++    let builder = config_close::protect(builder);
++    let builder = builder.invoke_handler(tauri::generate_handler![
++        #[cfg(feature = "simlab-suite")]
++        config_close::simlab_enable_configuration_close,
++        #[cfg(feature = "simlab-suite")]
++        config_close::simlab_confirm_configuration_close,
++        simlab_preferences::simlab_theme,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_load_preferences,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_save_preferences,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_load_document,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_save_document,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_export_document,
++        #[cfg(feature = "simlab-suite")]
++        suite_storage::simlab_import_document,
++        #[cfg(feature = "simlab-suite")]
++        suite::preset_store_path,
++        commands::start_substation,
++        commands::stop_substation,
++        commands::update_config,
++        commands::update_gen,
++        commands::fire_trigger,
++        commands::poll_events,
++        commands::open_url,
++    ]);
++    #[cfg(feature = "simlab-suite")]
++    builder
++        .build(tauri::generate_context!())
++        .expect("error while building suite application")
++        .run(config_close::on_run_event);
++    #[cfg(not(feature = "simlab-suite"))]
++    builder
+         .run(tauri::generate_context!())
+-        .expect("error while running PmuSub");
++        .expect("error while running application");
+ }
 diff --git a/crates/pmusim-sub/src/suite.rs b/crates/pmusim-sub/src/suite.rs
 new file mode 100644
 index 0000000..0bfebae
@@ -14584,6 +15091,908 @@ index 0000000..157bdf2
 +    ]
 +  }
 +}
+diff --git a/crates/shared/config_close.rs b/crates/shared/config_close.rs
+new file mode 100644
+index 0000000..bdf3c9b
+--- /dev/null
++++ b/crates/shared/config_close.rs
+@@ -0,0 +1,138 @@
++//! Native close waits for the suite frontend to finish its registered writes.
++use std::sync::atomic::{AtomicBool, Ordering};
++use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime, State, WindowEvent};
++
++/// The frontend arms the guard only after its event listener is installed.
++/// A failed initial page can therefore still be closed normally.
++#[derive(Default)]
++pub struct CloseGuard {
++    armed: AtomicBool,
++    requested: AtomicBool,
++    approved: AtomicBool,
++}
++#[derive(Debug, PartialEq, Eq)]
++enum CloseDecision {
++    Allow,
++    Prevent { notify: bool },
++}
++impl CloseGuard {
++    fn enable(&self) {
++        self.armed.store(true, Ordering::Release);
++    }
++    fn request(&self) -> CloseDecision {
++        if !self.armed.load(Ordering::Acquire) || self.approved.load(Ordering::Acquire) {
++            return CloseDecision::Allow;
++        }
++        let notify = !self.requested.swap(true, Ordering::AcqRel);
++        CloseDecision::Prevent { notify }
++    }
++    fn confirm(&self) -> Result<(), String> {
++        if !self.armed.load(Ordering::Acquire)
++            || !self.requested.load(Ordering::Acquire)
++            || self
++                .approved
++                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
++                .is_err()
++        {
++            return Err("No configuration close request is pending".into());
++        }
++        self.requested.store(false, Ordering::Release);
++        Ok(())
++    }
++}
++
++#[tauri::command]
++pub async fn simlab_enable_configuration_close(guard: State<'_, CloseGuard>) -> Result<(), String> {
++    guard.enable();
++    Ok(())
++}
++
++#[tauri::command]
++pub async fn simlab_confirm_configuration_close(
++    app: AppHandle,
++    guard: State<'_, CloseGuard>,
++) -> Result<(), String> {
++    guard.confirm()?;
++    // exit(0) emits ExitRequested too; approval lets that event proceed.
++    app.exit(0);
++    Ok(())
++}
++
++fn request_flush<R: Runtime>(app: &AppHandle<R>) {
++    if let Err(error) = app.emit("saio-before-close", ()) {
++        // Permit another native close request to retry a failed delivery.
++        app.state::<CloseGuard>()
++            .requested
++            .store(false, Ordering::Release);
++        log::error!("configuration flush request could not reach the frontend: {error}");
++    }
++}
++
++pub fn protect<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
++    builder
++        .manage(CloseGuard::default())
++        .on_window_event(|window, event| {
++            if let WindowEvent::CloseRequested { api, .. } = event {
++                if let CloseDecision::Prevent { notify } = window.state::<CloseGuard>().request() {
++                    api.prevent_close();
++                    if notify {
++                        request_flush(window.app_handle());
++                    }
++                }
++            }
++        })
++}
++
++pub fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: RunEvent) {
++    if let RunEvent::ExitRequested { api, .. } = event {
++        if let CloseDecision::Prevent { notify } = app.state::<CloseGuard>().request() {
++            api.prevent_exit();
++            if notify {
++                request_flush(app);
++            }
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn initial_page_without_listener_can_close_or_exit() {
++        let guard = CloseGuard::default();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++        assert!(guard.confirm().is_err());
++    }
++
++    #[test]
++    fn confirmation_without_an_active_request_cannot_exit() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        assert!(guard.confirm().is_err());
++        assert!(!guard.approved.load(Ordering::Acquire));
++    }
++
++    #[test]
++    fn armed_window_and_exit_requests_coalesce_until_confirmation() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: true });
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: false });
++        // A failed frontend flush does not acknowledge the pending request.
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: false });
++        guard.confirm().unwrap();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++        assert!(guard.confirm().is_err());
++    }
++
++    #[test]
++    fn enabling_again_does_not_revoke_an_approved_exit() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        guard.request();
++        guard.confirm().unwrap();
++        guard.enable();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++    }
++}
+diff --git a/crates/shared/config_schema.sql b/crates/shared/config_schema.sql
+new file mode 100644
+index 0000000..220228d
+--- /dev/null
++++ b/crates/shared/config_schema.sql
+@@ -0,0 +1,17 @@
++CREATE TABLE IF NOT EXISTS document (
++ id INTEGER PRIMARY KEY, role TEXT NOT NULL, key TEXT NOT NULL,
++ revision INTEGER NOT NULL CHECK(revision>0), UNIQUE(role,key)
++);
++CREATE TABLE IF NOT EXISTS field (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
++CREATE TABLE IF NOT EXISTS node (
++ document_id INTEGER NOT NULL REFERENCES document(id) ON DELETE CASCADE,
++ node_id INTEGER NOT NULL, parent_id INTEGER NOT NULL, slot INTEGER NOT NULL,
++ kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 8), value,
++ PRIMARY KEY(document_id,node_id)
++) WITHOUT ROWID;
++CREATE TABLE IF NOT EXISTS migration (
++ role TEXT NOT NULL, key TEXT NOT NULL, source TEXT NOT NULL, sha256 TEXT NOT NULL,
++ PRIMARY KEY(role,key,source)
++) WITHOUT ROWID;
++PRAGMA application_id=1396787535;
++PRAGMA user_version=1;
+diff --git a/crates/shared/config_store.rs b/crates/shared/config_store.rs
+new file mode 100644
+index 0000000..9ea3782
+--- /dev/null
++++ b/crates/shared/config_store.rs
+@@ -0,0 +1,729 @@
++//! Shared, versioned configuration storage. Values are typed SQLite records.
++use rusqlite::{params, Connection, OptionalExtension};
++use serde_json::{Map, Number, Value};
++use std::{
++    collections::{BTreeMap, HashMap, HashSet},
++    path::Path,
++    time::Duration,
++};
++const APPLICATION_ID: i64 = 1396787535;
++const SCHEMA: &str = include_str!("config_schema.sql");
++const CONFLICT: &str = "configuration changed in another window; reload before saving";
++#[derive(Clone, PartialEq)]
++struct Cell {
++    id: i64,
++    parent: i64,
++    slot: i64,
++    kind: i64,
++    value: rusqlite::types::Value,
++}
++pub struct Store {
++    db: Connection,
++    role: String,
++    revisions: HashMap<String, i64>,
++}
++fn valid_role(role: &str) -> bool {
++    matches!(
++        role,
++        "launcher"
++            | "iec104.master"
++            | "iec104.slave"
++            | "modbus.master"
++            | "modbus.slave"
++            | "opcua.master"
++            | "opcua.server"
++            | "pmu.master"
++            | "pmu.sub"
++    )
++}
++fn err(e: impl std::fmt::Display) -> String {
++    e.to_string()
++}
++fn create_private_directory(path: &Path) -> Result<(), String> {
++    let mut builder = std::fs::DirBuilder::new();
++    builder.recursive(true);
++    #[cfg(unix)]
++    {
++        use std::os::unix::fs::DirBuilderExt;
++        builder.mode(0o700);
++    }
++    builder.create(path).map_err(err)
++}
++fn validate(db: &Connection, create: bool) -> Result<(), String> {
++    let id: i64 = db
++        .pragma_query_value(None, "application_id", |r| r.get(0))
++        .map_err(err)?;
++    let version: i64 = db
++        .pragma_query_value(None, "user_version", |r| r.get(0))
++        .map_err(err)?;
++    if id == APPLICATION_ID && version == 1 {
++        return Ok(());
++    }
++    let count: i64 = db
++        .query_row(
++            "SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'",
++            [],
++            |r| r.get(0),
++        )
++        .map_err(err)?;
++    if create && id == 0 && version == 0 && count == 0 {
++        return db.execute_batch(SCHEMA).map_err(err);
++    }
++    Err(format!(
++        "unsupported or unrelated configuration database (application={id} version={version})"
++    ))
++}
++impl Store {
++    pub fn open(root: &Path, role: &str) -> Result<Self, String> {
++        if !root.is_absolute() || !valid_role(role) {
++            return Err("invalid configuration root or role".into());
++        }
++        create_private_directory(root)?;
++        Self::open_file(&root.join("saio.db"), role, false)
++    }
++    fn open_file(path: &Path, role: &str, readonly: bool) -> Result<Self, String> {
++        if !valid_role(role) {
++            return Err("invalid configuration role".into());
++        }
++        if !readonly {
++            let mut options = std::fs::OpenOptions::new();
++            options.read(true).write(true).create(true);
++            #[cfg(unix)]
++            {
++                use std::os::unix::fs::OpenOptionsExt;
++                options.mode(0o600);
++            }
++            drop(options.open(path).map_err(err)?);
++        }
++        let db = if readonly {
++            Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
++        } else {
++            Connection::open(path)
++        }
++        .map_err(err)?;
++        db.busy_timeout(Duration::from_secs(5)).map_err(err)?;
++        db.pragma_update(None, "foreign_keys", true).map_err(err)?;
++        if readonly {
++            validate(&db, false)?
++        } else {
++            db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
++            if let Err(e) = validate(&db, true) {
++                let _ = db.execute_batch("ROLLBACK");
++                return Err(e);
++            }
++            db.execute_batch("COMMIT; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;")
++                .map_err(err)?;
++        }
++        Ok(Self {
++            db,
++            role: role.into(),
++            revisions: HashMap::new(),
++        })
++    }
++    pub fn load(&mut self, key: &str) -> Result<Option<Value>, String> {
++        self.revisions.remove(key);
++        let tx = self.db.unchecked_transaction().map_err(err)?;
++        let (value, _, rev, _) = read(&tx, &self.role, key)?;
++        tx.commit().map_err(err)?;
++        self.revisions.insert(key.into(), rev);
++        Ok(value)
++    }
++    pub fn save(&mut self, key: &str, value: &Value) -> Result<(), String> {
++        let expected = *self
++            .revisions
++            .get(key)
++            .ok_or("configuration must be loaded before saving")?;
++        let rev = self.write(key, value, expected, None)?;
++        self.revisions.insert(key.into(), rev);
++        Ok(())
++    }
++    pub fn migrate_json(
++        &mut self,
++        key: &str,
++        data: Option<&[u8]>,
++        source: &str,
++    ) -> Result<Option<Value>, String> {
++        let existing = self.load(key)?;
++        if existing.is_some() || data.is_none() {
++            return Ok(existing);
++        }
++        let data = data.unwrap();
++        let value: Value = match serde_json::from_slice(data) {
++            Ok(v) => v,
++            Err(e) => {
++                self.revisions.remove(key);
++                return Err(err(e));
++            }
++        };
++        // SHA-256 comes from the shared dependency, never a legacy-file deletion.
++        use sha2::Digest;
++        let digest = format!("{:x}", sha2::Sha256::digest(data));
++        match self.write(key, &value, 0, Some((source, &digest))) {
++            Ok(rev) => {
++                self.revisions.insert(key.into(), rev);
++                Ok(Some(value))
++            }
++            Err(e) if e == CONFLICT => self.load(key),
++            Err(e) => {
++                self.revisions.remove(key);
++                Err(e)
++            },
++        }
++    }
++    fn write(
++        &mut self,
++        key: &str,
++        value: &Value,
++        expected: i64,
++        migration: Option<(&str, &str)>,
++    ) -> Result<i64, String> {
++        let tx = self
++            .db
++            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
++            .map_err(err)?;
++        let (_, mut doc, mut rev, old) = read(&tx, &self.role, key)?;
++        if rev != expected {
++            return Err(CONFLICT.into());
++        }
++        if rev == 0 {
++            tx.execute(
++                "INSERT INTO document(role,key,revision) VALUES(?,?,1)",
++                params![self.role, key],
++            )
++            .map_err(err)?;
++            doc = tx.last_insert_rowid();
++        }
++        let mut fields = fields(&tx)?
++            .into_iter()
++            .map(|(id, name)| (name, id))
++            .collect::<HashMap<_, _>>();
++        let edges = old
++            .values()
++            .map(|c| ((c.parent, c.slot), c.id))
++            .collect::<HashMap<_, _>>();
++        let mut next = old.keys().copied().max().unwrap_or(0);
++        let mut nodes = BTreeMap::new();
++        flatten(
++            &tx,
++            value,
++            0,
++            -1,
++            0,
++            0,
++            &edges,
++            &mut next,
++            &mut fields,
++            &mut nodes,
++        )?;
++        let mut changed = rev == 0;
++        for id in old.keys() {
++            if !nodes.contains_key(id) {
++                tx.execute(
++                    "DELETE FROM node WHERE document_id=? AND node_id=?",
++                    params![doc, id],
++                )
++                .map_err(err)?;
++                changed = true;
++            }
++        }
++        {
++            let mut statement=tx.prepare_cached("INSERT INTO node(document_id,node_id,parent_id,slot,kind,value) VALUES(?,?,?,?,?,?) ON CONFLICT(document_id,node_id) DO UPDATE SET parent_id=excluded.parent_id,slot=excluded.slot,kind=excluded.kind,value=excluded.value").map_err(err)?;
++            for (id, c) in nodes {
++                if old.get(&id) == Some(&c) {
++                    continue;
++                }
++                statement
++                    .execute(params![doc, id, c.parent, c.slot, c.kind, c.value])
++                    .map_err(err)?;
++                changed = true;
++            }
++        }
++        if rev == 0 {
++            rev = 1
++        } else if changed {
++            rev += 1;
++            tx.execute(
++                "UPDATE document SET revision=? WHERE id=?",
++                params![rev, doc],
++            )
++            .map_err(err)?;
++        }
++        if let Some((source, digest)) = migration {
++            tx.execute(
++                "INSERT INTO migration(role,key,source,sha256) VALUES(?,?,?,?)",
++                params![self.role, key, source, digest],
++            )
++            .map_err(err)?;
++        }
++        tx.commit().map_err(err)?;
++        Ok(rev)
++    }
++}
++fn fields(db: &Connection) -> Result<HashMap<i64, String>, String> {
++    let mut stmt = db.prepare("SELECT id,name FROM field").map_err(err)?;
++    let rows = stmt
++        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
++        .map_err(err)?;
++    rows.collect::<Result<_, _>>().map_err(err)
++}
++fn read(
++    db: &Connection,
++    role: &str,
++    key: &str,
++) -> Result<(Option<Value>, i64, i64, BTreeMap<i64, Cell>), String> {
++    let header: Option<(i64, i64)> = db
++        .query_row(
++            "SELECT id,revision FROM document WHERE role=? AND key=?",
++            params![role, key],
++            |r| Ok((r.get(0)?, r.get(1)?)),
++        )
++        .optional()
++        .map_err(err)?;
++    let Some((doc, rev)) = header else {
++        return Ok((None, 0, 0, BTreeMap::new()));
++    };
++    let mut stmt = db
++        .prepare("SELECT node_id,parent_id,slot,kind,value FROM node WHERE document_id=?")
++        .map_err(err)?;
++    let rows = stmt
++        .query_map([doc], |r| {
++            Ok(Cell {
++                id: r.get(0)?,
++                parent: r.get(1)?,
++                slot: r.get(2)?,
++                kind: r.get(3)?,
++                value: r.get(4)?,
++            })
++        })
++        .map_err(err)?;
++    let mut nodes = BTreeMap::new();
++    let mut children: HashMap<i64, Vec<i64>> = HashMap::new();
++    for row in rows {
++        let c = row.map_err(err)?;
++        if c.id != 0 {
++            children.entry(c.parent).or_default().push(c.id);
++        }
++        nodes.insert(c.id, c);
++    }
++    let sql_nodes = nodes.clone();
++    let mut virtual_id = -2i64;
++    for (id, c) in &sql_nodes {
++        if c.kind == 7 || c.kind == 8 {
++            match &c.value {
++                rusqlite::types::Value::Null => {}
++                rusqlite::types::Value::Blob(data) => {
++                    for mut leaf in unpack_scalars(data)? {
++                        leaf.id = virtual_id;
++                        leaf.parent = *id;
++                        virtual_id -= 1;
++                        children.entry(*id).or_default().push(leaf.id);
++                        nodes.insert(leaf.id, leaf);
++                    }
++                    nodes.get_mut(id).unwrap().value = rusqlite::types::Value::Null;
++                }
++                _ => return Err("invalid packed container".into()),
++            }
++        }
++    }
++    let root = nodes.get(&0).ok_or("missing configuration root")?;
++    if root.parent != -1 || root.slot != 0 {
++        return Err("invalid configuration root".into());
++    }
++    let mut seen = HashSet::new();
++    let value = restore(0, 0, &nodes, &children, &fields(db)?, &mut seen)?;
++    if seen.len() != nodes.len() {
++        return Err("orphan configuration records".into());
++    }
++    Ok((Some(value), doc, rev, sql_nodes))
++}
++fn restore(
++    id: i64,
++    depth: usize,
++    nodes: &BTreeMap<i64, Cell>,
++    children: &HashMap<i64, Vec<i64>>,
++    fields: &HashMap<i64, String>,
++    seen: &mut HashSet<i64>,
++) -> Result<Value, String> {
++    use rusqlite::types::Value as Sql;
++    if depth > 256 || !seen.insert(id) {
++        return Err("invalid configuration node graph".into());
++    }
++    let c = nodes.get(&id).ok_or("missing configuration node")?;
++    let value = match (&c.kind, &c.value) {
++        (0, Sql::Null) => Value::Null,
++        (1, Sql::Null) => Value::Bool(false),
++        (2, Sql::Null) => Value::Bool(true),
++        (3, Sql::Integer(v)) => Value::Number((*v).into()),
++        (4, Sql::Blob(v)) if v.len() == 8 => {
++            Value::Number(u64::from_be_bytes(v.as_slice().try_into().unwrap()).into())
++        }
++        (5, Sql::Real(v)) => {
++            Value::Number(Number::from_f64(*v).ok_or("nonfinite configuration value")?)
++        }
++        (5, Sql::Integer(v)) => Value::Number(Number::from_f64(*v as f64).unwrap()),
++        (6, Sql::Text(v)) => Value::String(v.clone()),
++        (7, Sql::Null) => {
++            let mut ids = children.get(&id).cloned().unwrap_or_default();
++            ids.sort_by_key(|n| -nodes[n].slot);
++            let mut out = Vec::new();
++            for (i, n) in ids.iter().enumerate() {
++                if nodes[n].slot != -(i as i64) - 1 {
++                    return Err("invalid array ordering".into());
++                }
++                out.push(restore(*n, depth + 1, nodes, children, fields, seen)?);
++            }
++            Value::Array(out)
++        }
++        (8, Sql::Null) => {
++            let mut out = Map::new();
++            for n in children.get(&id).into_iter().flatten() {
++                let slot = nodes[n].slot;
++                let name = fields
++                    .get(&slot)
++                    .filter(|_| slot > 0)
++                    .ok_or("invalid object field")?;
++                if out.contains_key(name) {
++                    return Err("duplicate object field".into());
++                }
++                out.insert(
++                    name.clone(),
++                    restore(*n, depth + 1, nodes, children, fields, seen)?,
++                );
++            }
++            Value::Object(out)
++        }
++        _ => return Err("invalid typed configuration value".into()),
++    };
++    Ok(value)
++}
++#[allow(clippy::too_many_arguments)]
++fn flatten(
++    db: &Connection,
++    value: &Value,
++    id: i64,
++    parent: i64,
++    slot: i64,
++    depth: usize,
++    edges: &HashMap<(i64, i64), i64>,
++    next: &mut i64,
++    fields: &mut HashMap<String, i64>,
++    nodes: &mut BTreeMap<i64, Cell>,
++) -> Result<(), String> {
++    use rusqlite::types::Value as Sql;
++    if depth > 256 {
++        return Err("configuration nesting exceeds 256".into());
++    }
++    let (kind, scalar) = make_scalar(value)?;
++    nodes.insert(
++        id,
++        Cell {
++            id,
++            parent,
++            slot,
++            kind,
++            value: scalar,
++        },
++    );
++    let mut packed = Vec::new();
++    let mut child =
++        |v: &Value, slot: i64, fields: &mut HashMap<String, i64>| -> Result<(), String> {
++            if !value_is_container(v) {
++                let (kind, value) = make_scalar(v)?;
++                packed.push(Cell {
++                    id: 0,
++                    parent: id,
++                    slot,
++                    kind,
++                    value,
++                });
++                return Ok(());
++            }
++            let cid = if let Some(cid) = edges.get(&(id, slot)) {
++                *cid
++            } else {
++                *next += 1;
++                *next
++            };
++            flatten(db, v, cid, id, slot, depth + 1, edges, next, fields, nodes)
++        };
++    match value {
++        Value::Array(list) => {
++            for (i, v) in list.iter().enumerate() {
++                child(v, -(i as i64) - 1, fields)?
++            }
++        }
++        Value::Object(map) => {
++            for (name, v) in map {
++                let fid = if let Some(fid) = fields.get(name) {
++                    *fid
++                } else {
++                    db.execute("INSERT OR IGNORE INTO field(name) VALUES(?)", [name])
++                        .map_err(err)?;
++                    let fid = db
++                        .query_row("SELECT id FROM field WHERE name=?", [name], |r| r.get(0))
++                        .map_err(err)?;
++                    fields.insert(name.clone(), fid);
++                    fid
++                };
++                child(v, fid, fields)?
++            }
++        }
++        _ => {}
++    }
++    if !packed.is_empty() {
++        nodes.get_mut(&id).unwrap().value = Sql::Blob(pack_scalars(&mut packed));
++    }
++    Ok(())
++}
++pub fn read_json(root: &Path, role: &str, key: &str) -> Result<Option<Value>, String> {
++    Store::open(root, role)?.load(key)
++}
++pub fn export_project(path: &Path, role: &str, key: &str, value: &Value) -> Result<(), String> {
++    if !valid_role(role) || key.is_empty() {
++        return Err("invalid project role or key".into());
++    }
++    if path.file_name().and_then(|v| v.to_str()).is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "saio.db" | "saio.db-wal" | "saio.db-shm" | "saio.db-journal")) {
++        return Err("project export cannot replace the shared configuration database".into());
++    }
++    let parent = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
++    create_private_directory(parent)?;
++    let temp = tempfile::NamedTempFile::new_in(parent).map_err(err)?;
++    {
++        let mut store = Store::open_file(temp.path(), role, false)?;
++        store.load(key)?;
++        store.save(key, value)?;
++        store
++            .db
++            .execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")
++            .map_err(err)?;
++    }
++    temp.persist(path).map_err(err)?;
++    Ok(())
++}
++pub fn read_project(path: &Path, role: &str, key: &str) -> Result<Value, String> {
++    if !valid_role(role) || key.is_empty() {
++        return Err("invalid project role or key".into());
++    }
++    let data = std::fs::read(path).map_err(err)?;
++    if !data.starts_with(b"SQLite format 3\0") {
++        return serde_json::from_slice(&data).map_err(err);
++    }
++    let mut store = Store::open_file(path, role, true)?;
++    let count: i64 = store
++        .db
++        .query_row("SELECT count(*) FROM document", [], |r| r.get(0))
++        .map_err(err)?;
++    if count != 1 {
++        return Err("project must contain exactly one document".into());
++    }
++    store
++        .load(key)?
++        .ok_or_else(|| "project role or document does not match".into())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[cfg(unix)]
++    #[test]
++    fn new_database_and_journals_are_private() {
++        use std::os::unix::fs::PermissionsExt;
++        let base = tempfile::tempdir().unwrap();
++        let root = base.path().join("new-root");
++        let mut store = Store::open(&root,"launcher").unwrap();
++        store.migrate_json("preferences",Some(br#"{"schemaVersion":1}"#),"test").unwrap();
++        assert_eq!(std::fs::metadata(&root).unwrap().permissions().mode() & 0o777,0o700);
++        for name in ["saio.db","saio.db-wal","saio.db-shm"] {
++            if let Ok(info) = std::fs::metadata(root.join(name)) {
++                assert_eq!(info.permissions().mode() & 0o777,0o600,"{name}");
++            }
++        }
++    }
++
++    #[test]
++    fn project_is_single_file_without_journal_sidecars() {
++        let root = tempfile::tempdir().unwrap();
++        let folder = root.path().join("nested");
++        let path = folder.join("case.saioproj");
++        export_project(&path,"pmu.master","workspace",&serde_json::json!({"value":1})).unwrap();
++        read_project(&path,"pmu.master","workspace").unwrap();
++        assert_eq!(std::fs::read_dir(&folder).unwrap().count(),1);
++    }
++
++    #[test]
++    fn failed_migration_revokes_write_and_export_preserves_database() {
++        let root = tempfile::tempdir().unwrap();
++        let mut store = Store::open(root.path(), "launcher").unwrap();
++        store.db.execute_batch("CREATE TRIGGER abort_migration BEFORE INSERT ON migration BEGIN SELECT RAISE(ABORT,'failed migration'); END;").unwrap();
++        assert!(store.migrate_json("preferences", Some(br#"{"theme":"dark"}"#), "legacy").is_err());
++        assert!(store.save("preferences", &serde_json::json!({"theme":"default"})).is_err());
++        assert_eq!(store.db.query_row("SELECT count(*) FROM document", [], |r| r.get::<_,i64>(0)).unwrap(), 0);
++        assert_eq!(store.db.query_row("SELECT count(*) FROM migration", [], |r| r.get::<_,i64>(0)).unwrap(), 0);
++        for name in ["saio.db", "SAIO.DB", "SaIo.Db-WaL", "saio.db-shm", "saio.db-journal"] {
++            assert!(export_project(&root.path().join(name), "pmu.master", "workspace", &Value::Null).is_err());
++        }
++        store.db.execute_batch("DROP TRIGGER abort_migration").unwrap();
++        store.migrate_json("preferences", Some(br#"{"theme":"dark"}"#), "legacy").unwrap();
++        let mut reopened = Store::open(root.path(), "launcher").unwrap();
++        assert_eq!(reopened.load("preferences").unwrap().unwrap()["theme"], "dark");
++    }
++
++    #[test]
++    fn migration_cas_types_and_project() {
++        let root = tempfile::tempdir().unwrap();
++        let mut a = Store::open(root.path(), "pmu.master").unwrap();
++        let mut b = Store::open(root.path(), "pmu.master").unwrap();
++        assert!(a.save("workspace", &Value::Null).is_err());
++        let value = serde_json::json!({"雪":[null,true,false,i64::MIN,u64::MAX,1.0,[],{}]});
++        let data = serde_json::to_vec(&value).unwrap();
++        assert_eq!(
++            a.migrate_json("workspace", Some(&data), "legacy").unwrap(),
++            Some(value.clone())
++        );
++        assert_eq!(b.load("workspace").unwrap(), Some(value));
++        a.save("workspace", &serde_json::json!({})).unwrap();
++        assert_eq!(b.save("workspace", &Value::Null).unwrap_err(), CONFLICT);
++        assert_eq!(
++            a.migrate_json("workspace", Some(b"bad"), "legacy").unwrap(),
++            Some(serde_json::json!({}))
++        );
++        assert!(a.migrate_json("bad", Some(b"{"), "legacy").is_err());
++        assert!(a.save("bad", &Value::Null).is_err());
++        let path = root.path().join("case.saioproj");
++        export_project(
++            &path,
++            "pmu.master",
++            "workspace",
++            &serde_json::json!({"max":u64::MAX}),
++        )
++        .unwrap();
++        assert_eq!(
++            read_project(&path, "pmu.master", "workspace").unwrap(),
++            serde_json::json!({"max":u64::MAX})
++        );
++        assert!(read_project(&path, "pmu.sub", "workspace").is_err());
++    }
++}
++
++fn value_is_container(v: &Value) -> bool {
++    matches!(v, Value::Array(_) | Value::Object(_))
++}
++fn make_scalar(value: &Value) -> Result<(i64, rusqlite::types::Value), String> {
++    use rusqlite::types::Value as Sql;
++    let result = match value {
++        Value::Null => (0, Sql::Null),
++        Value::Bool(false) => (1, Sql::Null),
++        Value::Bool(true) => (2, Sql::Null),
++        Value::String(v) => (6, Sql::Text(v.clone())),
++        Value::Number(v) => {
++            if let Some(i) = v.as_i64() {
++                (3, Sql::Integer(i))
++            } else if let Some(u) = v.as_u64() {
++                (4, Sql::Blob(u.to_be_bytes().to_vec()))
++            } else {
++                (5, Sql::Real(v.as_f64().ok_or("invalid number")?))
++            }
++        }
++        Value::Array(_) => (7, Sql::Null),
++        Value::Object(_) => (8, Sql::Null),
++    };
++    Ok(result)
++}
++fn put_var(out: &mut Vec<u8>, mut value: u64) {
++    while value >= 128 {
++        out.push((value as u8) | 128);
++        value >>= 7;
++    }
++    out.push(value as u8);
++}
++fn take_var(data: &mut &[u8]) -> Result<u64, String> {
++    let mut value = 0u64;
++    for i in 0..10 {
++        let b = *data.first().ok_or("truncated packed scalar")?;
++        *data = &data[1..];
++        if i == 9 && b > 1 {
++            return Err("overflow in packed scalar".into());
++        }
++        value |= ((b & 127) as u64) << (i * 7);
++        if b < 128 {
++            return Ok(value);
++        }
++    }
++    Err("invalid packed scalar varint".into())
++}
++fn pack_scalars(cells: &mut [Cell]) -> Vec<u8> {
++    use rusqlite::types::Value as Sql;
++    cells.sort_by_key(|c| c.slot);
++    let mut out = vec![b'S', 1];
++    for c in cells {
++        put_var(&mut out, ((c.slot << 1) ^ (c.slot >> 63)) as u64);
++        out.push(c.kind as u8);
++        match &c.value {
++            Sql::Null => {}
++            Sql::Integer(v) => put_var(&mut out, ((v << 1) ^ (v >> 63)) as u64),
++            Sql::Real(v) => out.extend_from_slice(&v.to_bits().to_be_bytes()),
++            Sql::Text(v) => {
++                put_var(&mut out, v.len() as u64);
++                out.extend_from_slice(v.as_bytes());
++            }
++            Sql::Blob(v) => out.extend_from_slice(v),
++        }
++    }
++    out
++}
++fn unpack_scalars(mut data: &[u8]) -> Result<Vec<Cell>, String> {
++    use rusqlite::types::Value as Sql;
++    if !data.starts_with(&[b'S', 1]) {
++        return Err("invalid packed scalar record".into());
++    }
++    data = &data[2..];
++    let mut out = Vec::new();
++    let mut seen = HashSet::new();
++    while !data.is_empty() {
++        let n = take_var(&mut data)?;
++        let slot = ((n >> 1) as i64) ^ -((n & 1) as i64);
++        if slot == 0 || !seen.insert(slot) {
++            return Err("invalid packed scalar slot".into());
++        }
++        let kind = *data.first().ok_or("missing packed scalar kind")? as i64;
++        data = &data[1..];
++        let value = match kind {
++            0..=2 => Sql::Null,
++            3 => {
++                let n = take_var(&mut data)?;
++                Sql::Integer(((n >> 1) as i64) ^ -((n & 1) as i64))
++            }
++            4 | 5 => {
++                if data.len() < 8 {
++                    return Err("truncated packed scalar".into());
++                }
++                let b = &data[..8];
++                let value = if kind == 4 {
++                    Sql::Blob(b.to_vec())
++                } else {
++                    Sql::Real(f64::from_bits(u64::from_be_bytes(b.try_into().unwrap())))
++                };
++                data = &data[8..];
++                value
++            }
++            6 => {
++                let len = usize::try_from(take_var(&mut data)?).map_err(err)?;
++                if len > data.len() {
++                    return Err("truncated packed text".into());
++                }
++                let value = Sql::Text(std::str::from_utf8(&data[..len]).map_err(err)?.into());
++                data = &data[len..];
++                value
++            }
++            _ => return Err("invalid packed scalar kind".into()),
++        };
++        out.push(Cell {
++            id: 0,
++            parent: 0,
++            slot,
++            kind,
++            value,
++        });
++    }
++    Ok(out)
++}
 diff --git a/crates/shared/contracts/appearance-cases.json b/crates/shared/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -14623,12 +16032,432 @@ index 0000000..8bdaa34
 +    { "language": "zh-CN", "systemLanguage": "en-US", "locale": "zh-CN" }
 +  ]
 +}
+diff --git a/crates/shared/pmu_storage.rs b/crates/shared/pmu_storage.rs
+new file mode 100644
+index 0000000..1a3c0b6
+--- /dev/null
++++ b/crates/shared/pmu_storage.rs
+@@ -0,0 +1,414 @@
++//! Suite configuration documents. No network state is restored by this module.
++use serde_json::Value;
++use std::collections::HashSet;
++use std::{
++    path::{Path, PathBuf},
++    sync::{Arc, Mutex},
++};
++use tauri::{Manager, State};
++#[path = "config_store.rs"]
++mod config_store;
++
++#[derive(Clone)]
++pub struct SuiteStorage {
++    role: &'static str,
++    store: Arc<Mutex<Option<config_store::Store>>>,
++    loaded: Arc<Mutex<HashSet<String>>>,
++}
++impl SuiteStorage {
++    pub fn new(role: &'static str) -> Self {
++        Self {
++            role,
++            store: Arc::new(Mutex::new(None)),
++            loaded: Arc::new(Mutex::new(HashSet::new())),
++        }
++    }
++    fn with_store<T>(
++        &self,
++        root: &Path,
++        operation: impl FnOnce(&mut config_store::Store) -> Result<T, String>,
++    ) -> Result<T, String> {
++        let mut guard = self
++            .store
++            .lock()
++            .map_err(|_| "Configuration lock poisoned".to_string())?;
++        if guard.is_none() {
++            *guard = Some(config_store::Store::open(root, self.role)?);
++        }
++        operation(guard.as_mut().expect("opened store"))
++    }
++    fn remember_load<T>(&self, key: &str, result: Result<T, String>) -> Result<T, String> {
++        let mut loaded = self
++            .loaded
++            .lock()
++            .map_err(|_| "Configuration lock poisoned".to_string())?;
++        if result.is_ok() {
++            loaded.insert(key.into());
++        } else {
++            loaded.remove(key);
++        }
++        result
++    }
++    fn save(&self, root: &Path, key: &str, value: &Value) -> Result<(), String> {
++        if key != "ui" {
++            validate_document(self.role, key, value)?;
++        }
++        if !self
++            .loaded
++            .lock()
++            .map_err(|_| "Configuration lock poisoned".to_string())?
++            .contains(key)
++        {
++            return Err("Configuration must be restored successfully before saving".into());
++        }
++        self.with_store(root, |store| store.save(key, value))
++    }
++}
++fn root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
++    match std::env::var_os("SIMLAB_DATA_DIR") {
++        Some(root) => Ok(PathBuf::from(root)),
++        None => Ok(app
++            .path()
++            .config_dir()
++            .map_err(|e| e.to_string())?
++            .join("SimLab")),
++    }
++}
++fn key_allowed(key: &str) -> Result<(), String> {
++    match key {
++        "workspace" | "settings" | "presets" => Ok(()),
++        _ => Err("Invalid configuration document".into()),
++    }
++}
++fn validate_document(role: &str, key: &str, value: &Value) -> Result<(), String> {
++    let object = value
++        .as_object()
++        .ok_or_else(|| format!("Invalid {key}: expected an object"))?;
++    if key == "presets" {
++        for value in object.values() {
++            validate_document(role, "workspace", value)?;
++        }
++    } else if key == "settings" {
++        for field in ["freq_offset_hz", "rocof_hz_s"] {
++            if let Some(value) = object.get(field) {
++                if !value.as_f64().is_some_and(f64::is_finite) {
++                    return Err(format!("Invalid generator setting {field}"));
++                }
++            }
++        }
++    } else if key == "workspace" {
++        if let Some(protocol) = object.get("protocol") {
++            if !matches!(protocol.as_str(), Some("V2" | "V3")) {
++                return Err("Invalid PMU protocol".into());
++            }
++        }
++        if role == "pmu.master" {
++            for field in [
++                "connIp",
++                "connMgmtPort",
++                "connDataPort",
++                "rateHz",
++                "heartbeatSecs",
++                "rawPeriod",
++            ] {
++                if object.get(field).is_some_and(|v| !v.is_string()) {
++                    return Err(format!("Invalid PMU setting {field}"));
++                }
++            }
++        } else if let Some(phasors) = object.get("phasors") {
++            if !phasors.is_array()
++                || phasors.as_array().unwrap().iter().any(|p| {
++                    !p["magnitude"].as_f64().is_some_and(f64::is_finite)
++                        || !p["phase_deg"].as_f64().is_some_and(f64::is_finite)
++                })
++            {
++                return Err("Invalid PMU phasor definitions".into());
++            }
++        }
++    }
++    Ok(())
++}
++
++fn load_document(
++    storage: &SuiteStorage,
++    root: &Path,
++    key: &str,
++    legacy: Option<Value>,
++) -> Result<Option<Value>, String> {
++    let result = storage.with_store(root, |store| {
++        if let Some(value) = store.load(key)? {
++            validate_document(storage.role, key, &value)?;
++            return Ok(Some(value));
++        }
++        let bytes = if key == "presets" && storage.role == "pmu.sub" {
++            let path = root.join("pmu-sub/presets.json");
++            match std::fs::read(&path) {
++                Ok(data) => Some(data),
++                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
++                Err(error) => return Err(format!("{}: {error}", path.display())),
++            }
++        } else {
++            legacy
++                .map(|value| serde_json::to_vec(&value))
++                .transpose()
++                .map_err(|e| e.to_string())?
++        };
++        if let Some(bytes) = bytes.as_deref() {
++            let value: Value = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
++            validate_document(storage.role, key, &value)?;
++        }
++        store.migrate_json(key, bytes.as_deref(), "pmu-legacy-v1")
++    });
++    storage.remember_load(key, result)
++}
++#[tauri::command]
++pub async fn simlab_load_preferences(
++    app: tauri::AppHandle,
++    storage: State<'_, SuiteStorage>,
++    legacy: Value,
++) -> Result<Value, String> {
++    let root = root(&app)?;
++    let storage = storage.inner().clone();
++    tauri::async_runtime::spawn_blocking(move || {
++        if !legacy.is_object() {
++            return Err("Preferences must be an object".into());
++        }
++        let bytes = serde_json::to_vec(&legacy).map_err(|e| e.to_string())?;
++        let result = storage.with_store(&root, |store| {
++            let value = store
++                .migrate_json("ui", Some(&bytes), "webview-localStorage-v1")?
++                .unwrap_or_else(|| serde_json::json!({}));
++            if !value.is_object() {
++                return Err("Invalid saved preferences: expected an object".into());
++            }
++            Ok(value)
++        });
++        storage.remember_load("ui", result)
++    })
++    .await
++    .map_err(|e| e.to_string())?
++}
++#[tauri::command]
++pub async fn simlab_save_preferences(
++    app: tauri::AppHandle,
++    storage: State<'_, SuiteStorage>,
++    values: Value,
++) -> Result<(), String> {
++    let root = root(&app)?;
++    let storage = storage.inner().clone();
++    tauri::async_runtime::spawn_blocking(move || {
++        if !values.is_object() {
++            return Err("Preferences must be an object".into());
++        }
++        storage.save(&root, "ui", &values)
++    })
++    .await
++    .map_err(|e| e.to_string())?
++}
++#[tauri::command]
++pub async fn simlab_load_document(
++    app: tauri::AppHandle,
++    storage: State<'_, SuiteStorage>,
++    key: String,
++    legacy: Option<Value>,
++) -> Result<Option<Value>, String> {
++    key_allowed(&key)?;
++    let root = root(&app)?;
++    let storage = storage.inner().clone();
++    tauri::async_runtime::spawn_blocking(move || load_document(&storage, &root, &key, legacy))
++        .await
++        .map_err(|e| e.to_string())?
++}
++#[tauri::command]
++pub async fn simlab_save_document(
++    app: tauri::AppHandle,
++    storage: State<'_, SuiteStorage>,
++    key: String,
++    value: Value,
++) -> Result<(), String> {
++    key_allowed(&key)?;
++    let root = root(&app)?;
++    let storage = storage.inner().clone();
++    tauri::async_runtime::spawn_blocking(move || {
++        if !value.is_object() {
++            return Err("Configuration must be an object".into());
++        }
++        storage.save(&root, &key, &value)
++    })
++    .await
++    .map_err(|e| e.to_string())?
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use serde_json::json;
++    #[test]
++    fn workspace_restart_and_conflict_keep_prior_revision() {
++        let dir = tempfile::tempdir().unwrap();
++        let first = SuiteStorage::new("pmu.master");
++        let stale = SuiteStorage::new("pmu.master");
++        assert!(first.save(dir.path(), "workspace", &json!({})).is_err());
++        assert_eq!(
++            load_document(&first, dir.path(), "workspace", None).unwrap(),
++            None
++        );
++        assert_eq!(
++            load_document(&stale, dir.path(), "workspace", None).unwrap(),
++            None
++        );
++        let config = json!({"protocol":"V3","connIp":"127.0.0.1","heartbeatSecs":"9"});
++        first.save(dir.path(), "workspace", &config).unwrap();
++        assert!(stale
++            .save(dir.path(), "workspace", &json!({"protocol":"V2"}))
++            .is_err());
++        let restarted = SuiteStorage::new("pmu.master");
++        assert_eq!(
++            load_document(&restarted, dir.path(), "workspace", None).unwrap(),
++            Some(config)
++        );
++        let other = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&other, dir.path(), "workspace", None).unwrap(),
++            None
++        );
++    }
++    #[test]
++    fn invalid_phasor_draft_never_replaces_a_restorable_workspace() {
++        let dir = tempfile::tempdir().unwrap();
++        let store = SuiteStorage::new("pmu.sub");
++        load_document(&store, dir.path(), "workspace", None).unwrap();
++        let valid = json!({"protocol":"V3","phasors":[{"magnitude":1000.0,"phase_deg":0.0}]});
++        store.save(dir.path(), "workspace", &valid).unwrap();
++        let invalid = json!({"protocol":"V3","phasors":[{"magnitude":"","phase_deg":0.0}]});
++        assert!(store.save(dir.path(), "workspace", &invalid).is_err());
++        let restarted = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&restarted, dir.path(), "workspace", None).unwrap(),
++            Some(valid)
++        );
++        let fixed = json!({"protocol":"V3","phasors":[{"magnitude":123.0,"phase_deg":0.0}]});
++        store.save(dir.path(), "workspace", &fixed).unwrap();
++        let restarted = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&restarted, dir.path(), "workspace", None).unwrap(),
++            Some(fixed)
++        );
++    }
++    #[test]
++    fn presets_migrate_once_and_empty_never_resurrects_legacy() {
++        let dir = tempfile::tempdir().unwrap();
++        let path = dir.path().join("pmu-sub/presets.json");
++        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
++        let presets =
++            json!({"Station A":{"protocol":"V3","phasors":[{"magnitude":123.5,"phase_deg":0.0}]}});
++        std::fs::write(&path, serde_json::to_vec(&presets).unwrap()).unwrap();
++        let store = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&store, dir.path(), "presets", None).unwrap(),
++            Some(presets)
++        );
++        store.save(dir.path(), "presets", &json!({})).unwrap();
++        std::fs::write(&path, b"broken legacy source").unwrap();
++        let restarted = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&restarted, dir.path(), "presets", None).unwrap(),
++            Some(json!({}))
++        );
++        assert_eq!(std::fs::read(&path).unwrap(), b"broken legacy source");
++    }
++    #[test]
++    fn failed_legacy_restore_blocks_defaults_and_preserves_source() {
++        let dir = tempfile::tempdir().unwrap();
++        let path = dir.path().join("pmu-sub/presets.json");
++        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
++        std::fs::write(&path, b"broken").unwrap();
++        let store = SuiteStorage::new("pmu.sub");
++        assert!(load_document(&store, dir.path(), "presets", None).is_err());
++        assert!(store.save(dir.path(), "presets", &json!({})).is_err());
++        assert_eq!(std::fs::read(&path).unwrap(), b"broken");
++    }
++}
++
++#[tauri::command]
++pub async fn simlab_export_document(
++    storage: State<'_, SuiteStorage>,
++    path: String,
++    key: String,
++    value: Value,
++) -> Result<(), String> {
++    key_allowed(&key)?;
++    if Path::new(&path).extension().and_then(|s| s.to_str()) != Some("saioproj") {
++        return Err("Export requires a .saioproj file".into());
++    }
++    if !value.is_object() {
++        return Err("Configuration must be an object".into());
++    }
++    let role = storage.role;
++    validate_document(role, &key, &value)?;
++    tauri::async_runtime::spawn_blocking(move || {
++        config_store::export_project(Path::new(&path), role, &key, &value)
++    })
++    .await
++    .map_err(|e| e.to_string())?
++}
++#[tauri::command]
++pub async fn simlab_import_document(
++    app: tauri::AppHandle,
++    storage: State<'_, SuiteStorage>,
++    path: String,
++    key: String,
++) -> Result<Value, String> {
++    key_allowed(&key)?;
++    let root = root(&app)?;
++    let storage = storage.inner().clone();
++    tauri::async_runtime::spawn_blocking(move || {
++        import_document(&storage, &root, Path::new(&path), &key)
++    })
++    .await
++    .map_err(|e| e.to_string())?
++}
++
++fn import_document(
++    storage: &SuiteStorage,
++    root: &Path,
++    path: &Path,
++    key: &str,
++) -> Result<Value, String> {
++    let value = config_store::read_project(path, storage.role, key)?;
++    validate_document(storage.role, key, &value)?;
++    storage.save(root, key, &value)?;
++    Ok(value)
++}
++#[cfg(test)]
++mod project_tests {
++    use super::*;
++    use serde_json::json;
++    #[test]
++    fn selected_document_projects_import_before_publishing_and_keep_legacy() {
++        let dir = tempfile::tempdir().unwrap();
++        let store = SuiteStorage::new("pmu.sub");
++        load_document(&store, dir.path(), "presets", None).unwrap();
++        let value = json!({"Station A":{"protocol":"V3","stn":"saved"}});
++        let project = dir.path().join("presets.saioproj");
++        config_store::export_project(&project, "pmu.sub", "presets", &value).unwrap();
++        assert_eq!(
++            import_document(&store, dir.path(), &project, "presets").unwrap(),
++            value
++        );
++        assert!(import_document(&store, dir.path(), &project, "workspace").is_err());
++        let legacy = dir.path().join("presets.json");
++        let bytes = serde_json::to_vec(&value).unwrap();
++        std::fs::write(&legacy, &bytes).unwrap();
++        assert_eq!(
++            import_document(&store, dir.path(), &legacy, "presets").unwrap(),
++            value
++        );
++        assert_eq!(std::fs::read(&legacy).unwrap(), bytes);
++        let restarted = SuiteStorage::new("pmu.sub");
++        assert_eq!(
++            load_document(&restarted, dir.path(), "presets", None).unwrap(),
++            Some(value)
++        );
++    }
++}
 diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
 new file mode 100644
-index 0000000..795c0c1
+index 0000000..70c4f6f
 --- /dev/null
 +++ b/crates/shared/simlab_preferences.rs
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,100 @@
 +#[derive(Debug, serde::Serialize, PartialEq)]
 +#[serde(rename_all = "camelCase")]
 +pub(crate) struct AppearanceV1 {
@@ -14646,12 +16475,18 @@ index 0000000..795c0c1
 +        theme: "system".into(),
 +        language: "en".into(),
 +    };
-+    let data = match std::fs::read(root.join("launcher.json")) {
-+        Ok(data) => data,
-+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
-+        Err(error) => return Err(error.to_string()),
++    #[cfg(feature = "simlab-suite")]
++    let stored = crate::config_store::read_json(root, "launcher", "preferences")?;
++    #[cfg(not(feature = "simlab-suite"))]
++    let stored: Option<serde_json::Value> = None;
++    let value = match stored {
++        Some(value) => value,
++        None => match std::fs::read(root.join("launcher.json")) {
++            Ok(data) => serde_json::from_slice(&data).map_err(|e| e.to_string())?,
++            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
++            Err(error) => return Err(error.to_string()),
++        },
 +    };
-+    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
 +    if !value.is_object()
 +        || value.get("schemaVersion").is_some_and(|v| v.as_u64() != Some(1))
 +    {
@@ -14689,17 +16524,7 @@ index 0000000..795c0c1
 +    if !root.is_absolute() {
 +        return Err("SIMLAB_DATA_DIR must be absolute".into());
 +    }
-+    let data = match std::fs::read(root.join("launcher.json")) {
-+        Ok(data) => data,
-+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("system".into()),
-+        Err(error) => return Err(error.to_string()),
-+    };
-+    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
-+    match value["theme"].as_str() {
-+        Some("light") => Ok("light".into()),
-+        Some("dark") => Ok("dark".into()),
-+        _ => Ok("system".into()),
-+    }
++    Ok(read_appearance(&root)?.theme)
 +}
 +
 +#[cfg(test)]
@@ -14747,6 +16572,59 @@ index 38e4963..da70759 100644
    </head>
    <body>
      <div id="app"></div>
+diff --git a/frontend-sub/package-lock.json b/frontend-sub/package-lock.json
+index d755774..f5e1881 100644
+--- a/frontend-sub/package-lock.json
++++ b/frontend-sub/package-lock.json
+@@ -9,6 +9,7 @@
+       "version": "0.13.2",
+       "dependencies": {
+         "@tauri-apps/api": "^2",
++        "@tauri-apps/plugin-dialog": "^2.8.4",
+         "@tauri-apps/plugin-store": "^2",
+         "vue": "^3.5"
+       },
+@@ -904,9 +905,9 @@
+       ]
+     },
+     "node_modules/@tauri-apps/api": {
+-      "version": "2.11.0",
+-      "resolved": "https://registry.npmjs.org/@tauri-apps/api/-/api-2.11.0.tgz",
+-      "integrity": "sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA==",
++      "version": "2.12.4",
++      "resolved": "https://registry.npmjs.org/@tauri-apps/api/-/api-2.12.4.tgz",
++      "integrity": "sha512-pVmfis+4zT8H0Qhp3xPZx9Ju7kpzvA6rr/PSJPyuwfvucTQ8sVt61NYU9KMkK703UFlYadFmjKA4HhybOtN0gg==",
+       "license": "Apache-2.0 OR MIT",
+       "funding": {
+         "type": "opencollective",
+@@ -1145,6 +1146,15 @@
+         "node": ">= 10"
+       }
+     },
++    "node_modules/@tauri-apps/plugin-dialog": {
++      "version": "2.8.4",
++      "resolved": "https://registry.npmjs.org/@tauri-apps/plugin-dialog/-/plugin-dialog-2.8.4.tgz",
++      "integrity": "sha512-+6ZOiXenOaxXwb8qCbBPdT2jX2cFPaVVHGIskrpmJLpmWj+qKRTD6X/z9x7hTdSQn7NedcoXCkWGej4a7dC4lw==",
++      "license": "MIT OR Apache-2.0",
++      "dependencies": {
++        "@tauri-apps/api": "^2.12.0"
++      }
++    },
+     "node_modules/@tauri-apps/plugin-store": {
+       "version": "2.4.3",
+       "resolved": "https://registry.npmjs.org/@tauri-apps/plugin-store/-/plugin-store-2.4.3.tgz",
+diff --git a/frontend-sub/package.json b/frontend-sub/package.json
+index fe16758..88140c2 100644
+--- a/frontend-sub/package.json
++++ b/frontend-sub/package.json
+@@ -9,6 +9,7 @@
+   },
+   "dependencies": {
+     "@tauri-apps/api": "^2",
++    "@tauri-apps/plugin-dialog": "^2.8.4",
+     "@tauri-apps/plugin-store": "^2",
+     "vue": "^3.5"
+   },
 diff --git a/frontend-sub/public/suite-icon.svg b/frontend-sub/public/suite-icon.svg
 new file mode 100644
 index 0000000..a1ee4d5
@@ -14827,14 +16705,57 @@ index a751c38..c623daa 100644
 +  .toasts { max-width: calc(100vw - 24px); }
 +}
  </style>
+diff --git a/frontend-sub/src/bootstrap.ts b/frontend-sub/src/bootstrap.ts
+new file mode 100644
+index 0000000..085c2d9
+--- /dev/null
++++ b/frontend-sub/src/bootstrap.ts
+@@ -0,0 +1,10 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
++import { createApp } from "vue";
++import App from "./App.vue";
++import { useSubEvents } from "./composables/useSubEvents";
++
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
++createApp(App).mount("#app");
++useSubEvents().startListening();
 diff --git a/frontend-sub/src/components/ConfigFormPanel.vue b/frontend-sub/src/components/ConfigFormPanel.vue
-index 8e99780..5522497 100644
+index 8e99780..3562ef5 100644
 --- a/frontend-sub/src/components/ConfigFormPanel.vue
 +++ b/frontend-sub/src/components/ConfigFormPanel.vue
-@@ -13,9 +13,22 @@ const form = reactive<ConfigInput>({
+@@ -1,11 +1,14 @@
+ <script setup lang="ts">
+-import { reactive, computed, ref, onMounted } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
++import { reactive, computed, ref, onMounted, watch } from "vue";
++import { invoke } from "../simlab-ui/configInvoke";
+ import { load } from "@tauri-apps/plugin-store";
+ import type { ConfigInput } from "../types";
+ import { running, listenPorts } from "../composables/useSubEvents";
+ import { t } from "../i18n";
+ 
++import { documentValue, scheduleDocument, saveDocument, flushDocuments, chooseProject } from "../suiteWorkspace";
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1";
++
+ const form = reactive<ConfigInput>({
+   protocol: "V3", idcode: "0GX00GP1", stn: "测试子站",
+   mgmt_port: 8000, data_port: 0, data_rate_fps: 50,
+@@ -13,9 +16,32 @@ const form = reactive<ConfigInput>({
    analogs: [300, 3000], digitals: [10],
  });
  
++if (suiteBuild) Object.assign(form, documentValue<ConfigInput>("workspace"));
++watch(form, () => { if (suiteBuild) scheduleDocument("workspace", form); }, { deep: true });
++
++const projectSection = ref("workspace");
++async function projectAction(action: "import" | "export") {
++  if (await chooseProject(action, projectSection.value) && action === "import") {
++    if (projectSection.value === "workspace") Object.assign(form, documentValue<ConfigInput>("workspace"));
++    if (projectSection.value === "presets") await refreshPresetNames();
++  }
++}
 +const busy = ref(false);
 +const error = ref("");
 +const invalidPhasorCount = ref(false);
@@ -14854,35 +16775,52 @@ index 8e99780..5522497 100644
      const cur = form.phasors.length;
      if (n > cur) for (let i = cur; i < n; i++) form.phasors.push({ magnitude: 1000, phase_deg: 0 });
      else form.phasors.length = Math.max(0, n);
-@@ -32,18 +45,20 @@ async function stop() { await invoke("stop_substation"); running.value = false;
- async function apply() { await invoke("update_config", { config: { ...form } }); }
+@@ -25,25 +51,31 @@ const phasorCount = computed({
+ async function start() {
+   if (form.protocol === "V2" && form.mgmt_port === 8000) form.mgmt_port = 7000;
+   if (form.protocol === "V3" && form.mgmt_port === 7000) form.mgmt_port = 8000;
++  if (suiteBuild) { await saveDocument("workspace", form); await flushDocuments(); }
+   await invoke("start_substation", { config: { ...form } });
+   running.value = true;
+ }
+ async function stop() { await invoke("stop_substation"); running.value = false; }
+-async function apply() { await invoke("update_config", { config: { ...form } }); }
++async function apply() { if (suiteBuild) await saveDocument("workspace", form); await invoke("update_config", { config: { ...form } }); }
  
  // --- Presets ---
 -const PRESET_STORE = "presets.json";
-+const presetStorePath = import.meta.env.VITE_SIMLAB_SUITE === "1"
-+  ? invoke<string>("preset_store_path")
-+  : Promise.resolve("presets.json");
++const presetStorePath = Promise.resolve("presets.json");
  const presetName = ref("");
  const presetNames = ref<string[]>([]);
  const selectedPreset = ref("");
  
  async function refreshPresetNames() {
 -  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  if (suiteBuild) { presetNames.value = Object.keys(documentValue("presets")); return; }
 +  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
    presetNames.value = await store.keys();
  }
  async function savePreset() {
    if (!presetName.value.trim()) return;
 -  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  if (suiteBuild) {
++    await saveDocument("presets", { ...documentValue("presets"), [presetName.value.trim()]: JSON.parse(JSON.stringify(form)) });
++    await refreshPresetNames(); selectedPreset.value = presetName.value.trim(); return;
++  }
 +  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
    await store.set(presetName.value.trim(), { ...form });
    await store.save();
    await refreshPresetNames();
-@@ -51,23 +66,24 @@ async function savePreset() {
+@@ -51,24 +83,43 @@ async function savePreset() {
  }
  async function loadPreset() {
    if (!selectedPreset.value) return;
 -  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  if (suiteBuild) {
++    const cfg = documentValue<Record<string, ConfigInput>>("presets")[selectedPreset.value];
++    if (cfg) { Object.assign(form, cfg); await saveDocument("workspace", form); }
++    return;
++  }
 +  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
    const cfg = await store.get<ConfigInput>(selectedPreset.value);
    if (cfg) Object.assign(form, cfg);
@@ -14890,6 +16828,10 @@ index 8e99780..5522497 100644
  async function deletePreset() {
    if (!selectedPreset.value) return;
 -  const store = await load(PRESET_STORE, { defaults: {}, autoSave: false });
++  if (suiteBuild) {
++    const presets: Record<string, unknown> = { ...documentValue<Record<string, unknown>>("presets") }; delete presets[selectedPreset.value];
++    await saveDocument("presets", presets); selectedPreset.value = ""; await refreshPresetNames(); return;
++  }
 +  const store = await load(await presetStorePath, { defaults: {}, autoSave: false });
    await store.delete(selectedPreset.value);
    await store.save();
@@ -14905,9 +16847,19 @@ index 8e99780..5522497 100644
 +  <section class="panel" :aria-busy="busy">
 +    <fieldset :disabled="busy" class="config-fields">
      <h3>{{ t("config.title") }}</h3>
++    <div v-if="suiteBuild" class="preset-load" role="group" aria-label="Configuration project">
++      <select v-model="projectSection" aria-label="Project contents">
++        <option value="workspace">当前配置 / Configuration</option>
++        <option value="presets">预设库 / Presets</option>
++        <option value="settings">数据生成 / Generator</option>
++      </select>
++      <button :disabled="running" @click="runAction(() => projectAction('import'))">导入 / Import</button>
++      <button @click="runAction(() => projectAction('export'))">导出 / Export</button>
++    </div>
      <label>{{ t("config.protocol") }}
        <select v-model="form.protocol" :disabled="running">
-@@ -80,15 +96,16 @@ onMounted(refreshPresetNames);
+         <option value="V2">V2 (Q/GDW 131-2006)</option>
+@@ -80,15 +131,16 @@ onMounted(refreshPresetNames);
      <label>{{ t("config.mgmtPort") }} <input type="number" v-model.number="form.mgmt_port" :disabled="running" /></label>
      <label>{{ t("config.dataPort") }} <input type="number" v-model.number="form.data_port" :disabled="running" /></label>
      <label>{{ t("config.rate") }} <input type="number" v-model.number="form.data_rate_fps" /></label>
@@ -14928,7 +16880,7 @@ index 8e99780..5522497 100644
      </div>
      <p v-if="listenPorts">{{ t("config.listening", { mgmt: listenPorts.mgmt, data: listenPorts.data }) }}</p>
  
-@@ -96,22 +113,31 @@ onMounted(refreshPresetNames);
+@@ -96,22 +148,31 @@ onMounted(refreshPresetNames);
      <hr />
      <h4>{{ t("preset.title") }}</h4>
      <div class="preset-save">
@@ -14967,34 +16919,50 @@ index 8e99780..5522497 100644
  .phasor-row { font-size: 12px; }
  .actions { display: flex; gap: 8px; margin-top: 8px; }
 diff --git a/frontend-sub/src/components/DataGenPanel.vue b/frontend-sub/src/components/DataGenPanel.vue
-index 22ee3ed..66352c6 100644
+index 22ee3ed..f5337b1 100644
 --- a/frontend-sub/src/components/DataGenPanel.vue
 +++ b/frontend-sub/src/components/DataGenPanel.vue
-@@ -1,8 +1,10 @@
+@@ -1,20 +1,44 @@
  <script setup lang="ts">
 -import { reactive, watch } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
 +import { reactive, watch, onUnmounted } from "vue";
- import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "../simlab-ui/configInvoke";
  import { running } from "../composables/useSubEvents";
  import { t } from "../i18n";
 +import { useToast, toastError } from "../composables/useToast";
 +const { push } = useToast();
  
++import { documentValue, scheduleDocument, flushDocuments } from "../suiteWorkspace";
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1";
  const gen = reactive({ freq_offset_hz: 0.0, rocof_hz_s: 0.0 });
  
-@@ -10,11 +12,18 @@ let timer: number | undefined;
++if (suiteBuild) Object.assign(gen, documentValue<typeof gen>("settings"));
++
+ let timer: number | undefined;
  watch(gen, () => {
++  if (suiteBuild) scheduleDocument("settings", gen);
    clearTimeout(timer);
    timer = window.setTimeout(async () => {
 -    if (running.value) await invoke("update_gen", { freqOffsetHz: gen.freq_offset_hz, rocofHzS: gen.rocof_hz_s });
 +    if (!running.value) return;
-+    try { await invoke("update_gen", { freqOffsetHz: gen.freq_offset_hz, rocofHzS: gen.rocof_hz_s }); }
++    try { if (suiteBuild) await flushDocuments(); await invoke("update_gen", { freqOffsetHz: gen.freq_offset_hz, rocofHzS: gen.rocof_hz_s }); }
 +    catch (cause) { push(toastError(cause), "error"); }
    }, 120);
  });
  
 -async function trigger() { if (running.value) await invoke("fire_trigger"); }
-+onUnmounted(() => clearTimeout(timer));
++watch(running, async value => {
++  if (!suiteBuild || !value) return;
++  try { await flushDocuments(); await invoke("update_gen", { freqOffsetHz: gen.freq_offset_hz, rocofHzS: gen.rocof_hz_s }); }
++  catch (cause) { push(toastError(cause), "error"); }
++});
++
++function imported(event: Event) {
++  if ((event as CustomEvent).detail === 'settings') Object.assign(gen, documentValue<typeof gen>("settings"));
++}
++window.addEventListener('saio-document-imported', imported);
++onUnmounted(() => { clearTimeout(timer); window.removeEventListener('saio-document-imported', imported); });
 +async function trigger() {
 +  if (!running.value) return;
 +  try { await invoke("fire_trigger"); }
@@ -15003,6 +16971,17 @@ index 22ee3ed..66352c6 100644
  </script>
  
  <template>
+diff --git a/frontend-sub/src/composables/useSubEvents.ts b/frontend-sub/src/composables/useSubEvents.ts
+index 6895a18..70b50c9 100644
+--- a/frontend-sub/src/composables/useSubEvents.ts
++++ b/frontend-sub/src/composables/useSubEvents.ts
+@@ -1,5 +1,5 @@
+ import { ref } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "../simlab-ui/configInvoke";
+ import type { SubEvent, SubDataInfo } from "../types";
+ import { useToast } from "./useToast";
+ import { useEventLog } from "./useEventLog";
 diff --git a/frontend-sub/src/i18n/messages.ts b/frontend-sub/src/i18n/messages.ts
 index 12fc9b0..82b03da 100644
 --- a/frontend-sub/src/i18n/messages.ts
@@ -15024,35 +17003,65 @@ index 12fc9b0..82b03da 100644
      'config.phasorPhase': 'Phase°',
      'config.start': 'Start',
 diff --git a/frontend-sub/src/main.ts b/frontend-sub/src/main.ts
-index 687b931..085c2d9 100644
+index 687b931..2ca0799 100644
 --- a/frontend-sub/src/main.ts
 +++ b/frontend-sub/src/main.ts
-@@ -1,6 +1,10 @@
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
- import { createApp } from "vue";
- import App from "./App.vue";
- import { useSubEvents } from "./composables/useSubEvents";
+@@ -1,6 +1,32 @@
+-import { createApp } from "vue";
+-import App from "./App.vue";
+-import { useSubEvents } from "./composables/useSubEvents";
++import { installConfigurationClose } from './simlab-ui/configClose'
++import { installSuitePreferences } from './simlab-ui/configPreferences'
  
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).mount("#app");
- useSubEvents().startListening();
+-createApp(App).mount("#app");
+-useSubEvents().startListening();
++async function start() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { listen } = await import('@tauri-apps/api/event')
++    const { invoke } = await import('./simlab-ui/configInvoke')
++    await installConfigurationClose(
++      requested => listen('saio-before-close', requested),
++      () => invoke('simlab_confirm_configuration_close'),
++      () => invoke('simlab_enable_configuration_close'),
++    )
++  }
++
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('pmu.sub')
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { restoreDocuments } = await import('./suiteWorkspace')
++    await restoreDocuments('pmu.sub')
++  }
++  await import('./bootstrap')
++}
++void start().catch(error => {
++  console.error('Application initialization failed', error)
++  const message = document.createElement('div')
++  message.setAttribute('role', 'alert')
++  message.textContent = String(error)
++  const retry = document.createElement('button')
++  retry.textContent = '重试 / Retry'
++  retry.onclick = () => window.location.reload()
++  message.append(retry)
++  document.body.append(message)
++})
 diff --git a/frontend-sub/src/simlab-ui/.source.json b/frontend-sub/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/frontend-sub/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -15506,6 +17515,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/frontend-sub/src/simlab-ui/configClose.ts b/frontend-sub/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/frontend-sub/src/simlab-ui/configInvoke.ts b/frontend-sub/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/frontend-sub/src/simlab-ui/configPreferences.ts b/frontend-sub/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/frontend-sub/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/frontend-sub/src/simlab-ui/contracts/appearance-cases.json b/frontend-sub/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -15879,6 +18176,98 @@ index 0000000..836c3f7
 +  --text-dim: var(--secondary); --text-faint: var(--muted);
 +  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
 +}
+diff --git a/frontend-sub/src/suiteWorkspace.ts b/frontend-sub/src/suiteWorkspace.ts
+new file mode 100644
+index 0000000..14ee64b
+--- /dev/null
++++ b/frontend-sub/src/suiteWorkspace.ts
+@@ -0,0 +1,86 @@
++import { registerConfigurationFlusher } from './simlab-ui/configClose'
++import { invoke } from './simlab-ui/configInvoke'
++const suite = import.meta.env.VITE_SIMLAB_SUITE === '1'
++type Document = Record<string, unknown>
++const drafts = new Map<string, Document>()
++const dirty = new Set<string>()
++let pending: Promise<void> | undefined
++let timer: ReturnType<typeof setTimeout> | undefined
++let banner: HTMLDivElement | undefined
++function status(error?: unknown) {
++  if (!suite) return
++  if (!banner) {
++    banner = document.createElement('div')
++    banner.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:2147483646;padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;max-width:48vw;overflow-wrap:anywhere'
++    document.body.append(banner)
++  }
++  banner.setAttribute('role', error ? 'alert' : 'status')
++  banner.replaceChildren(document.createTextNode(error ? `配置未保存 / Configuration not saved: ${String(error)}` : dirty.size ? '正在保存配置 / Saving configuration…' : '配置已保存 / Configuration saved'))
++  if (error) { const retry = document.createElement('button'); retry.textContent = '重试 / Retry'; retry.onclick = () => { void flushDocuments().catch(() => {}) }; banner.append(retry) }
++}
++export async function restoreDocuments(role: 'pmu.master' | 'pmu.sub') {
++  if (!suite) return
++  for (const key of ['workspace', 'settings', 'presets']) {
++    let value = await invoke<Document | null>('simlab_load_document', { key, legacy: null })
++    if (role === 'pmu.master' && key === 'workspace') {
++      const raw = localStorage.getItem('pmusim.config.v1')
++      if (value === null && raw) value = await invoke<Document | null>('simlab_load_document', { key, legacy: JSON.parse(raw) })
++      if (value !== null && raw) localStorage.removeItem('pmusim.config.v1')
++    }
++    if (value !== null && (typeof value !== 'object' || Array.isArray(value))) throw new Error(`Invalid saved ${key}`)
++    drafts.set(key, value ?? {})
++  }
++  registerConfigurationFlusher(flushDocuments)
++  window.addEventListener('blur', () => { void flushDocuments().catch(() => {}) })
++  document.addEventListener('visibilitychange', () => { void flushDocuments().catch(() => {}) })
++  window.addEventListener('beforeunload', event => { if (dirty.size) { void flushDocuments().catch(() => {}); event.preventDefault(); event.returnValue = '' } })
++}
++export function documentValue<T extends object>(key: string): Partial<T> { return JSON.parse(JSON.stringify(drafts.get(key) ?? {})) as Partial<T> }
++export async function saveDocument(key: string, value: object): Promise<void> {
++  if (!suite) return
++  drafts.set(key, JSON.parse(JSON.stringify(value)) as Document)
++  dirty.add(key)
++  status()
++  return flushDocuments()
++}
++export function scheduleDocument(key: string, value: object) {
++  if (!suite) return
++  drafts.set(key, JSON.parse(JSON.stringify(value)) as Document)
++  dirty.add(key); status()
++  if (timer) clearTimeout(timer)
++  timer = setTimeout(() => { timer = undefined; void flushDocuments().catch(() => {}) }, 300)
++}
++export async function flushDocuments(): Promise<void> {
++  if (!suite) return
++  if (timer) { clearTimeout(timer); timer = undefined }
++  if (pending) { await pending; if (dirty.size) return flushDocuments(); return }
++  pending = (async () => {
++    while (dirty.size) {
++      const key = dirty.values().next().value as string
++      const value = drafts.get(key)!
++      try { await invoke('simlab_save_document', { key, value }) }
++      catch (error) { status(error); throw error }
++      if (drafts.get(key) === value) dirty.delete(key)
++    }
++    status()
++  })()
++  try { await pending } finally { pending = undefined }
++}
++
++export async function chooseProject(action: 'import' | 'export', key = 'workspace'): Promise<boolean> {
++  const dialog = await import('@tauri-apps/plugin-dialog')
++  if (action === 'export') {
++    const path = await dialog.save({ defaultPath: `pmu-${key}.saioproj`, filters: [{ name: 'SAIO Project', extensions: ['saioproj'] }] })
++    if (!path) return false
++    await flushDocuments()
++    await invoke('simlab_export_document', { key, path, value: documentValue(key) })
++  } else {
++    const path = await dialog.open({ multiple: false, filters: [{ name: 'SAIO Project / Legacy JSON', extensions: ['saioproj', 'json'] }] })
++    if (!path || Array.isArray(path)) return false
++    await flushDocuments()
++    const value = await invoke<Document>('simlab_import_document', { key, path })
++    drafts.set(key, value)
++    window.dispatchEvent(new CustomEvent('saio-document-imported', { detail: key }))
++  }
++  return true
++}
 diff --git a/frontend/index.html b/frontend/index.html
 index df071fe..0d7631f 100644
 --- a/frontend/index.html
@@ -15915,9 +18304,17 @@ index 0000000..f67da42
 +<g id="protocol-label" aria-label="PMU"><path d="M79.186 109.866V94H82.596Q83.532 94 84.245 94.245Q84.958 94.49 85.537 95.114Q86.117 95.738 86.34 96.574Q86.562 97.409 86.562 98.836Q86.562 99.905 86.44 100.641Q86.317 101.376 85.916 102.022Q85.448 102.802 84.668 103.237Q83.888 103.671 82.618 103.671H81.459V109.866H79.186ZM81.459 96.139V101.532H82.551Q83.242 101.532 83.621 101.331Q84 101.131 84.178 100.774Q84.356 100.44 84.39 99.95Q84.423 99.46 84.423 98.858Q84.423 98.301 84.401 97.799Q84.379 97.298 84.2 96.919Q84.022 96.54 83.665 96.34Q83.309 96.139 82.64 96.139H81.459ZM88.256 109.866V94H90.44L93.359 102.401H93.404L96.301 94H98.507V109.866H96.234V100.217H96.189L93.938 107.036H92.802L90.574 100.217H90.529V109.866H88.256ZM108 94V106.301Q108 107.081 107.721 107.738Q107.443 108.396 106.93 108.908Q106.418 109.421 105.749 109.71Q105.08 110 104.323 110Q103.565 110 102.908 109.71Q102.25 109.421 101.738 108.908Q101.225 108.396 100.936 107.738Q100.646 107.081 100.646 106.301V94H102.919V106.078Q102.919 106.925 103.32 107.326Q103.721 107.727 104.323 107.727Q104.924 107.727 105.326 107.326Q105.727 106.925 105.727 106.078V94H108Z" fill="#F9FCFF" aria-label="PMU"/></g>
 +</svg>
 diff --git a/frontend/src/App.vue b/frontend/src/App.vue
-index 67e47ba..d7d9357 100644
+index 67e47ba..cfbce6e 100644
 --- a/frontend/src/App.vue
 +++ b/frontend/src/App.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { onMounted, ref } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "./simlab-ui/configInvoke";
+ import { getVersion } from "@tauri-apps/api/app";
+ import { useToast } from "./composables/useToast";
+ import ConfigInfoPanel from "./components/ConfigInfoPanel.vue";
 @@ -13,6 +13,8 @@ import { useI18n } from "./i18n";
  const { toasts, dismiss, push } = useToast();
  const { t, locale, setLocale } = useI18n();
@@ -15973,11 +18370,162 @@ index 67e47ba..d7d9357 100644
    /* 状态语义色 */
    --ok: #1d7a3e;
    --warn: #b06a00;
+diff --git a/frontend/src/bootstrap.ts b/frontend/src/bootstrap.ts
+new file mode 100644
+index 0000000..8d64743
+--- /dev/null
++++ b/frontend/src/bootstrap.ts
+@@ -0,0 +1,17 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
++import { createApp } from "vue";
++import App from "./App.vue";
++import { usePmuEvents } from "./composables/usePmuEvents";
++
++// Tauri 2's `listen()` IPC needs the webview to be fully ready, which
++// only happens AFTER createApp().mount() — calling it earlier (top-level
++// `await listen()` or even synchronously here) deadlocks because the
++// webview message channel isn't yet plumbed. So we mount first, then
++// fire startListening(). Components that issue commands await
++// `listenerReady` from usePmuEvents to ensure the listener is attached
++// before the first invoke (otherwise handshake events drop on the floor).
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
++createApp(App).mount("#app");
++usePmuEvents().startListening();
 diff --git a/frontend/src/components/ConfigInfoPanel.vue b/frontend/src/components/ConfigInfoPanel.vue
-index f9b71af..345f91c 100644
+index f9b71af..4b5edaa 100644
 --- a/frontend/src/components/ConfigInfoPanel.vue
 +++ b/frontend/src/components/ConfigInfoPanel.vue
-@@ -393,16 +393,16 @@ watch(rateHz, async (v, old) => {
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { computed, nextTick, ref, watch } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "../simlab-ui/configInvoke";
+ import { useProtocol } from "../composables/useProtocol";
+ import { useServerStatus } from "../composables/useServerStatus";
+ import { useSessions } from "../composables/useSessions";
+@@ -12,6 +12,7 @@ import { listenerReady } from "../composables/usePmuEvents";
+ import { useReconnect } from "../composables/useReconnect";
+ import { useI18n } from "../i18n";
+ import { ask } from "@tauri-apps/plugin-dialog";
++import { documentValue, scheduleDocument, flushDocuments, chooseProject } from "../suiteWorkspace";
+ import { hzToPeriod, frameTimeMs } from "../lib/rate";
+ 
+ const { t } = useI18n();
+@@ -50,6 +51,7 @@ function debounced<T>(ms: number, fn: (v: T) => void | Promise<void>) {
+ 
+ // 配置持久化:仅记输入表单(运行态不存)。恢复期间用 restoring 抑制下面两个
+ // 联动 watch,否则协议/命令端口联动会覆盖刚从 localStorage 载入的端口存值。
++const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1';
+ const PERSIST_KEY = "pmusim.config.v1";
+ const restoring = ref(true);
+ 
+@@ -98,9 +100,9 @@ const rawPeriod = ref("0");
+ // 载入上次保存的输入配置(仅表单值;sessions/configs 等运行态不持久化)。
+ function loadPersisted() {
+   try {
+-    const raw = localStorage.getItem(PERSIST_KEY);
+-    if (!raw) return;
+-    const c = JSON.parse(raw);
++    const raw = suiteBuild ? null : localStorage.getItem(PERSIST_KEY);
++    if (!suiteBuild && !raw) return;
++    const c = suiteBuild ? documentValue<Record<string, unknown>>("workspace") : JSON.parse(raw!);
+     if (c.protocol === "V2" || c.protocol === "V3") protocol.value = c.protocol;
+     if (typeof c.connIp === "string") connIp.value = c.connIp;
+     if (typeof c.connMgmtPort === "string") connMgmtPort.value = c.connMgmtPort;
+@@ -115,6 +117,9 @@ function loadPersisted() {
+   }
+ }
+ function persist() {
++  if (restoring.value) return;
++  const value = { protocol: protocol.value, connIp: connIp.value, connMgmtPort: connMgmtPort.value, connDataPort: connDataPort.value, connDataPortDirty: connDataPortDirty.value, rateHz: rateHz.value, heartbeatSecs: heartbeatSecs.value, injectAbnormal: injectAbnormal.value, rawPeriod: rawPeriod.value };
++  if (suiteBuild) { scheduleDocument("workspace", value); return; }
+   try {
+     localStorage.setItem(
+       PERSIST_KEY,
+@@ -154,6 +159,16 @@ nextTick(() => {
+   restoring.value = false;
+ });
+ 
++async function projectAction(action: 'import' | 'export') {
++  try {
++    if (action === 'import' && (running.value || session.value)) throw new Error('Stop communication before importing a project');
++    persist(); await flushDocuments();
++    if (await chooseProject(action) && action === 'import') {
++      restoring.value = true; loadPersisted(); await nextTick(); restoring.value = false;
++    }
++  } catch (error) { pushToast(toastError(error), "error"); }
++}
++
+ async function injectPeriod() {
+   const s = session.value;
+   if (!s) return; // 按钮 disabled 已兜底
+@@ -164,6 +179,7 @@ async function injectPeriod() {
+     return;
+   }
+   try {
++    if (suiteBuild) { persist(); await flushDocuments(); }
+     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
+     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: p });
+     pushToast(t("config.injectSent", { period: String(p) }), "info");
+@@ -224,6 +240,7 @@ async function startEverything() {
+   if (busy.value) return;
+   busy.value = true;
+   try {
++    if (suiteBuild) { persist(); await flushDocuments(); }
+     // Block until the Tauri event listener is attached. If start_server +
+     // connect_substation fire before listen() round-trips,every handshake
+     // event drops on the floor and the UI never updates (the original
+@@ -269,6 +286,7 @@ async function skipCfg2Connect() {
+   if (busy.value) return;
+   busy.value = true;
+   try {
++    if (suiteBuild) { persist(); await flushDocuments(); }
+     await listenerReady;
+     if (!running.value) {
+       const dataPort = protocol.value === "V3" ? 0 : parseInt(connDataPort.value);
+@@ -328,6 +346,7 @@ watch(heartbeatSecs, debounced<string>(250, async (v) => {
+   const hb = parseFloat(v);
+   if (Number.isFinite(hb) && hb > 0) {
+     try {
++    if (suiteBuild) { persist(); await flushDocuments(); }
+       await invoke("set_heartbeat_interval", { seconds: hb });
+     } catch (e) {
+       pushToast(t("config.heartbeatFailed", { error: toastError(e) }), "error");
+@@ -347,6 +366,7 @@ const applyNormalRate = debounced<string>(250, async (v) => {
+   if (!Number.isFinite(hz) || hz <= 0) return;
+   const periodVal = hzToPeriod(hz);
+   try {
++    if (suiteBuild) { persist(); await flushDocuments(); }
+     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
+     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: periodVal });
+     pushToast(t("config.rateApplied", { hz: String(hz) }), "info");
+@@ -360,6 +380,7 @@ const applyNormalRate = debounced<string>(250, async (v) => {
+ // 确认早于连接状态护栏 → 无论连接与否,选中 0Hz 都恰好确认一次。
+ let suppressRateWatch = false;
+ watch(rateHz, async (v, old) => {
++  if (restoring.value) return;
+   if (suppressRateWatch) { suppressRateWatch = false; return; }
+   if (v === "0") {
+     const ok = await ask(t("config.inject0Confirm"), {
+@@ -374,6 +395,7 @@ watch(rateHz, async (v, old) => {
+     const s = session.value;
+     if (s && (s.state === "streaming" || s.state === "cfg2_sent")) {
+       try {
++        if (suiteBuild) { persist(); await flushDocuments(); }
+         await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
+         await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: 0 });
+         pushToast(t("config.injectSent", { period: "0" }), "info");
+@@ -389,20 +411,24 @@ watch(rateHz, async (v, old) => {
+ 
+ <template>
+   <div class="config-panel">
++    <div v-if="suiteBuild" class="row" role="group" aria-label="Configuration project">
++      <button :disabled="running || !!session" @click="projectAction('import')">导入配置 / Import</button>
++      <button @click="projectAction('export')">导出配置 / Export</button>
++    </div>
+     <section class="panel">
        <div class="panel-hd">{{ t("config.title") }}</div>
        <div class="panel-bd">
  
@@ -16000,7 +18548,7 @@ index f9b71af..345f91c 100644
              <option value="10">10 Hz</option>
              <option value="25">25 Hz</option>
              <option value="50">50 Hz</option>
-@@ -414,13 +414,13 @@ watch(rateHz, async (v, old) => {
+@@ -414,13 +440,13 @@ watch(rateHz, async (v, old) => {
          </div>
        </div>
        <div class="row">
@@ -16018,7 +18566,7 @@ index f9b71af..345f91c 100644
            <button
              class="btn"
              @click="injectPeriod"
-@@ -433,18 +433,18 @@ watch(rateHz, async (v, old) => {
+@@ -433,18 +459,18 @@ watch(rateHz, async (v, old) => {
          <button class="btn" @click="skipCfg2Connect" :disabled="busy">{{ t("config.skipCfg2Connect") }}</button>
        </div>
        <div class="row">
@@ -16042,7 +18590,7 @@ index f9b71af..345f91c 100644
            <option value="V2">2006 (V2)</option>
            <option value="V3">2011 (V3)</option>
          </select>
-@@ -488,8 +488,9 @@ watch(rateHz, async (v, old) => {
+@@ -488,8 +514,9 @@ watch(rateHz, async (v, old) => {
    flex-direction: column;
    gap: 8px;
    padding: 8px;
@@ -16053,7 +18601,7 @@ index f9b71af..345f91c 100644
  /* Panel = framed group with a label-plate header band. Replaces the old
     fieldset/legend (whose notched border + double top edge read as an
     un-styled browser default). Frame is now continuous; the title lives in
-@@ -508,7 +509,7 @@ watch(rateHz, async (v, old) => {
+@@ -508,7 +535,7 @@ watch(rateHz, async (v, old) => {
    font-size: 12px;
    font-weight: 600;
    letter-spacing: 1.5px;
@@ -16062,7 +18610,7 @@ index f9b71af..345f91c 100644
    /* 顶层极细竖向拉丝纹理(2px 周期，低对比) 叠在压暗半档的阳极氧化
       深灰镜面渐变上 —— 两者不同轴，纹理不被宏观高光糊掉。 */
    background:
-@@ -590,7 +591,7 @@ watch(rateHz, async (v, old) => {
+@@ -590,7 +617,7 @@ watch(rateHz, async (v, old) => {
     up across every row. appearance:none kills the macOS native select
     chrome (rounded corners + chevron) that otherwise sits 1–2px taller
     than the input boxes. */
@@ -16071,7 +18619,7 @@ index f9b71af..345f91c 100644
  .row select {
    width: 100%;
    height: 22px;
-@@ -605,12 +606,13 @@ watch(rateHz, async (v, old) => {
+@@ -605,12 +632,13 @@ watch(rateHz, async (v, old) => {
    box-shadow: inset 1px 1px 0 rgba(0,0,0,0.04);
    outline: none;
  }
@@ -16086,7 +18634,7 @@ index f9b71af..345f91c 100644
  
  /* Custom chevron — single SVG so disabled / enabled selects render
     identically across platforms. */
-@@ -638,7 +640,7 @@ watch(rateHz, async (v, old) => {
+@@ -638,7 +666,7 @@ watch(rateHz, async (v, old) => {
  
  .readback {
    font-size: 11px;
@@ -16095,7 +18643,7 @@ index f9b71af..345f91c 100644
    font-family: ui-monospace, "SF Mono", Menlo, monospace;
    min-width: 56px;
    text-align: right;
-@@ -656,11 +658,11 @@ watch(rateHz, async (v, old) => {
+@@ -656,11 +684,11 @@ watch(rateHz, async (v, old) => {
  .btn-wide { grid-column: 1 / -1; }
  .btn {
    height: 30px;
@@ -16109,7 +18657,7 @@ index f9b71af..345f91c 100644
    cursor: pointer;
    border-radius: 0;
    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7),
-@@ -686,7 +688,7 @@ watch(rateHz, async (v, old) => {
+@@ -686,7 +714,7 @@ watch(rateHz, async (v, old) => {
  .btn:disabled {
    opacity: 0.5;
    cursor: not-allowed;
@@ -16118,7 +18666,7 @@ index f9b71af..345f91c 100644
  }
  
  /* Readout — same label grid as form rows so columns line up ---------- */
-@@ -762,12 +764,12 @@ watch(rateHz, async (v, old) => {
+@@ -762,12 +790,12 @@ watch(rateHz, async (v, old) => {
    white-space: nowrap;
    overflow: hidden;
    text-overflow: ellipsis;
@@ -16147,9 +18695,17 @@ index 081edfb..77d02ba 100644
    text-align: left;
    border-right: 1px solid #b6b5a8;
 diff --git a/frontend/src/components/UpdateDialog.vue b/frontend/src/components/UpdateDialog.vue
-index 8106aa1..847d93c 100644
+index 8106aa1..610de54 100644
 --- a/frontend/src/components/UpdateDialog.vue
 +++ b/frontend/src/components/UpdateDialog.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '../simlab-ui/configInvoke'
+ import { useI18n } from '../i18n'
+ 
+ const props = defineProps<{
 @@ -207,7 +207,7 @@ onBeforeUnmount(() => {
    background: linear-gradient(#eaeae0, #dcdcd0);
  }
@@ -16194,39 +18750,94 @@ index 8106aa1..847d93c 100644
 +.btn-ghost { background: #ebebe2; color: var(--text); border-color: #b8b8b0; }
  .btn-ghost:hover { background: #f5f5ec; }
  </style>
+diff --git a/frontend/src/composables/usePmuEvents.ts b/frontend/src/composables/usePmuEvents.ts
+index 79b2af1..de89c0b 100644
+--- a/frontend/src/composables/usePmuEvents.ts
++++ b/frontend/src/composables/usePmuEvents.ts
+@@ -1,4 +1,4 @@
+-import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "../simlab-ui/configInvoke";
+ import type { PmuEvent } from "../types";
+ import { useSessions } from "./useSessions";
+ import { useCommLog } from "./useCommLog";
+diff --git a/frontend/src/composables/useReconnect.ts b/frontend/src/composables/useReconnect.ts
+index 0e2b714..1466ea0 100644
+--- a/frontend/src/composables/useReconnect.ts
++++ b/frontend/src/composables/useReconnect.ts
+@@ -1,5 +1,5 @@
+ import { ref, type Ref } from "vue";
+-import { invoke } from "@tauri-apps/api/core";
++import { invoke } from "../simlab-ui/configInvoke";
+ 
+ export type ReconnectMode = "normal" | "skipCfg2";
+ 
 diff --git a/frontend/src/main.ts b/frontend/src/main.ts
-index 0236bbe..8d64743 100644
+index 0236bbe..6cc8970 100644
 --- a/frontend/src/main.ts
 +++ b/frontend/src/main.ts
-@@ -1,3 +1,6 @@
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
- import { createApp } from "vue";
- import App from "./App.vue";
- import { usePmuEvents } from "./composables/usePmuEvents";
-@@ -9,5 +12,6 @@ import { usePmuEvents } from "./composables/usePmuEvents";
- // fire startListening(). Components that issue commands await
- // `listenerReady` from usePmuEvents to ensure the listener is attached
- // before the first invoke (otherwise handshake events drop on the floor).
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).mount("#app");
- usePmuEvents().startListening();
+@@ -1,13 +1,32 @@
+-import { createApp } from "vue";
+-import App from "./App.vue";
+-import { usePmuEvents } from "./composables/usePmuEvents";
++import { installConfigurationClose } from './simlab-ui/configClose'
++import { installSuitePreferences } from './simlab-ui/configPreferences'
+ 
+-// Tauri 2's `listen()` IPC needs the webview to be fully ready, which
+-// only happens AFTER createApp().mount() — calling it earlier (top-level
+-// `await listen()` or even synchronously here) deadlocks because the
+-// webview message channel isn't yet plumbed. So we mount first, then
+-// fire startListening(). Components that issue commands await
+-// `listenerReady` from usePmuEvents to ensure the listener is attached
+-// before the first invoke (otherwise handshake events drop on the floor).
+-createApp(App).mount("#app");
+-usePmuEvents().startListening();
++async function start() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { listen } = await import('@tauri-apps/api/event')
++    const { invoke } = await import('./simlab-ui/configInvoke')
++    await installConfigurationClose(
++      requested => listen('saio-before-close', requested),
++      () => invoke('simlab_confirm_configuration_close'),
++      () => invoke('simlab_enable_configuration_close'),
++    )
++  }
++
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('pmu.master')
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { restoreDocuments } = await import('./suiteWorkspace')
++    await restoreDocuments('pmu.master')
++  }
++  await import('./bootstrap')
++}
++void start().catch(error => {
++  console.error('Application initialization failed', error)
++  const message = document.createElement('div')
++  message.setAttribute('role', 'alert')
++  message.textContent = String(error)
++  const retry = document.createElement('button')
++  retry.textContent = '重试 / Retry'
++  retry.onclick = () => window.location.reload()
++  message.append(retry)
++  document.body.append(message)
++})
 diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/frontend/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -16680,6 +19291,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/frontend/src/simlab-ui/configClose.ts b/frontend/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/frontend/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/frontend/src/simlab-ui/configInvoke.ts b/frontend/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/frontend/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/frontend/src/simlab-ui/configPreferences.ts b/frontend/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/frontend/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/frontend/src/simlab-ui/contracts/appearance-cases.json b/frontend/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -17053,6 +19952,98 @@ index 0000000..836c3f7
 +  --text-dim: var(--secondary); --text-faint: var(--muted);
 +  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
 +}
+diff --git a/frontend/src/suiteWorkspace.ts b/frontend/src/suiteWorkspace.ts
+new file mode 100644
+index 0000000..14ee64b
+--- /dev/null
++++ b/frontend/src/suiteWorkspace.ts
+@@ -0,0 +1,86 @@
++import { registerConfigurationFlusher } from './simlab-ui/configClose'
++import { invoke } from './simlab-ui/configInvoke'
++const suite = import.meta.env.VITE_SIMLAB_SUITE === '1'
++type Document = Record<string, unknown>
++const drafts = new Map<string, Document>()
++const dirty = new Set<string>()
++let pending: Promise<void> | undefined
++let timer: ReturnType<typeof setTimeout> | undefined
++let banner: HTMLDivElement | undefined
++function status(error?: unknown) {
++  if (!suite) return
++  if (!banner) {
++    banner = document.createElement('div')
++    banner.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:2147483646;padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;max-width:48vw;overflow-wrap:anywhere'
++    document.body.append(banner)
++  }
++  banner.setAttribute('role', error ? 'alert' : 'status')
++  banner.replaceChildren(document.createTextNode(error ? `配置未保存 / Configuration not saved: ${String(error)}` : dirty.size ? '正在保存配置 / Saving configuration…' : '配置已保存 / Configuration saved'))
++  if (error) { const retry = document.createElement('button'); retry.textContent = '重试 / Retry'; retry.onclick = () => { void flushDocuments().catch(() => {}) }; banner.append(retry) }
++}
++export async function restoreDocuments(role: 'pmu.master' | 'pmu.sub') {
++  if (!suite) return
++  for (const key of ['workspace', 'settings', 'presets']) {
++    let value = await invoke<Document | null>('simlab_load_document', { key, legacy: null })
++    if (role === 'pmu.master' && key === 'workspace') {
++      const raw = localStorage.getItem('pmusim.config.v1')
++      if (value === null && raw) value = await invoke<Document | null>('simlab_load_document', { key, legacy: JSON.parse(raw) })
++      if (value !== null && raw) localStorage.removeItem('pmusim.config.v1')
++    }
++    if (value !== null && (typeof value !== 'object' || Array.isArray(value))) throw new Error(`Invalid saved ${key}`)
++    drafts.set(key, value ?? {})
++  }
++  registerConfigurationFlusher(flushDocuments)
++  window.addEventListener('blur', () => { void flushDocuments().catch(() => {}) })
++  document.addEventListener('visibilitychange', () => { void flushDocuments().catch(() => {}) })
++  window.addEventListener('beforeunload', event => { if (dirty.size) { void flushDocuments().catch(() => {}); event.preventDefault(); event.returnValue = '' } })
++}
++export function documentValue<T extends object>(key: string): Partial<T> { return JSON.parse(JSON.stringify(drafts.get(key) ?? {})) as Partial<T> }
++export async function saveDocument(key: string, value: object): Promise<void> {
++  if (!suite) return
++  drafts.set(key, JSON.parse(JSON.stringify(value)) as Document)
++  dirty.add(key)
++  status()
++  return flushDocuments()
++}
++export function scheduleDocument(key: string, value: object) {
++  if (!suite) return
++  drafts.set(key, JSON.parse(JSON.stringify(value)) as Document)
++  dirty.add(key); status()
++  if (timer) clearTimeout(timer)
++  timer = setTimeout(() => { timer = undefined; void flushDocuments().catch(() => {}) }, 300)
++}
++export async function flushDocuments(): Promise<void> {
++  if (!suite) return
++  if (timer) { clearTimeout(timer); timer = undefined }
++  if (pending) { await pending; if (dirty.size) return flushDocuments(); return }
++  pending = (async () => {
++    while (dirty.size) {
++      const key = dirty.values().next().value as string
++      const value = drafts.get(key)!
++      try { await invoke('simlab_save_document', { key, value }) }
++      catch (error) { status(error); throw error }
++      if (drafts.get(key) === value) dirty.delete(key)
++    }
++    status()
++  })()
++  try { await pending } finally { pending = undefined }
++}
++
++export async function chooseProject(action: 'import' | 'export', key = 'workspace'): Promise<boolean> {
++  const dialog = await import('@tauri-apps/plugin-dialog')
++  if (action === 'export') {
++    const path = await dialog.save({ defaultPath: `pmu-${key}.saioproj`, filters: [{ name: 'SAIO Project', extensions: ['saioproj'] }] })
++    if (!path) return false
++    await flushDocuments()
++    await invoke('simlab_export_document', { key, path, value: documentValue(key) })
++  } else {
++    const path = await dialog.open({ multiple: false, filters: [{ name: 'SAIO Project / Legacy JSON', extensions: ['saioproj', 'json'] }] })
++    if (!path || Array.isArray(path)) return false
++    await flushDocuments()
++    const value = await invoke<Document>('simlab_import_document', { key, path })
++    drafts.set(key, value)
++    window.dispatchEvent(new CustomEvent('saio-document-imported', { detail: key }))
++  }
++  return true
++}
 diff --git a/frontend/tests/app-suite.test.ts b/frontend/tests/app-suite.test.ts
 new file mode 100644
 index 0000000..373fa82
@@ -17101,6 +20092,42 @@ index 0000000..373fa82
 +    wrapper.unmount();
 +  });
 +});
+diff --git a/frontend/tests/native-close-invoke.test.ts b/frontend/tests/native-close-invoke.test.ts
+new file mode 100644
+index 0000000..11a59c4
+--- /dev/null
++++ b/frontend/tests/native-close-invoke.test.ts
+@@ -0,0 +1,30 @@
++import { afterEach, expect, it, vi } from 'vitest'
++const { sdkInvoke } = vi.hoisted(() => ({ sdkInvoke: vi.fn() }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: sdkInvoke }))
++afterEach(() => { vi.resetModules(); sdkInvoke.mockReset(); document.body.inert = false })
++it('delegates arguments/options to the SDK and drains a pending Tauri write without wrapping read-only internals', async () => {
++ vi.resetModules()
++ const native = { }
++ Object.defineProperty(native, 'invoke', { value: () => Promise.resolve() })
++ window.__TAURI_INTERNALS__ = native as any
++ const descriptor = Object.getOwnPropertyDescriptor(native, 'invoke')
++ let complete!: () => void
++ const saving = new Promise<void>(resolve => { complete = resolve })
++ const never = new Promise<void>(() => {})
++ sdkInvoke.mockImplementation((command: string) => command === 'replace_connection' ? saving : never)
++ const { invoke } = await import('../src/simlab-ui/configInvoke')
++ const registry = await import('../src/simlab-ui/configClose')
++ const args = { protocol: 'V3' }; const options = { headers: { 'X-Test': 'test' } }
++ const write = invoke('replace_connection', args, options)
++ void invoke('read_data'); void invoke('connect_substation')
++ expect(sdkInvoke).toHaveBeenCalledWith('replace_connection', args, options)
++ let requested!: () => void
++ const confirm = vi.fn().mockResolvedValue(undefined)
++ await registry.installConfigurationClose(callback => { requested = callback; return () => {} }, confirm, async () => {})
++ requested(); await Promise.resolve(); await Promise.resolve()
++ expect(confirm).not.toHaveBeenCalled()
++ complete(); await write
++ for (let i = 0; i < 12; i++) await Promise.resolve()
++ expect(confirm).toHaveBeenCalledOnce()
++ expect(Object.getOwnPropertyDescriptor(native, 'invoke')).toEqual(descriptor)
++})
 diff --git a/frontend/tests/sub-config-interaction.test.ts b/frontend/tests/sub-config-interaction.test.ts
 new file mode 100644
 index 0000000..39529f4
@@ -17146,3 +20173,85 @@ index 0000000..39529f4
 +    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 +  });
 +});
+diff --git a/frontend/tests/sub-presets-persistence.test.ts b/frontend/tests/sub-presets-persistence.test.ts
+new file mode 100644
+index 0000000..160657a
+--- /dev/null
++++ b/frontend/tests/sub-presets-persistence.test.ts
+@@ -0,0 +1,28 @@
++import { afterEach, expect, it, vi } from 'vitest'
++import { flushPromises, mount } from '@vue/test-utils'
++afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
++it('loads a preset into an independent form so editing does not alter the library', async () => {
++ vi.resetModules(); vi.stubEnv('VITE_SIMLAB_SUITE', '1')
++ vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} })
++ const preset = { protocol: 'V3', idcode: '0GX00GP1', stn: 'Saved', mgmt_port: 8000, data_port: 0, data_rate_fps: 50, phasors: [{ magnitude: 123, phase_deg: 0 }], analogs: [], digitals: [] }
++ const writes: Array<{key: string, value: unknown}> = []
++ window.__TAURI_INTERNALS__ = { invoke: async (command: string, args: any) => {
++  if (command === 'simlab_load_document') return args.key === 'presets' ? { 'Station A': preset } : null
++  if (command === 'simlab_save_document') { writes.push(args); return }
++ } } as any
++ const storage = await import('../../frontend-sub/src/suiteWorkspace')
++ await storage.restoreDocuments('pmu.sub')
++ const { default: ConfigFormPanel } = await import('../../frontend-sub/src/components/ConfigFormPanel.vue')
++ const wrapper = mount(ConfigFormPanel)
++ try {
++  await flushPromises()
++  const controls = wrapper.findAll('.preset-load').at(-1)!
++  await controls.get('select').setValue('Station A')
++  await controls.findAll('button')[0]!.trigger('click'); await flushPromises()
++  await wrapper.findAll('.phasor-row input')[0]!.setValue(456); await flushPromises()
++  await storage.flushDocuments()
++  expect((storage.documentValue<Record<string, typeof preset>>('presets')['Station A'])!.phasors[0].magnitude).toBe(123)
++  expect(writes.filter(write => write.key === 'presets')).toHaveLength(0)
++  expect((storage.documentValue<typeof preset>('workspace').phasors)![0].magnitude).toBe(456)
++ } finally { wrapper.unmount() }
++})
+diff --git a/frontend/tests/suite-workspace.test.ts b/frontend/tests/suite-workspace.test.ts
+new file mode 100644
+index 0000000..e77e4af
+--- /dev/null
++++ b/frontend/tests/suite-workspace.test.ts
+@@ -0,0 +1,42 @@
++import { beforeEach, afterEach, expect, it, vi } from 'vitest'
++const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke }))
++beforeEach(() => { vi.resetModules(); vi.stubEnv('VITE_SIMLAB_SUITE', '1'); const values = new Map<string,string>(); vi.stubGlobal('localStorage', { getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => values.set(key,value), removeItem: (key:string) => values.delete(key), clear: () => values.clear() }); document.body.replaceChildren(); invoke.mockReset(); vi.useFakeTimers() })
++afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals() })
++it('imports the old master form into a typed document', async () => {
++ localStorage.setItem('pmusim.config.v1', '{"protocol":"V3","connIp":"127.0.0.1"}')
++ invoke.mockImplementation(async (command, args) => command === 'simlab_load_document' ? args.legacy : undefined)
++ const storage = await import('../src/suiteWorkspace')
++ await storage.restoreDocuments('pmu.master')
++ expect(storage.documentValue('workspace')).toEqual({ protocol: 'V3', connIp: '127.0.0.1' })
++ expect(invoke).toHaveBeenCalledWith('simlab_load_document', { key: 'workspace', legacy: { protocol: 'V3', connIp: '127.0.0.1' } })
++})
++it('uses an existing SQLite workspace before trying an invalid legacy browser value', async () => {
++ localStorage.setItem('pmusim.config.v1', 'broken')
++ invoke.mockImplementation(async (_command, args) => args.key === 'workspace' ? { protocol: 'V2' } : null)
++ const storage = await import('../src/suiteWorkspace')
++ await storage.restoreDocuments('pmu.master')
++ expect(storage.documentValue('workspace')).toEqual({ protocol: 'V2' })
++})
++it('serializes changed drafts and leaves failures visibly retryable', async () => {
++ invoke.mockResolvedValue(null)
++ const storage = await import('../src/suiteWorkspace'); await storage.restoreDocuments('pmu.sub')
++ let complete!: () => void
++ invoke.mockImplementationOnce(() => new Promise(resolve => { complete = () => resolve(undefined) })).mockResolvedValue(undefined)
++ const first = storage.saveDocument('workspace', { mgmt_port: 8000 })
++ storage.scheduleDocument('workspace', { mgmt_port: 8001 })
++ complete(); await first
++ expect(invoke).toHaveBeenLastCalledWith('simlab_save_document', { key: 'workspace', value: { mgmt_port: 8001 } })
++ invoke.mockRejectedValueOnce(new Error('locked'))
++ await expect(storage.saveDocument('settings', { freq_offset_hz: 1 })).rejects.toThrow('locked')
++ expect(document.querySelector('[role="alert"]')?.textContent).toContain('Configuration not saved')
++ expect(storage.documentValue('settings')).toEqual({ freq_offset_hz: 1 })
++ invoke.mockResolvedValue(undefined); await storage.flushDocuments()
++ expect(invoke).toHaveBeenLastCalledWith('simlab_save_document', { key: 'settings', value: { freq_offset_hz: 1 } })
++})
++it('rejects a failed restore before any defaults can be saved', async () => {
++ invoke.mockRejectedValue(new Error('corrupt database'))
++ const storage = await import('../src/suiteWorkspace')
++ await expect(storage.restoreDocuments('pmu.sub')).rejects.toThrow('corrupt database')
++ expect(invoke.mock.calls.every(([command]) => command === 'simlab_load_document')).toBe(true)
++})

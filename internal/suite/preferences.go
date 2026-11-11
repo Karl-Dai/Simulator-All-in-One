@@ -3,9 +3,9 @@ package suite
 import (
 	"encoding/json"
 	"fmt"
+	configstore "github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 type Preferences struct {
@@ -30,22 +30,50 @@ func clonePreferences(p Preferences) Preferences {
 	return p
 }
 
-func loadPreferences(root string) (Preferences, string) {
+func openPreferences(root string) (Preferences, *configstore.Store, error) {
 	p := defaultPreferences()
-	path := filepath.Join(root, "launcher.json")
-	data, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return p, ""
-	}
+	store, err := configstore.Open(root, "launcher")
 	if err != nil {
-		return p, "无法读取入口偏好: " + err.Error()
+		return p, nil, err
 	}
-	if err = json.Unmarshal(data, &p); err != nil || p.SchemaVersion != 1 {
-		backup := path + ".corrupt-" + time.Now().Format("20060102-150405.000000000")
-		if err := os.Rename(path, backup); err != nil {
-			return defaultPreferences(), "入口偏好损坏，保留原文件: " + err.Error()
+	fail := func(err error) (Preferences, *configstore.Store, error) {
+		store.Close()
+		return defaultPreferences(), nil, err
+	}
+	var restored *Preferences
+	present, err := store.Load("preferences", &restored)
+	if err != nil {
+		return fail(err)
+	}
+	if !present {
+		data, readErr := os.ReadFile(filepath.Join(root, "launcher.json"))
+		if readErr != nil && !os.IsNotExist(readErr) {
+			return fail(readErr)
 		}
-		return defaultPreferences(), "入口偏好损坏，已保留备份并恢复默认设置"
+		if data != nil {
+			var legacy Preferences
+			if err = json.Unmarshal(data, &legacy); err != nil || legacy.SchemaVersion != 1 {
+				if err == nil {
+					err = fmt.Errorf("unsupported launcher preferences version")
+				}
+				return fail(err)
+			}
+		}
+		if _, err = store.MigrateJSON("preferences", data, "launcher.json"); err != nil {
+			return fail(err)
+		}
+		if present, err = store.Load("preferences", &restored); err != nil {
+			return fail(err)
+		}
+	}
+	if present {
+		if restored == nil || restored.SchemaVersion != 1 {
+			return fail(fmt.Errorf("invalid launcher preferences or unsupported version"))
+		}
+		p = *restored
+	}
+	if p.SchemaVersion != 1 {
+		return fail(fmt.Errorf("unsupported launcher preferences version"))
 	}
 	if p.Recent == nil {
 		p.Recent = map[string]string{}
@@ -59,38 +87,24 @@ func loadPreferences(root string) (Preferences, string) {
 	if p.Language != "auto" && p.Language != "zh-CN" && p.Language != "en" {
 		p.Language = "en"
 	}
+	return p, store, nil
+}
+func loadPreferences(root string) (Preferences, string) {
+	p, store, err := openPreferences(root)
+	if store != nil {
+		store.Close()
+	}
+	if err != nil {
+		return p, "无法恢复入口偏好，自动保存已停止: " + err.Error()
+	}
 	return p, ""
 }
-
-func savePreferences(root string, p Preferences) error {
-	if err := os.MkdirAll(root, 0700); err != nil {
-		return err
+func (s *Service) savePreferences(p Preferences) error {
+	if s.prefsErr != nil {
+		return fmt.Errorf("无法恢复入口偏好，自动保存已停止: %w", s.prefsErr)
 	}
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return err
+	if s.prefsStore == nil {
+		return fmt.Errorf("configuration store is unavailable")
 	}
-	f, err := os.CreateTemp(root, ".launcher-*.json")
-	if err != nil {
-		return err
-	}
-	name := f.Name()
-	defer os.Remove(name)
-	if err = f.Chmod(0600); err == nil {
-		_, err = f.Write(append(data, '\n'))
-	}
-	if err == nil {
-		err = f.Sync()
-	}
-	closeErr := f.Close()
-	if err != nil {
-		return err
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	if err = os.Rename(name, filepath.Join(root, "launcher.json")); err != nil {
-		return fmt.Errorf("保存入口偏好失败: %w", err)
-	}
-	return nil
+	return s.prefsStore.Save("preferences", p)
 }

@@ -2,6 +2,7 @@ package suite
 
 import (
 	"fmt"
+	configstore "github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,6 +40,8 @@ type Service struct {
 	dataDir     string
 	manifest    Manifest
 	manifestErr error
+	prefsStore  *configstore.Store
+	prefsErr    error
 	prefs       Preferences
 	warning     string
 	mu          sync.Mutex
@@ -47,8 +50,12 @@ type Service struct {
 
 func New(root, dataDir string) *Service {
 	m, err := LoadManifest(root)
-	prefs, warning := loadPreferences(dataDir)
-	return &Service{root: root, dataDir: dataDir, manifest: m, manifestErr: err, prefs: prefs, warning: warning, starting: map[string]bool{}}
+	prefs, store, prefsErr := openPreferences(dataDir)
+	warning := ""
+	if prefsErr != nil {
+		warning = "无法恢复入口偏好，自动保存已停止: " + prefsErr.Error()
+	}
+	return &Service{root: root, dataDir: dataDir, manifest: m, manifestErr: err, prefs: prefs, prefsStore: store, prefsErr: prefsErr, warning: warning, starting: map[string]bool{}}
 }
 
 func DefaultDataDir() (string, error) {
@@ -125,7 +132,7 @@ func (s *Service) SetFavorite(id string, favorite bool) (Preferences, error) {
 	if !favorite && i >= 0 {
 		next.Favorites = slices.Delete(next.Favorites, i, i+1)
 	}
-	if err := savePreferences(s.dataDir, next); err != nil {
+	if err := s.savePreferences(next); err != nil {
 		return clonePreferences(s.prefs), err
 	}
 	s.prefs = next
@@ -140,7 +147,7 @@ func (s *Service) SetTheme(theme string) (Preferences, error) {
 	}
 	next := s.prefs
 	next.Theme = theme
-	if err := savePreferences(s.dataDir, next); err != nil {
+	if err := s.savePreferences(next); err != nil {
 		return clonePreferences(s.prefs), err
 	}
 	s.prefs = next
@@ -155,7 +162,7 @@ func (s *Service) SetLanguage(language string) (Preferences, error) {
 	}
 	next := s.prefs
 	next.Language = language
-	if err := savePreferences(s.dataDir, next); err != nil {
+	if err := s.savePreferences(next); err != nil {
 		return clonePreferences(s.prefs), err
 	}
 	s.prefs = next
@@ -230,10 +237,13 @@ func (s *Service) Launch(id string) (LaunchResult, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.prefs.Recent[id] = time.Now().UTC().Format(time.RFC3339)
+	next := clonePreferences(s.prefs)
+	next.Recent[id] = time.Now().UTC().Format(time.RFC3339)
 	result := LaunchResult{ID: id, PID: pid}
-	if err := savePreferences(s.dataDir, s.prefs); err != nil {
+	if err := s.savePreferences(next); err != nil {
 		result.Warning = "应用已启动，但最近使用记录保存失败: " + err.Error()
+	} else {
+		s.prefs = next
 	}
 	return result, nil
 }

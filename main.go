@@ -77,6 +77,7 @@ func main() {
 		Title: "Simulator All-in-One", Width: 960, Height: 680, MinWidth: 760, MinHeight: 560,
 		BackgroundColour: options.NewRGB(250, 250, 250),
 		AssetServer:      &assetserver.Options{Assets: assets},
+		OnBeforeClose:    app.beforeClose,
 		Bind:             []interface{}{app}, Menu: appMenu,
 		Mac:     &mac.Options{TitleBar: mac.TitleBarDefault(), About: &mac.AboutInfo{Title: "Simulator All-in-One", Message: "Industrial protocol simulator suite / 工业协议模拟器套件 · Karl-Dai"}},
 		Windows: &windows.Options{WebviewUserDataPath: filepath.Join(data, "launcher-webview")},

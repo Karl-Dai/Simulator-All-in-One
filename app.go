@@ -2,7 +2,10 @@ package main
 
 import "github.com/Karl-Dai/Simulator-All-in-One/internal/suite"
 
-type App struct{ service *suite.Service }
+type App struct {
+	service    *suite.Service
+	closeState configurationClose
+}
 
 func (a *App) Snapshot() suite.Snapshot                     { return a.service.Snapshot() }
 func (a *App) Launch(id string) (suite.LaunchResult, error) { return a.service.Launch(id) }

@@ -16,7 +16,7 @@
       "commit": "d9355e9dadfa8d6ab7b0d0666788bc7fa745a6cd",
       "patch": "patches/iec104.patch",
       "cargoLock": "packaging/locks/iec104.Cargo.lock",
-      "cargoLockSha256": "e9cddf06fdbbc4d5b5c058f50b9356bd0256dfba9ee0c55438b46c35d7e8affd"
+      "cargoLockSha256": "03d668adf7f55a2eadacfa2c2672598d9b9b3ac5c05fc3a22c2ee419826e7b56"
     },
     {
       "id": "pmu",
@@ -25,7 +25,7 @@
       "commit": "483661acf89dee3362a97928c78f7e1a2ca8a9f9",
       "patch": "patches/pmu.patch",
       "cargoLock": "packaging/locks/pmu.Cargo.lock",
-      "cargoLockSha256": "421edf2c257c002eccdbbda6f2b45c2252e2fddcc426bfef12854d696869b63d"
+      "cargoLockSha256": "3d555fb8d013ca9fa25e85fb1d3058327088b88e15931fb25a322b3c2fb72c4e"
     },
     {
       "id": "opcua",
@@ -34,7 +34,7 @@
       "commit": "d05cf5ef398c55955862e71874faa7321f31e87e",
       "patch": "patches/opcua.patch",
       "cargoLock": "packaging/locks/opcua.Cargo.lock",
-      "cargoLockSha256": "a9ee0cefcafa9c491feb99f2f4a4e7882249e963c20a6a11343c28787125b3b7"
+      "cargoLockSha256": "e03c2ba864c1490ddcc00dfe53de64f1d89114bd9a7b1cef9f711f8aa29778f1"
     }
   ],
   "components": [

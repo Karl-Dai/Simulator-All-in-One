@@ -1,8 +1,385 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 6fb9494..d446f75 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -713,7 +713,7 @@ dependencies = [
+  "semver",
+  "serde",
+  "serde_json",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -808,7 +808,7 @@ version = "0.3.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
+ dependencies = [
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -1431,6 +1431,18 @@ dependencies = [
+  "pin-project-lite",
+ ]
+ 
++[[package]]
++name = "fallible-iterator"
++version = "0.3.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
++
++[[package]]
++name = "fallible-streaming-iterator"
++version = "0.1.9"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
++
+ [[package]]
+ name = "fastrand"
+ version = "2.4.1"
+@@ -1987,6 +1999,24 @@ version = "0.16.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+ 
++[[package]]
++name = "hashbrown"
++version = "0.17.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
++dependencies = [
++ "foldhash 0.2.0",
++]
++
++[[package]]
++name = "hashlink"
++version = "0.12.2"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a596f1b20ed2cc5ecac41a164aaebc7258057060f06c0cf7a2ba3991ee7990fb"
++dependencies = [
++ "hashbrown 0.17.1",
++]
++
+ [[package]]
+ name = "heapless"
+ version = "0.7.17"
+@@ -2461,7 +2491,7 @@ dependencies = [
+  "jni-sys 0.4.1",
+  "log",
+  "simd_cesu8",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "walkdir",
+  "windows-link 0.2.1",
+ ]
+@@ -2631,6 +2661,17 @@ dependencies = [
+  "libc",
+ ]
+ 
++[[package]]
++name = "libsqlite3-sys"
++version = "0.39.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "14a5f01b87b92705d07b433c06f96cbc764637d81a0bffb5734ce17cf0f9a2b3"
++dependencies = [
++ "cc",
++ "pkg-config",
++ "vcpkg",
++]
++
+ [[package]]
+ name = "linux-raw-sys"
+ version = "0.4.15"
+@@ -2746,7 +2787,7 @@ dependencies = [
+  "once_cell",
+  "png 0.18.1",
+  "serde",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows-sys 0.61.2",
+ ]
+ 
+@@ -3122,8 +3163,10 @@ dependencies = [
+  "env_logger",
+  "log",
+  "opcuasim-core",
++ "rusqlite",
+  "serde",
+  "serde_json",
++ "sha2",
+  "tauri",
+  "tauri-build",
+  "tauri-plugin-dialog",
+@@ -3132,6 +3175,7 @@ dependencies = [
+  "tauri-plugin-process",
+  "tauri-plugin-store",
+  "tauri-plugin-updater",
++ "tempfile",
+  "tokio",
+  "uuid",
+ ]
+@@ -3144,8 +3188,10 @@ dependencies = [
+  "env_logger",
+  "log",
+  "opcuasim-core",
++ "rusqlite",
+  "serde",
+  "serde_json",
++ "sha2",
+  "tauri",
+  "tauri-build",
+  "tauri-plugin-dialog",
+@@ -3154,6 +3200,7 @@ dependencies = [
+  "tauri-plugin-process",
+  "tauri-plugin-store",
+  "tauri-plugin-updater",
++ "tempfile",
+  "tokio",
+  "uuid",
+ ]
+@@ -3180,7 +3227,7 @@ dependencies = [
+  "serde_json",
+  "sha1_smol",
+  "tempfile",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "tokio",
+  "tokio-util",
+  "uuid",
+@@ -3231,7 +3278,7 @@ dependencies = [
+  "objc2-osa-kit",
+  "serde",
+  "serde_json",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -3713,7 +3760,7 @@ checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
+ dependencies = [
+  "getrandom 0.2.17",
+  "libredox",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -3864,6 +3911,30 @@ dependencies = [
+  "zeroize",
+ ]
+ 
++[[package]]
++name = "rsqlite-vfs"
++version = "0.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "353b74f9810d5b085b6c42c9d86a5f0fdb795553235cdd48753b32e3809d18a7"
++dependencies = [
++ "thiserror 2.0.21",
++]
++
++[[package]]
++name = "rusqlite"
++version = "0.41.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "9c026b4444579e8d754556c6c75d040d69c4a44283cdb648ab8a8d5965c2cfa8"
++dependencies = [
++ "bitflags 2.11.0",
++ "fallible-iterator",
++ "fallible-streaming-iterator",
++ "hashlink",
++ "libsqlite3-sys",
++ "smallvec",
++ "sqlite-wasm-rs",
++]
++
+ [[package]]
+ name = "rustc-hash"
+ version = "2.1.2"
+@@ -4469,6 +4540,16 @@ dependencies = [
+  "der",
+ ]
+ 
++[[package]]
++name = "sqlite-wasm-rs"
++version = "0.6.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a6cd504cecbfe7eef649988840f9a6cb768d11085efec138f8e99f160632d867"
++dependencies = [
++ "cc",
++ "rsqlite-vfs",
++]
++
+ [[package]]
+ name = "stable_deref_trait"
+ version = "1.2.1"
+@@ -4696,7 +4777,7 @@ dependencies = [
+  "tauri-runtime",
+  "tauri-runtime-wry",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "tokio",
+  "tray-icon",
+  "url",
+@@ -4747,7 +4828,7 @@ dependencies = [
+  "sha2",
+  "syn 2.0.117",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+  "url",
+  "uuid",
+@@ -4798,7 +4879,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tauri-plugin-fs",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+ ]
+ 
+@@ -4821,7 +4902,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "toml 1.1.3+spec-1.1.0",
+  "url",
+ ]
+@@ -4843,7 +4924,7 @@ dependencies = [
+  "swift-rs",
+  "tauri",
+  "tauri-plugin",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+ ]
+ 
+@@ -4863,7 +4944,7 @@ dependencies = [
+  "serde_json",
+  "tauri",
+  "tauri-plugin",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+  "windows",
+  "zbus",
+@@ -4890,7 +4971,7 @@ dependencies = [
+  "serde_json",
+  "tauri",
+  "tauri-plugin",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "tokio",
+  "tracing",
+ ]
+@@ -4920,7 +5001,7 @@ dependencies = [
+  "tauri",
+  "tauri-plugin",
+  "tempfile",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "time",
+  "tokio",
+  "url",
+@@ -4946,7 +5027,7 @@ dependencies = [
+  "serde",
+  "serde_json",
+  "tauri-utils",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+  "webkit2gtk",
+  "webview2-com",
+@@ -5009,7 +5090,7 @@ dependencies = [
+  "serde_json",
+  "serde_with",
+  "swift-rs",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "toml 1.1.3+spec-1.1.0",
+  "url",
+  "urlpattern",
+@@ -5061,11 +5142,11 @@ dependencies = [
+ 
+ [[package]]
+ name = "thiserror"
+-version = "2.0.18"
++version = "2.0.21"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
++checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
+ dependencies = [
+- "thiserror-impl 2.0.18",
++ "thiserror-impl 2.0.21",
+ ]
+ 
+ [[package]]
+@@ -5081,13 +5162,13 @@ dependencies = [
+ 
+ [[package]]
+ name = "thiserror-impl"
+-version = "2.0.18"
++version = "2.0.21"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "ebc4ee7f67670e9b64d05fa4253e753e016c6c95ff35b89b7941d6b856dec1d5"
++checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
+ dependencies = [
+  "proc-macro2",
+  "quote",
+- "syn 2.0.117",
++ "syn 3.0.3",
+ ]
+ 
+ [[package]]
+@@ -5446,7 +5527,7 @@ dependencies = [
+  "once_cell",
+  "png 0.18.1",
+  "serde",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows-sys 0.61.2",
+ ]
+ 
+@@ -5599,6 +5680,12 @@ dependencies = [
+  "wasm-bindgen",
+ ]
+ 
++[[package]]
++name = "vcpkg"
++version = "0.2.15"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
++
+ [[package]]
+ name = "version-compare"
+ version = "0.2.1"
+@@ -5882,7 +5969,7 @@ version = "0.38.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "381336cfffd772377d291702245447a5251a2ffa5bad679c99e61bc48bacbf9c"
+ dependencies = [
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "windows",
+  "windows-core 0.61.2",
+ ]
+@@ -6548,7 +6635,7 @@ dependencies = [
+  "sha2",
+  "soup3",
+  "tao-macros",
+- "thiserror 2.0.18",
++ "thiserror 2.0.21",
+  "url",
+  "webkit2gtk",
+  "webkit2gtk-sys",
 diff --git a/crates/opcuamaster-app/Cargo.toml b/crates/opcuamaster-app/Cargo.toml
-index b30d3fb..011550a 100644
+index b30d3fb..c123772 100644
 --- a/crates/opcuamaster-app/Cargo.toml
 +++ b/crates/opcuamaster-app/Cargo.toml
-@@ -12,6 +12,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
+@@ -12,7 +12,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
  [build-dependencies]
  tauri-build = { version = "2.5.6", features = [] }
  
@@ -10,13 +387,173 @@ index b30d3fb..011550a 100644
 +simlab-suite = ["opcuasim-core/simlab-suite"]
 +
  [dependencies]
++rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
++sha2 = "0.10"
++tempfile = "3"
  opcuasim-core = { path = "../opcuasim-core" }
  async-opcua-types = "0.18"
+ serde_json = "1.0"
 diff --git a/crates/opcuamaster-app/src/commands.rs b/crates/opcuamaster-app/src/commands.rs
-index bcd189a..1aed653 100644
+index bcd189a..5106885 100644
 --- a/crates/opcuamaster-app/src/commands.rs
 +++ b/crates/opcuamaster-app/src/commands.rs
-@@ -1520,20 +1520,29 @@ pub async fn call_method(
+@@ -410,21 +410,24 @@ async fn add_monitored_core(
+         .partition(|n| matches!(n.access_mode, AccessMode::Subscription { .. }));
+ 
+     {
+-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
+-        let entry = conns.get_mut(conn_id).ok_or("Connection not found")?;
+-        let ids: Vec<_> = sub_nodes
+-            .iter()
+-            .chain(&poll_nodes)
+-            .map(|n| &n.node_id)
+-            .collect();
+-        entry
+-            .pending_subscriptions
+-            .retain(|n| !ids.contains(&&n.node_id));
+-        entry.pending_polling.retain(|n| !ids.contains(&&n.node_id));
+-        entry.pending_subscriptions.extend(sub_nodes.clone());
+-        entry.pending_polling.extend(poll_nodes.clone());
++        let mutation = state.begin_config_mutation()?;
++        {
++            let mut conns = state.connections.write().map_err(|e| e.to_string())?;
++            let entry = conns.get_mut(conn_id).ok_or("Connection not found")?;
++            let ids: Vec<_> = sub_nodes
++                .iter()
++                .chain(&poll_nodes)
++                .map(|n| &n.node_id)
++                .collect();
++            entry
++                .pending_subscriptions
++                .retain(|n| !ids.contains(&&n.node_id));
++            entry.pending_polling.retain(|n| !ids.contains(&&n.node_id));
++            entry.pending_subscriptions.extend(sub_nodes.clone());
++            entry.pending_polling.extend(poll_nodes.clone());
++        }
++        mutation.commit()?;
+     }
+-    state.autosave()?;
+ 
+     let (sub_mgr, poll_mgr, session_holder) = {
+         let conns = state.connections.read().map_err(|e| e.to_string())?;
+@@ -605,6 +608,7 @@ pub(crate) fn create_connection_impl(
+     state: &AppState,
+     request: CreateConnectionRequest,
+ ) -> Result<ConnectionInfo, String> {
++    let mutation = state.begin_config_mutation()?;
+     let id = Uuid::new_v4().to_string();
+     let config = ConnectionConfig {
+         id: id.clone(),
+@@ -633,7 +637,7 @@ pub(crate) fn create_connection_impl(
+         );
+     }
+ 
+-    state.autosave()?;
++    mutation.commit()?;
+     Ok(ConnectionInfo {
+         id,
+         name: config.name,
+@@ -646,7 +650,7 @@ pub(crate) fn create_connection_impl(
+ }
+ 
+ #[tauri::command]
+-pub fn create_connection(
++pub async fn create_connection(
+     state: State<'_, AppState>,
+     request: CreateConnectionRequest,
+ ) -> Result<ConnectionInfo, String> {
+@@ -851,23 +855,20 @@ pub(crate) async fn delete_connection_impl(
+     state: &AppState,
+     connection_id: &str,
+ ) -> Result<(), String> {
+-    let (conn_arc, poll_mgr) = {
+-        let conns = state.connections.read().map_err(|e| e.to_string())?;
+-        let entry = conns.get(connection_id).ok_or("Connection not found")?;
+-        (entry.connection.clone(), entry.polling_mgr.clone())
++    let removed = {
++        let mutation = state.begin_config_mutation()?;
++        let removed = state
++            .connections
++            .write()
++            .map_err(|e| e.to_string())?
++            .remove(connection_id)
++            .ok_or("Connection not found")?;
++        mutation.commit()?;
++        removed
+     };
+-
+-    // Best-effort teardown: disconnect() cancels the reconnect loop and clears
+-    // the session, so the detached reconnect/polling tasks cannot keep the
+-    // connection alive after the map entry is removed.
+-    let _ = conn_arc.disconnect().await;
+-    poll_mgr.stop_all().await;
+-
+-    {
+-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
+-        conns.remove(connection_id).ok_or("Connection not found")?;
+-    }
+-    state.autosave()
++    let _ = removed.connection.disconnect().await;
++    removed.polling_mgr.stop_all().await;
++    Ok(())
+ }
+ 
+ #[tauri::command]
+@@ -883,6 +884,7 @@ pub(crate) fn rename_connection_impl(
+     connection_id: &str,
+     name: &str,
+ ) -> Result<(), String> {
++    let mutation = state.begin_config_mutation()?;
+     let name = name.trim();
+     if name.is_empty() {
+         return Err("Connection name cannot be empty".into());
+@@ -893,11 +895,11 @@ pub(crate) fn rename_connection_impl(
+         .ok_or_else(|| "Connection not found".to_string())?;
+     entry.name = name.to_string();
+     drop(conns);
+-    state.autosave()
++    mutation.commit()
+ }
+ 
+ #[tauri::command]
+-pub fn rename_connection(
++pub async fn rename_connection(
+     state: State<'_, AppState>,
+     connection_id: String,
+     name: String,
+@@ -1167,17 +1169,21 @@ async fn remove_monitored_nodes_impl(
+     node_ids: &[String],
+ ) -> Result<(), String> {
+     let (sub_mgr, poll_mgr) = {
+-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
+-        let entry = conns.get_mut(connection_id).ok_or("Connection not found")?;
+-        entry
+-            .pending_subscriptions
+-            .retain(|n| !node_ids.contains(&n.node_id));
+-        entry
+-            .pending_polling
+-            .retain(|n| !node_ids.contains(&n.node_id));
+-        (entry.subscription_mgr.clone(), entry.polling_mgr.clone())
++        let mutation = state.begin_config_mutation()?;
++        let managers = {
++            let mut conns = state.connections.write().map_err(|e| e.to_string())?;
++            let entry = conns.get_mut(connection_id).ok_or("Connection not found")?;
++            entry
++                .pending_subscriptions
++                .retain(|n| !node_ids.contains(&n.node_id));
++            entry
++                .pending_polling
++                .retain(|n| !node_ids.contains(&n.node_id));
++            (entry.subscription_mgr.clone(), entry.polling_mgr.clone())
++        };
++        mutation.commit()?;
++        managers
+     };
+-    state.autosave()?;
+ 
+     sub_mgr
+         .remove_nodes(node_ids)
+@@ -1520,20 +1526,29 @@ pub async fn call_method(
  // Certificates
  // ---------------------------------------------------------------------------
  
@@ -51,22 +588,277 @@ index bcd189a..1aed653 100644
          .map_err(|e| e.to_string())?;
      Ok(())
  }
+@@ -1548,11 +1563,12 @@ pub fn delete_certificate(path: String) -> Result<(), String> {
+ // ---------------------------------------------------------------------------
+ 
+ #[tauri::command]
+-pub fn create_group(state: State<'_, AppState>, name: String) -> Result<Vec<NodeGroupDto>, String> {
++pub async fn create_group(state: State<'_, AppState>, name: String) -> Result<Vec<NodeGroupDto>, String> {
+     create_group_impl(state.inner(), name)
+ }
+ 
+ fn create_group_impl(state: &AppState, name: String) -> Result<Vec<NodeGroupDto>, String> {
++    let mutation = state.begin_config_mutation()?;
+     let id = Uuid::new_v4().to_string();
+     {
+         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
+@@ -1562,26 +1578,27 @@ fn create_group_impl(state: &AppState, name: String) -> Result<Vec<NodeGroupDto>
+             node_ids: Vec::new(),
+         });
+     }
+-    state.autosave()?;
++    mutation.commit()?;
+     list_groups_impl(state)
+ }
+ 
+ #[tauri::command]
+-pub fn delete_group(state: State<'_, AppState>, id: String) -> Result<Vec<NodeGroupDto>, String> {
++pub async fn delete_group(state: State<'_, AppState>, id: String) -> Result<Vec<NodeGroupDto>, String> {
+     delete_group_impl(state.inner(), &id)
+ }
+ 
+ fn delete_group_impl(state: &AppState, id: &str) -> Result<Vec<NodeGroupDto>, String> {
++    let mutation = state.begin_config_mutation()?;
+     {
+         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
+         groups.retain(|g| g.id != id);
+     }
+-    state.autosave()?;
++    mutation.commit()?;
+     list_groups_impl(state)
+ }
+ 
+ #[tauri::command]
+-pub fn add_to_group(
++pub async fn add_to_group(
+     state: State<'_, AppState>,
+     group_id: String,
+     node_ids: Vec<String>,
+@@ -1594,6 +1611,7 @@ fn add_to_group_impl(
+     group_id: &str,
+     node_ids: Vec<String>,
+ ) -> Result<Vec<NodeGroupDto>, String> {
++    let mutation = state.begin_config_mutation()?;
+     {
+         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
+         let group = groups
+@@ -1606,7 +1624,7 @@ fn add_to_group_impl(
+             }
+         }
+     }
+-    state.autosave()?;
++    mutation.commit()?;
+     list_groups_impl(state)
+ }
+ 
+@@ -1637,21 +1655,25 @@ pub async fn load_project(state: State<'_, AppState>, path: String) -> Result<()
+ }
+ 
+ async fn load_project_impl(state: &AppState, path: &str) -> Result<(), String> {
+-    // Validate before changing or disconnecting the current workspace.
+     let project = crate::project::read(std::path::Path::new(path))?;
+-    let runtimes: Vec<_> = {
+-        let conns = state.connections.read().map_err(|e| e.to_string())?;
+-        conns
++    let runtimes = {
++        let mutation = state.begin_config_mutation()?;
++        let runtimes: Vec<_> = state
++            .connections
++            .read()
++            .map_err(|e| e.to_string())?
+             .values()
+             .map(|entry| (entry.connection.clone(), entry.polling_mgr.clone()))
+-            .collect()
++            .collect();
++        crate::project::apply(state, project)?;
++        mutation.commit()?;
++        runtimes
+     };
+     for (connection, polling) in runtimes {
+         let _ = connection.disconnect().await;
+         polling.stop_all().await;
+     }
+-    crate::project::apply(state, project)?;
+-    state.autosave()
++    Ok(())
+ }
+ 
+ #[tauri::command]
+@@ -2283,3 +2305,150 @@ mod tests {
+         stop_result.expect("server stop");
+     }
+ }
++
++#[cfg(feature = "simlab-suite")]
++#[tauri::command]
++pub async fn simlab_load_preferences(
++    state: State<'_, AppState>,
++    legacy: serde_json::Value,
++) -> Result<serde_json::Value, String> {
++    state.suite_storage.load_preferences(legacy)
++}
++#[cfg(feature = "simlab-suite")]
++#[tauri::command]
++pub async fn simlab_save_preferences(
++    state: State<'_, AppState>,
++    values: serde_json::Value,
++) -> Result<(), String> {
++    state.suite_storage.save_preferences(values)
++}
++
++#[cfg(all(test, feature = "simlab-suite"))]
++mod suite_persistence_tests {
++    use super::*;
++    fn request(name: &str) -> CreateConnectionRequest {
++        CreateConnectionRequest {
++            name: name.into(),
++            endpoint_url: "opc.tcp://localhost:4840".into(),
++            security_policy: "None".into(),
++            security_mode: "None".into(),
++            auth: AuthRequest::Anonymous,
++            timeout_ms: 5000,
++        }
++    }
++    fn initialize(state: &AppState, root: &std::path::Path) {
++        state
++            .initialize_suite_persistence(root, &root.join("opcua-master/last-session.opcuaproj"))
++            .unwrap();
++    }
++    #[tokio::test]
++    async fn sqlite_workspace_mutations_restore_offline_and_preserve_deletions() {
++        let dir = tempfile::tempdir().unwrap();
++        let state = AppState::new();
++        initialize(&state, dir.path());
++        let connection = create_connection_impl(&state, request("Original")).unwrap();
++        rename_connection_impl(&state, &connection.id, "Saved").unwrap();
++        let restored = AppState::new();
++        initialize(&restored, dir.path());
++        let list = list_connections_impl(&restored).await.unwrap();
++        assert_eq!(list[0].name, "Saved");
++        assert_eq!(list[0].state, "Disconnected");
++        delete_connection_impl(&restored, &connection.id)
++            .await
++            .unwrap();
++        let empty = AppState::new();
++        initialize(&empty, dir.path());
++        assert!(list_connections_impl(&empty).await.unwrap().is_empty());
++        assert!(dir.path().join("saio.db").is_file());
++        assert!(!dir
++            .path()
++            .join("opcua-master/last-session.opcuaproj")
++            .exists());
++    }
++    #[tokio::test]
++    async fn stale_write_rolls_back_exact_connection_runtime_and_group_changes() {
++        let dir = tempfile::tempdir().unwrap();
++        let first = AppState::new();
++        initialize(&first, dir.path());
++        let connection = create_connection_impl(&first, request("Original")).unwrap();
++        let stale = AppState::new();
++        initialize(&stale, dir.path());
++        let runtime = stale.connections.read().unwrap()[&connection.id]
++            .connection
++            .clone();
++        rename_connection_impl(&first, &connection.id, "Newer").unwrap();
++        assert!(rename_connection_impl(&stale, &connection.id, "Stale").is_err());
++        assert_eq!(
++            stale.connections.read().unwrap()[&connection.id].name,
++            "Original"
++        );
++        assert!(Arc::ptr_eq(
++            &runtime,
++            &stale.connections.read().unwrap()[&connection.id].connection
++        ));
++        assert!(create_group_impl(&stale, "Unsaved".into()).is_err());
++        assert!(stale.groups.read().unwrap().is_empty());
++        assert!(delete_connection_impl(&stale, &connection.id)
++            .await
++            .is_err());
++        assert!(stale
++            .connections
++            .read()
++            .unwrap()
++            .contains_key(&connection.id));
++    }
++    #[tokio::test]
++    async fn legacy_migration_keeps_source_and_sqlite_project_round_trips() {
++        let dir = tempfile::tempdir().unwrap();
++        let legacy = dir.path().join("last-session.opcuaproj");
++        std::fs::write(&legacy, opcuasim_core::config::ProjectFile::new_master().to_json().unwrap()).unwrap();
++        let state = AppState::new();
++        state
++            .initialize_suite_persistence(dir.path(), &legacy)
++            .unwrap();
++        let connection = create_connection_impl(&state, request("Export")).unwrap();
++        let project = dir.path().join("copy.saioproj");
++        save_project_impl(&state, project.to_str().unwrap()).unwrap();
++        assert!(std::fs::read(&project)
++            .unwrap()
++            .starts_with(b"SQLite format 3\0"));
++        let target = tempfile::tempdir().unwrap();
++        let imported = AppState::new();
++        initialize(&imported, target.path());
++        load_project_impl(&imported, project.to_str().unwrap())
++            .await
++            .unwrap();
++        assert_eq!(
++            list_connections_impl(&imported).await.unwrap()[0].id,
++            connection.id
++        );
++        std::fs::write(&legacy, "{corrupt retained legacy").unwrap();
++        let restored = AppState::new();
++        state.suite_storage.status().unwrap();
++        restored
++            .initialize_suite_persistence(dir.path(), &legacy)
++            .unwrap();
++        assert_eq!(list_connections_impl(&restored).await.unwrap().len(), 1);
++        assert_eq!(
++            std::fs::read_to_string(legacy).unwrap(),
++            "{corrupt retained legacy"
++        );
++    }
++    #[test]
++    fn corrupt_restore_blocks_default_workspace_and_ui_writes() {
++        let dir = tempfile::tempdir().unwrap();
++        let legacy = dir.path().join("bad.opcuaproj");
++        std::fs::write(&legacy, "{bad").unwrap();
++        let state = AppState::new();
++        assert!(state
++            .initialize_suite_persistence(dir.path(), &legacy)
++            .is_err());
++        assert!(create_connection_impl(&state, request("Must not save")).is_err());
++        assert!(state
++            .suite_storage
++            .load_preferences(serde_json::json!({}))
++            .is_err());
++        assert!(state.connections.read().unwrap().is_empty());
++        assert_eq!(std::fs::read_to_string(legacy).unwrap(), "{bad");
++    }
++}
 diff --git a/crates/opcuamaster-app/src/lib.rs b/crates/opcuamaster-app/src/lib.rs
-index f387015..d189d5a 100644
+index f387015..a627332 100644
 --- a/crates/opcuamaster-app/src/lib.rs
 +++ b/crates/opcuamaster-app/src/lib.rs
-@@ -1,6 +1,10 @@
+@@ -1,6 +1,18 @@
  mod commands;
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_close.rs"]
++mod config_close;
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_store.rs"]
++mod config_store;
++#[cfg(feature = "simlab-suite")]
++mod suite_storage;
 +
+ mod project;
 +#[path = "../../shared/simlab_preferences.rs"]
 +mod simlab_preferences;
- mod project;
  mod state;
 +#[cfg(not(feature = "simlab-suite"))]
  pub mod update;
  
  use state::AppState;
-@@ -8,15 +12,19 @@ use tauri::Manager;
+@@ -8,15 +20,29 @@ use tauri::Manager;
  
  #[cfg_attr(mobile, tauri::mobile_entry_point)]
  pub fn run() {
@@ -84,13 +876,23 @@ index f387015..d189d5a 100644
 +    let builder = builder
 +        .plugin(tauri_plugin_updater::Builder::new().build())
 +        .manage(update::UpdateState::default());
-+    builder
++    #[cfg(feature = "simlab-suite")]
++    let builder = config_close::protect(builder);
++    let builder = builder
          .invoke_handler(tauri::generate_handler![
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_enable_configuration_close,
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_confirm_configuration_close,
 +            simlab_preferences::simlab_theme,
++            #[cfg(feature = "simlab-suite")]
++            commands::simlab_load_preferences,
++            #[cfg(feature = "simlab-suite")]
++            commands::simlab_save_preferences,
              commands::ping,
              commands::create_connection,
              commands::rename_connection,
-@@ -55,15 +63,25 @@ pub fn run() {
+@@ -55,19 +81,34 @@ pub fn run() {
              commands::get_communication_logs,
              commands::clear_communication_logs,
              commands::export_communication_logs,
@@ -115,9 +917,21 @@ index f387015..d189d5a 100644
 +            let data_dir = app.path().app_data_dir().map_err(|e| e.to_string());
 +            match data_dir {
                  Ok(dir) => {
-                     if let Err(error) =
-                         state.initialize_persistence(dir.join("last-session.opcuaproj"))
-@@ -80,12 +98,15 @@ pub fn run() {
+-                    if let Err(error) =
+-                        state.initialize_persistence(dir.join("last-session.opcuaproj"))
+-                    {
++                    #[cfg(feature = "simlab-suite")]
++                    let restore = state.initialize_suite_persistence(
++                        dir.parent().ok_or("Missing SimLab data root")?,
++                        &dir.join("last-session.opcuaproj"),
++                    );
++                    #[cfg(not(feature = "simlab-suite"))]
++                    let restore = state.initialize_persistence(dir.join("last-session.opcuaproj"));
++                    if let Err(error) = restore {
+                         log::warn!("automatic project restore failed: {error}");
+                     }
+                 }
+@@ -80,14 +121,24 @@ pub fn run() {
                          .build(),
                  )?;
              }
@@ -137,8 +951,499 @@ index f387015..d189d5a 100644
 +                });
 +            }
              Ok(())
-         })
+-        })
++        });
++    #[cfg(feature = "simlab-suite")]
++    builder
++        .build(tauri::generate_context!())
++        .expect("error while building suite application")
++        .run(config_close::on_run_event);
++    #[cfg(not(feature = "simlab-suite"))]
++    builder
          .run(tauri::generate_context!())
+-        .expect("error while running tauri application");
++        .expect("error while running application");
+ }
+diff --git a/crates/opcuamaster-app/src/project.rs b/crates/opcuamaster-app/src/project.rs
+index 8811194..1eec595 100644
+--- a/crates/opcuamaster-app/src/project.rs
++++ b/crates/opcuamaster-app/src/project.rs
+@@ -1,5 +1,8 @@
+ use std::collections::HashMap;
+-use std::fs::{self, OpenOptions};
++use std::fs;
++#[cfg(not(feature = "simlab-suite"))]
++use std::fs::OpenOptions;
++#[cfg(not(feature = "simlab-suite"))]
+ use std::io::Write;
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+@@ -69,8 +72,26 @@ pub fn snapshot(state: &AppState) -> Result<ProjectFile, String> {
+ }
+ 
+ pub fn read(path: &Path) -> Result<ProjectFile, String> {
+-    let json = fs::read_to_string(path).map_err(|e| e.to_string())?;
+-    let project = ProjectFile::from_json(&json).map_err(|e| e.to_string())?;
++    #[cfg(feature = "simlab-suite")]
++    let project: ProjectFile = serde_json::from_value(crate::config_store::read_project(
++        path,
++        "opcua.master",
++        "workspace",
++    )?)
++    .map_err(|e| e.to_string())?;
++    #[cfg(not(feature = "simlab-suite"))]
++    let project = ProjectFile::from_json(&fs::read_to_string(path).map_err(|e| e.to_string())?)
++        .map_err(|e| e.to_string())?;
++    validate(&project)?;
++    Ok(project)
++}
++
++pub fn validate(project: &ProjectFile) -> Result<(), String> {
++    #[cfg(feature = "simlab-suite")]
++    {
++        if project.version != "0.1.0" { return Err(format!("Unsupported OPC UA master project version: {}", project.version)); }
++        let _: ProjectFile = serde_json::from_value(serde_json::to_value(project).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
++    }
+     if project.project_type != "OpcUaMaster" {
+         return Err("Not an OPC UA master project".into());
+     }
+@@ -87,7 +108,7 @@ pub fn read(path: &Path) -> Result<ProjectFile, String> {
+             }
+         }
+     }
+-    Ok(project)
++    Ok(())
+ }
+ 
+ /// Called only at startup or after the old runtimes have been stopped.
+@@ -149,34 +170,87 @@ pub fn apply(state: &AppState, project: ProjectFile) -> Result<(), String> {
+ 
+ /// Write beside the destination and rename only after all bytes reach disk.
+ pub fn write_atomic(path: &Path, project: &ProjectFile) -> Result<(), String> {
+-    let json = project.to_json().map_err(|e| e.to_string())?;
+-    let parent = path
+-        .parent()
+-        .filter(|p| !p.as_os_str().is_empty())
+-        .unwrap_or(Path::new("."));
+-    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+-    let tmp = parent.join(format!(".opcuamaster-{}.tmp", Uuid::new_v4()));
+-    let result = (|| -> std::io::Result<()> {
+-        let mut options = OpenOptions::new();
+-        options.write(true).create_new(true);
+-        #[cfg(unix)]
+-        {
+-            use std::os::unix::fs::OpenOptionsExt;
+-            options.mode(0o600);
++    #[cfg(feature = "simlab-suite")]
++    { std::fs::create_dir_all(path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."))).map_err(|e| e.to_string())?; }
++    #[cfg(feature = "simlab-suite")]
++    return crate::config_store::export_project(
++        path,
++        "opcua.master",
++        "workspace",
++        &serde_json::to_value(project).map_err(|e| e.to_string())?,
++    );
++    #[cfg(not(feature = "simlab-suite"))]
++    {
++        let json = project.to_json().map_err(|e| e.to_string())?;
++        let parent = path
++            .parent()
++            .filter(|p| !p.as_os_str().is_empty())
++            .unwrap_or(Path::new("."));
++        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
++        let tmp = parent.join(format!(".opcuamaster-{}.tmp", Uuid::new_v4()));
++        let result = (|| -> std::io::Result<()> {
++            let mut options = OpenOptions::new();
++            options.write(true).create_new(true);
++            #[cfg(unix)]
++            {
++                use std::os::unix::fs::OpenOptionsExt;
++                options.mode(0o600);
++            }
++            let mut file = options.open(&tmp)?;
++            file.write_all(json.as_bytes())?;
++            file.sync_all()?;
++            drop(file);
++            fs::rename(&tmp, path)
++        })();
++        if result.is_err() {
++            let _ = fs::remove_file(&tmp);
+         }
+-        let mut file = options.open(&tmp)?;
+-        file.write_all(json.as_bytes())?;
+-        file.sync_all()?;
+-        drop(file);
+-        fs::rename(&tmp, path)
+-    })();
+-    if result.is_err() {
+-        let _ = fs::remove_file(&tmp);
++        result.map_err(|e| e.to_string())
+     }
+-    result.map_err(|e| e.to_string())
+ }
+ 
+ impl AppState {
++    #[cfg(feature = "simlab-suite")]
++    pub fn initialize_suite_persistence(&self, root: &Path, legacy: &Path) -> Result<(), String> {
++        let result = (|| {
++            self.suite_storage.initialize(root, "opcua.master")?;
++            let stored = self.suite_storage.load("workspace")?;
++            let value = if stored.is_some() {
++                stored
++            } else {
++                let data = match fs::read(legacy) {
++                    Ok(data) => {
++                        let project = ProjectFile::from_json(
++                            std::str::from_utf8(&data).map_err(|e| e.to_string())?,
++                        )
++                        .map_err(|e| e.to_string())?;
++                        validate(&project)?;
++                        Some(data)
++                    }
++                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
++                    Err(e) => return Err(e.to_string()),
++                };
++                self.suite_storage.migrate(
++                    "workspace",
++                    data.as_deref(),
++                    &legacy.to_string_lossy(),
++                )?
++            };
++            if let Some(value) = value {
++                let project: ProjectFile =
++                    serde_json::from_value(value).map_err(|e| e.to_string())?;
++                validate(&project)?;
++                apply(self, project)?;
++            }
++            Ok(())
++        })();
++        if let Err(error) = &result {
++            self.suite_storage.block(error.clone());
++        }
++        result
++    }
++
++    #[cfg(any(not(feature = "simlab-suite"), test))]
+     pub fn initialize_persistence(&self, path: PathBuf) -> Result<(), String> {
+         let mut persistence = self.persistence.lock().map_err(|e| e.to_string())?;
+         persistence.path = Some(path.clone());
+@@ -195,6 +269,28 @@ impl AppState {
+     }
+ 
+     pub fn autosave(&self) -> Result<(), String> {
++        #[cfg(feature = "simlab-suite")]
++        {
++            #[cfg(test)]
++            if self
++                .persistence
++                .lock()
++                .map_err(|e| e.to_string())?
++                .path
++                .is_some()
++            {
++                return self.autosave_legacy();
++            }
++            let project = snapshot(self)?;
++            validate(&project)?;
++            return self.suite_storage.save("workspace", &serde_json::to_value(project).map_err(|e| e.to_string())?);
++        }
++        #[cfg(not(feature = "simlab-suite"))]
++        self.autosave_legacy()
++    }
++
++    #[cfg(any(not(feature = "simlab-suite"), test))]
++    fn autosave_legacy(&self) -> Result<(), String> {
+         // Serializes writes and takes each snapshot under the same lock, so an
+         // older concurrent mutation cannot overwrite a newer snapshot.
+         let mut persistence = self.persistence.lock().map_err(|e| e.to_string())?;
+@@ -212,20 +308,98 @@ impl AppState {
+     }
+ 
+     pub fn persistence_status(&self) -> Result<PersistenceStatus, String> {
+-        let p = self.persistence.lock().map_err(|e| e.to_string())?;
+-        Ok(PersistenceStatus {
+-            enabled: p.path.is_some() && !p.blocked,
+-            error: p.error.clone(),
+-        })
++        #[cfg(feature = "simlab-suite")]
++        {
++            #[cfg(test)]
++            if self
++                .persistence
++                .lock()
++                .map_err(|e| e.to_string())?
++                .path
++                .is_some()
++            {
++                let p = self.persistence.lock().map_err(|e| e.to_string())?;
++                return Ok(PersistenceStatus {
++                    enabled: !p.blocked,
++                    error: p.error.clone(),
++                });
++            }
++            let status = self.suite_storage.status()?;
++            return Ok(PersistenceStatus {
++                enabled: status.enabled,
++                error: status.error,
++            });
++        }
++        #[cfg(not(feature = "simlab-suite"))]
++        {
++            let p = self.persistence.lock().map_err(|e| e.to_string())?;
++            Ok(PersistenceStatus {
++                enabled: p.path.is_some() && !p.blocked,
++                error: p.error.clone(),
++            })
++        }
+     }
+ 
+     pub fn report_persistence_error(&self, error: String) {
++        #[cfg(feature = "simlab-suite")]
++        self.suite_storage.block(error.clone());
+         if let Ok(mut p) = self.persistence.lock() {
+             p.error = Some(error);
+         }
+     }
+ }
+ 
++/// Retains the exact runtime handles while a configuration commit is pending.
++pub struct ConfigMutation<'a> {
++    state: &'a AppState,
++    _guard: std::sync::MutexGuard<'a, ()>,
++    #[cfg(feature = "simlab-suite")]
++    connections: Option<HashMap<String, ConnectionEntry>>,
++    #[cfg(feature = "simlab-suite")]
++    groups: Option<Vec<opcuasim_core::node::NodeGroup>>,
++}
++impl AppState {
++    pub fn begin_config_mutation(&self) -> Result<ConfigMutation<'_>, String> {
++        let guard = self.config_mutation.lock().map_err(|e| e.to_string())?;
++        #[cfg(feature = "simlab-suite")]
++        self.suite_storage.ensure_writable()?;
++        Ok(ConfigMutation {
++            state: self,
++            _guard: guard,
++            #[cfg(feature = "simlab-suite")]
++            connections: Some(self.connections.read().map_err(|e| e.to_string())?.clone()),
++            #[cfg(feature = "simlab-suite")]
++            groups: Some(self.groups.read().map_err(|e| e.to_string())?.clone()),
++        })
++    }
++}
++impl ConfigMutation<'_> {
++    pub fn commit(mut self) -> Result<(), String> {
++        self.state.autosave()?;
++        #[cfg(feature = "simlab-suite")]
++        {
++            self.connections = None;
++            self.groups = None;
++        }
++        Ok(())
++    }
++}
++#[cfg(feature = "simlab-suite")]
++impl Drop for ConfigMutation<'_> {
++    fn drop(&mut self) {
++        if let Some(connections) = self.connections.take() {
++            if let Ok(mut current) = self.state.connections.write() {
++                *current = connections;
++            }
++        }
++        if let Some(groups) = self.groups.take() {
++            if let Ok(mut current) = self.state.groups.write() {
++                *current = groups;
++            }
++        }
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/crates/opcuamaster-app/src/state.rs b/crates/opcuamaster-app/src/state.rs
+index 913fdaf..72ea0bb 100644
+--- a/crates/opcuamaster-app/src/state.rs
++++ b/crates/opcuamaster-app/src/state.rs
+@@ -9,6 +9,7 @@ use opcuasim_core::subscription::SubscriptionManager;
+ use serde::{Deserialize, Serialize};
+ 
+ /// Per-connection runtime state. Mirrors the legacy egui `ConnectionEntry`.
++#[derive(Clone)]
+ pub struct ConnectionEntry {
+     /// Editable display name, independent of the live connection configuration.
+     pub name: String,
+@@ -29,9 +30,12 @@ pub struct ConnectionEntry {
+ /// before the first `.await` and never hold a `std::sync` guard across it.
+ #[derive(Default)]
+ pub struct AppState {
++    #[cfg(feature = "simlab-suite")]
++    pub suite_storage: crate::suite_storage::SuiteStorage,
+     pub connections: RwLock<HashMap<String, ConnectionEntry>>,
+     pub groups: RwLock<Vec<NodeGroup>>,
+     pub persistence: std::sync::Mutex<crate::project::Persistence>,
++    pub config_mutation: std::sync::Mutex<()>,
+ }
+ 
+ impl AppState {
+diff --git a/crates/opcuamaster-app/src/suite_storage.rs b/crates/opcuamaster-app/src/suite_storage.rs
+new file mode 100644
+index 0000000..8ef8cfc
+--- /dev/null
++++ b/crates/opcuamaster-app/src/suite_storage.rs
+@@ -0,0 +1,153 @@
++use crate::config_store::Store;
++use serde::Serialize;
++use serde_json::Value;
++use std::path::Path;
++use std::sync::Mutex;
++
++#[derive(Default)]
++struct Inner {
++    store: Option<Store>,
++    initialized: bool,
++    blocked: Option<String>,
++    error: Option<String>,
++    write_errors: std::collections::BTreeMap<String, String>,
++}
++
++/// One revision-bearing session serves every document belonging to this role.
++#[derive(Default)]
++pub struct SuiteStorage(Mutex<Inner>);
++
++#[derive(Serialize)]
++pub struct PersistenceStatus {
++    pub enabled: bool,
++    pub error: Option<String>,
++}
++
++impl SuiteStorage {
++    pub fn initialize(&self, root: &Path, role: &str) -> Result<(), String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        inner.initialized = true;
++        match Store::open(root, role) {
++            Ok(store) => {
++                inner.store = Some(store);
++                inner.blocked = None;
++                Ok(())
++            }
++            Err(error) => {
++                inner.blocked = Some(error.clone());
++                inner.error = Some(error.clone());
++                Err(error)
++            }
++        }
++    }
++
++    pub fn block(&self, error: String) {
++        if let Ok(mut inner) = self.0.lock() {
++            inner.initialized = true;
++            inner.blocked = Some(error.clone());
++            inner.error = Some(error);
++        }
++    }
++
++    pub fn ensure_writable(&self) -> Result<(), String> {
++        let inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked {
++            return Err(format!("配置恢复失败，已阻止自动保存: {error}"));
++        }
++        if inner.store.is_none() {
++            #[cfg(test)]
++            if !inner.initialized {
++                return Ok(());
++            }
++            return Err("配置存储尚未初始化".into());
++        }
++        Ok(())
++    }
++
++    pub fn migrate(
++        &self,
++        key: &str,
++        data: Option<&[u8]>,
++        source: &str,
++    ) -> Result<Option<Value>, String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked {
++            return Err(error.clone());
++        }
++        let result = inner
++            .store
++            .as_mut()
++            .ok_or("配置存储尚未初始化")?
++            .migrate_json(key, data, source);
++        if let Err(error) = &result {
++            inner.blocked = Some(error.clone());
++            inner.error = Some(error.clone());
++        }
++        result
++    }
++
++    pub fn load(&self, key: &str) -> Result<Option<Value>, String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked { return Err(error.clone()); }
++        let result = inner.store.as_mut().ok_or("配置存储尚未初始化")?.load(key);
++        if let Err(error) = &result { inner.blocked = Some(error.clone()); inner.error = Some(error.clone()); }
++        result
++    }
++
++    pub fn save(&self, key: &str, value: &Value) -> Result<(), String> {
++        self.ensure_writable()?;
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        #[cfg(test)]
++        if !inner.initialized {
++            return Ok(());
++        }
++        let result = inner
++            .store
++            .as_mut()
++            .ok_or("配置存储尚未初始化")?
++            .save(key, value);
++        match &result { Ok(()) => {inner.write_errors.remove(key);}, Err(error) => {inner.write_errors.insert(key.into(), error.clone());} };
++        result.map_err(|e| format!("配置未保存: {e}"))
++    }
++
++    pub fn load_preferences(&self, legacy: Value) -> Result<Value, String> {
++        validate_preferences(&legacy)?;
++        let data = serde_json::to_vec(&legacy).map_err(|e| e.to_string())?;
++        let value = self
++            .migrate("ui", Some(&data), "webview-localStorage-v1")?
++            .unwrap_or_else(|| serde_json::json!({}));
++        if let Err(error) = validate_preferences(&value) {
++            self.block(error.clone());
++            return Err(error);
++        }
++        Ok(value)
++    }
++
++    pub fn save_preferences(&self, values: Value) -> Result<(), String> {
++        validate_preferences(&values)?;
++        self.save("ui", &values)
++    }
++
++    pub fn status(&self) -> Result<PersistenceStatus, String> {
++        let inner = self.0.lock().map_err(|e| e.to_string())?;
++        Ok(PersistenceStatus {
++            enabled: inner.store.is_some() && inner.blocked.is_none(),
++            error: inner.error.clone().or_else(|| inner.write_errors.values().next().cloned()),
++        })
++    }
++}
++
++fn validate_preferences(value: &Value) -> Result<(), String> {
++    let map = value.as_object().ok_or("界面配置必须是对象")?;
++    for (key, item) in map {
++        match item.get("kind").and_then(Value::as_str) {
++            Some("text") if item.get("value").is_some_and(Value::is_string) => {}
++            Some("json")
++                if item
++                    .get("value")
++                    .is_some_and(|v| v.is_object() || v.is_array()) => {}
++            _ => return Err(format!("界面配置格式无效: {key}")),
++        }
++    }
++    Ok(())
++}
 diff --git a/crates/opcuamaster-app/suite-icons/128x128.png b/crates/opcuamaster-app/suite-icons/128x128.png
 new file mode 100644
 index 0000000000000000000000000000000000000000..66b40d3535e6260ee76af0777d675564ebc8d58b
@@ -6476,10 +7781,10 @@ index 0000000..de14dfa
 +  }
 +}
 diff --git a/crates/opcuaserver-app/Cargo.toml b/crates/opcuaserver-app/Cargo.toml
-index f133a94..0573539 100644
+index f133a94..9359155 100644
 --- a/crates/opcuaserver-app/Cargo.toml
 +++ b/crates/opcuaserver-app/Cargo.toml
-@@ -12,6 +12,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
+@@ -12,7 +12,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
  [build-dependencies]
  tauri-build = { version = "2.5.6", features = [] }
  
@@ -6487,15 +7792,206 @@ index f133a94..0573539 100644
 +simlab-suite = ["opcuasim-core/simlab-suite"]
 +
  [dependencies]
++rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
++sha2 = "0.10"
++tempfile = "3"
  opcuasim-core = { path = "../opcuasim-core" }
  serde_json = "1.0"
+ serde = { version = "1.0", features = ["derive"] }
+diff --git a/crates/opcuaserver-app/src/commands.rs b/crates/opcuaserver-app/src/commands.rs
+index a33d7be..7c1b63d 100644
+--- a/crates/opcuaserver-app/src/commands.rs
++++ b/crates/opcuaserver-app/src/commands.rs
+@@ -1,5 +1,5 @@
+ use opcuasim_core::server::models::{
+-    DataType, ServerConfig, ServerFolder, ServerNode, ServerProjectFile, SimulationMode,
++    DataType, ServerConfig, ServerFolder, ServerNode, SimulationMode,
+ };
+ use serde::Deserialize;
+ use tauri::{AppHandle, Emitter, State};
+@@ -189,6 +189,10 @@ pub(crate) async fn add_folder_impl(
+         browse_name: None,
+         parent_id: request.parent_id,
+     };
++    crate::project::mutate(state, |project| {
++        project.folders.push(folder.clone());
++        Ok(())
++    })?;
+     if let Some(nm) = state.server.node_manager().await {
+         let ns = state.server.namespace_index().await;
+         let custom_types = state.server.custom_types().await;
+@@ -201,7 +205,6 @@ pub(crate) async fn add_folder_impl(
+             &custom_types,
+         );
+     }
+-    state.folders.write().unwrap().push(folder);
+     Ok(build_address_space(state))
+ }
+ 
+@@ -228,6 +231,10 @@ pub(crate) async fn add_node_impl(
+         eu_range_low: request.eu_range_low,
+         eu_range_high: request.eu_range_high,
+     };
++    crate::project::mutate(state, |project| {
++        project.nodes.push(node.clone());
++        Ok(())
++    })?;
+     if let Some(nm) = state.server.node_manager().await {
+         let ns = state.server.namespace_index().await;
+         let custom_types = state.server.custom_types().await;
+@@ -239,7 +246,6 @@ pub(crate) async fn add_node_impl(
+             &custom_types,
+         );
+     }
+-    state.nodes.write().unwrap().push(node);
+     Ok(build_address_space(state))
+ }
+ 
+@@ -256,21 +262,20 @@ pub async fn remove_node(
+     state: State<'_, AppState>,
+     node_id: String,
+ ) -> Result<AddressSpace, String> {
++    crate::project::mutate(state.inner(), |project| {
++        project
++            .folders
++            .retain(|f| f.node_id != node_id && f.parent_id != node_id);
++        project
++            .nodes
++            .retain(|n| n.node_id != node_id && n.parent_id != node_id);
++        Ok(())
++    })?;
+     if let Some(nm) = state.server.node_manager().await {
+         let ns = state.server.namespace_index().await;
+         let mut addr = nm.address_space().write();
+         opcuasim_core::server::address_space::remove_node(&mut addr, ns, &node_id);
+     }
+-    state
+-        .folders
+-        .write()
+-        .unwrap()
+-        .retain(|f| f.node_id != node_id && f.parent_id != node_id);
+-    state
+-        .nodes
+-        .write()
+-        .unwrap()
+-        .retain(|n| n.node_id != node_id && n.parent_id != node_id);
+     Ok(build_address_space(state.inner()))
+ }
+ 
+@@ -279,9 +284,12 @@ pub async fn update_node(
+     state: State<'_, AppState>,
+     request: UpdateNodeRequest,
+ ) -> Result<AddressSpace, String> {
+-    {
+-        let mut nodes = state.nodes.write().unwrap();
+-        let Some(n) = nodes.iter_mut().find(|n| n.node_id == request.node_id) else {
++    crate::project::mutate(state.inner(), |project| {
++        let Some(n) = project
++            .nodes
++            .iter_mut()
++            .find(|n| n.node_id == request.node_id)
++        else {
+             return Err(format!("节点 {} 未找到", request.node_id));
+         };
+         if let Some(display_name) = request.display_name {
+@@ -302,7 +310,8 @@ pub async fn update_node(
+         if let Some(high) = request.eu_range_high {
+             n.eu_range_high = high;
+         }
+-    }
++        Ok(())
++    })?;
+     Ok(build_address_space(state.inner()))
+ }
+ 
+@@ -311,7 +320,10 @@ pub async fn update_config(
+     state: State<'_, AppState>,
+     config: ServerConfig,
+ ) -> Result<ServerConfig, String> {
+-    *state.config.write().unwrap() = config.clone();
++    crate::project::mutate(state.inner(), |project| {
++        project.server_config = config.clone();
++        Ok(())
++    })?;
+     Ok(config)
+ }
+ 
+@@ -321,15 +333,7 @@ pub async fn update_config(
+ 
+ #[tauri::command]
+ pub async fn save_project(state: State<'_, AppState>, path: String) -> Result<(), String> {
+-    let project = ServerProjectFile {
+-        project_type: "OpcUaServer".into(),
+-        version: "0.1.0".into(),
+-        server_config: state.config.read().unwrap().clone(),
+-        folders: state.folders.read().unwrap().clone(),
+-        nodes: state.nodes.read().unwrap().clone(),
+-    };
+-    let json = serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?;
+-    std::fs::write(&path, json).map_err(|e| e.to_string())
++    crate::project::save(state.inner(), std::path::Path::new(&path))
+ }
+ 
+ #[tauri::command]
+@@ -338,14 +342,37 @@ pub async fn load_project(
+     app_handle: AppHandle,
+     path: String,
+ ) -> Result<(), String> {
+-    let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+-    let project: ServerProjectFile = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+-    *state.config.write().unwrap() = project.server_config;
+-    *state.folders.write().unwrap() = project.folders;
+-    *state.nodes.write().unwrap() = project.nodes;
++    crate::project::load(state.inner(), std::path::Path::new(&path))?;
++    // An imported project is configuration only; its listener remains stopped.
++    #[cfg(feature = "simlab-suite")]
++    state.server.stop().await.map_err(|e| e.to_string())?;
+     emit_server_state(&app_handle, state.inner()).await
+ }
+ 
++#[cfg(feature = "simlab-suite")]
++#[tauri::command]
++pub async fn simlab_load_preferences(
++    state: State<'_, AppState>,
++    legacy: serde_json::Value,
++) -> Result<serde_json::Value, String> {
++    state.suite_storage.load_preferences(legacy)
++}
++#[cfg(feature = "simlab-suite")]
++#[tauri::command]
++pub async fn simlab_save_preferences(
++    state: State<'_, AppState>,
++    values: serde_json::Value,
++) -> Result<(), String> {
++    state.suite_storage.save_preferences(values)
++}
++#[cfg(feature = "simlab-suite")]
++#[tauri::command]
++pub fn get_persistence_status(
++    state: State<'_, AppState>,
++) -> Result<crate::suite_storage::PersistenceStatus, String> {
++    state.suite_storage.status()
++}
++
+ // ---------------------------------------------------------------------------
+ // Simulation value polling
+ // ---------------------------------------------------------------------------
 diff --git a/crates/opcuaserver-app/src/lib.rs b/crates/opcuaserver-app/src/lib.rs
-index 5d48587..acbcd32 100644
+index 5d48587..b69ebfd 100644
 --- a/crates/opcuaserver-app/src/lib.rs
 +++ b/crates/opcuaserver-app/src/lib.rs
-@@ -1,20 +1,28 @@
+@@ -1,20 +1,51 @@
  mod commands;
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_close.rs"]
++mod config_close;
++#[cfg(feature = "simlab-suite")]
++#[path = "../../shared/config_store.rs"]
++mod config_store;
++#[cfg(feature = "simlab-suite")]
++mod suite_storage;
 +
++mod project;
 +#[path = "../../shared/simlab_preferences.rs"]
 +mod simlab_preferences;
  mod state;
@@ -6503,6 +7999,8 @@ index 5d48587..acbcd32 100644
  pub mod update;
  
  use state::AppState;
++#[cfg(feature = "simlab-suite")]
++use tauri::Manager;
  
  #[cfg_attr(mobile, tauri::mobile_entry_point)]
  pub fn run() {
@@ -6520,13 +8018,25 @@ index 5d48587..acbcd32 100644
 +    let builder = builder
 +        .plugin(tauri_plugin_updater::Builder::new().build())
 +        .manage(update::UpdateState::default());
-+    builder
++    #[cfg(feature = "simlab-suite")]
++    let builder = config_close::protect(builder);
++    let builder = builder
          .invoke_handler(tauri::generate_handler![
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_enable_configuration_close,
++            #[cfg(feature = "simlab-suite")]
++            config_close::simlab_confirm_configuration_close,
 +            simlab_preferences::simlab_theme,
++            #[cfg(feature = "simlab-suite")]
++            commands::simlab_load_preferences,
++            #[cfg(feature = "simlab-suite")]
++            commands::simlab_save_preferences,
++            #[cfg(feature = "simlab-suite")]
++            commands::get_persistence_status,
              commands::ping,
              commands::start_server,
              commands::stop_server,
-@@ -29,9 +37,13 @@ pub fn run() {
+@@ -29,12 +60,29 @@ pub fn run() {
              commands::save_project,
              commands::load_project,
              commands::get_simulation_values_since,
@@ -6540,7 +8050,23 @@ index 5d48587..acbcd32 100644
              update::schedule_update_on_next_launch,
          ])
          .setup(|app| {
-@@ -42,12 +54,15 @@ pub fn run() {
++            #[cfg(feature = "simlab-suite")]
++            {
++                let state = app.state::<AppState>();
++                let restore = opcuasim_core::suite::role_dir("opcua-server")
++                    .map_err(|e| e.to_string())
++                    .and_then(|dir| {
++                        project::initialize(&state, dir.parent().ok_or("Missing SimLab data root")?)
++                    });
++                if let Err(error) = restore {
++                    state.suite_storage.block(error.clone());
++                    log::error!("automatic restore failed: {error}");
++                }
++            }
+             if cfg!(debug_assertions) {
+                 app.handle().plugin(
+                     tauri_plugin_log::Builder::default()
+@@ -42,14 +90,24 @@ pub fn run() {
                          .build(),
                  )?;
              }
@@ -6560,8 +8086,444 @@ index 5d48587..acbcd32 100644
 +                });
 +            }
              Ok(())
-         })
+-        })
++        });
++    #[cfg(feature = "simlab-suite")]
++    builder
++        .build(tauri::generate_context!())
++        .expect("error while building suite application")
++        .run(config_close::on_run_event);
++    #[cfg(not(feature = "simlab-suite"))]
++    builder
          .run(tauri::generate_context!())
+-        .expect("error while running tauri application");
++        .expect("error while running application");
+ }
+diff --git a/crates/opcuaserver-app/src/project.rs b/crates/opcuaserver-app/src/project.rs
+new file mode 100644
+index 0000000..1956278
+--- /dev/null
++++ b/crates/opcuaserver-app/src/project.rs
+@@ -0,0 +1,229 @@
++use crate::state::AppState;
++use opcuasim_core::server::models::ServerProjectFile;
++use std::path::Path;
++
++pub fn snapshot(state: &AppState) -> Result<ServerProjectFile, String> {
++    Ok(ServerProjectFile {
++        server_config: state.config.read().map_err(|e| e.to_string())?.clone(),
++        folders: state.folders.read().map_err(|e| e.to_string())?.clone(),
++        nodes: state.nodes.read().map_err(|e| e.to_string())?.clone(),
++        ..ServerProjectFile::default()
++    })
++}
++
++fn validate(project: &ServerProjectFile) -> Result<(), String> {
++    if project.project_type != "OpcUaServer" || project.version != "0.1.0" {
++        return Err("Not a supported OPC UA server project".into());
++    }
++    // A round trip rejects non-finite configuration fields before persistence.
++    let _: ServerProjectFile =
++        serde_json::from_value(serde_json::to_value(project).map_err(|e| e.to_string())?)
++            .map_err(|e| e.to_string())?;
++    Ok(())
++}
++
++fn apply(state: &AppState, project: ServerProjectFile) -> Result<(), String> {
++    let mut config = state.config.write().map_err(|e| e.to_string())?;
++    let mut folders = state.folders.write().map_err(|e| e.to_string())?;
++    let mut nodes = state.nodes.write().map_err(|e| e.to_string())?;
++    *config = project.server_config;
++    *folders = project.folders;
++    *nodes = project.nodes;
++    Ok(())
++}
++
++pub fn mutate<T>(
++    state: &AppState,
++    edit: impl FnOnce(&mut ServerProjectFile) -> Result<T, String>,
++) -> Result<T, String> {
++    let _guard = state.config_mutation.lock().map_err(|e| e.to_string())?;
++    #[cfg(feature = "simlab-suite")]
++    state.suite_storage.ensure_writable()?;
++    let mut candidate = snapshot(state)?;
++    let result = edit(&mut candidate)?;
++    validate(&candidate)?;
++    #[cfg(feature = "simlab-suite")]
++    state.suite_storage.save(
++        "workspace",
++        &serde_json::to_value(&candidate).map_err(|e| e.to_string())?,
++    )?;
++    apply(state, candidate)?;
++    Ok(result)
++}
++
++#[cfg(feature = "simlab-suite")]
++pub fn initialize(state: &AppState, root: &Path) -> Result<(), String> {
++    let result: Result<(), String> = (|| {
++        state.suite_storage.initialize(root, "opcua.server")?;
++        if let Some(value) = state.suite_storage.load("workspace")? {
++            let project: ServerProjectFile =
++                serde_json::from_value(value).map_err(|e| e.to_string())?;
++            validate(&project)?;
++            apply(state, project)?;
++        }
++        Ok(())
++    })();
++    if let Err(error) = &result {
++        state.suite_storage.block(error.clone());
++    }
++    result
++}
++
++pub fn save(state: &AppState, path: &Path) -> Result<(), String> {
++    let _guard = state.config_mutation.lock().map_err(|e| e.to_string())?;
++    let project = snapshot(state)?;
++    #[cfg(feature = "simlab-suite")]
++    return crate::config_store::export_project(
++        path,
++        "opcua.server",
++        "workspace",
++        &serde_json::to_value(&project).map_err(|e| e.to_string())?,
++    );
++    #[cfg(not(feature = "simlab-suite"))]
++    std::fs::write(
++        path,
++        serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?,
++    )
++    .map_err(|e| e.to_string())
++}
++
++pub fn load(state: &AppState, path: &Path) -> Result<(), String> {
++    #[cfg(feature = "simlab-suite")]
++    let project: ServerProjectFile = serde_json::from_value(crate::config_store::read_project(
++        path,
++        "opcua.server",
++        "workspace",
++    )?)
++    .map_err(|e| e.to_string())?;
++    #[cfg(not(feature = "simlab-suite"))]
++    let project: ServerProjectFile =
++        serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
++            .map_err(|e| e.to_string())?;
++    validate(&project)?;
++    mutate(state, |candidate| {
++        *candidate = project;
++        Ok(())
++    })
++}
++
++#[cfg(all(test, feature = "simlab-suite"))]
++mod tests {
++    use super::*;
++    use crate::commands::{
++        add_folder_impl, add_node_impl, refresh_status_impl, AddFolderRequest, AddNodeRequest,
++    };
++    use opcuasim_core::server::models::{DataType, SimulationMode};
++    #[tokio::test]
++    async fn workspace_autosaves_definitions_and_restores_stopped() {
++        let root = tempfile::tempdir().unwrap();
++        let state = AppState::new();
++        initialize(&state, root.path()).unwrap();
++        add_folder_impl(
++            &state,
++            AddFolderRequest {
++                node_id: "Folder".into(),
++                display_name: "Saved folder".into(),
++                parent_id: "Objects".into(),
++            },
++        )
++        .await
++        .unwrap();
++        add_node_impl(
++            &state,
++            AddNodeRequest {
++                node_id: "Value".into(),
++                display_name: "Saved value".into(),
++                parent_id: "Folder".into(),
++                data_type: DataType::Double,
++                writable: true,
++                simulation: SimulationMode::Static {
++                    value: "123".into(),
++                },
++                eu_range_low: 0.0,
++                eu_range_high: 100.0,
++            },
++        )
++        .await
++        .unwrap();
++        mutate(&state, |p| {
++            p.server_config.endpoint_url = "opc.tcp://127.0.0.1:4859".into();
++            Ok(())
++        })
++        .unwrap();
++        let restored = AppState::new();
++        initialize(&restored, root.path()).unwrap();
++        let status = refresh_status_impl(&restored).await.unwrap();
++        assert_eq!(status.state, "Stopped");
++        assert_eq!(status.node_count, 1);
++        assert_eq!(status.folder_count, 1);
++        assert_eq!(status.endpoint_url, "opc.tcp://127.0.0.1:4859");
++        mutate(&restored, |p| {
++            p.nodes.clear();
++            p.folders.clear();
++            Ok(())
++        })
++        .unwrap();
++        let empty = AppState::new();
++        initialize(&empty, root.path()).unwrap();
++        assert!(snapshot(&empty).unwrap().nodes.is_empty());
++    }
++    #[test]
++    fn stale_project_change_is_not_published_and_export_import_is_scoped() {
++        let root = tempfile::tempdir().unwrap();
++        let first = AppState::new();
++        initialize(&first, root.path()).unwrap();
++        let stale = AppState::new();
++        initialize(&stale, root.path()).unwrap();
++        mutate(&first, |p| {
++            p.server_config.endpoint_url = "opc.tcp://127.0.0.1:4860".into();
++            Ok(())
++        })
++        .unwrap();
++        assert!(mutate(&stale, |p| {
++            p.server_config.endpoint_url = "unsaved".into();
++            Ok(())
++        })
++        .is_err());
++        assert_ne!(
++            snapshot(&stale).unwrap().server_config.endpoint_url,
++            "unsaved"
++        );
++        let file = root.path().join("server.saioproj");
++        save(&first, &file).unwrap();
++        assert!(std::fs::read(&file)
++            .unwrap()
++            .starts_with(b"SQLite format 3\0"));
++        let other = tempfile::tempdir().unwrap();
++        let imported = AppState::new();
++        initialize(&imported, other.path()).unwrap();
++        load(&imported, &file).unwrap();
++        assert_eq!(
++            snapshot(&imported).unwrap().server_config.endpoint_url,
++            "opc.tcp://127.0.0.1:4860"
++        );
++        assert!(crate::config_store::read_project(&file, "opcua.master", "workspace").is_err());
++        let legacy = root.path().join("legacy.opcuaproj");
++        std::fs::write(
++            &legacy,
++            serde_json::to_vec(&snapshot(&first).unwrap()).unwrap(),
++        )
++        .unwrap();
++        load(&imported, &legacy).unwrap();
++    }
++    #[test]
++    fn corrupt_workspace_blocks_changes_without_writing_defaults() {
++        let root = tempfile::tempdir().unwrap();
++        std::fs::write(root.path().join("saio.db"), b"broken").unwrap();
++        let state = AppState::new();
++        assert!(initialize(&state, root.path()).is_err());
++        assert!(mutate(&state, |p| {
++            p.nodes.clear();
++            Ok(())
++        })
++        .is_err());
++        assert_eq!(
++            std::fs::read(root.path().join("saio.db")).unwrap(),
++            b"broken"
++        );
++    }
++}
+diff --git a/crates/opcuaserver-app/src/state.rs b/crates/opcuaserver-app/src/state.rs
+index 97ae2d5..f1efcfb 100644
+--- a/crates/opcuaserver-app/src/state.rs
++++ b/crates/opcuaserver-app/src/state.rs
+@@ -14,7 +14,10 @@ use serde::{Deserialize, Serialize};
+ /// mutations never need to hold a guard across an `.await` point — the data is
+ /// cloned out first and the async work runs afterwards.
+ pub struct AppState {
++    #[cfg(feature = "simlab-suite")]
++    pub suite_storage: crate::suite_storage::SuiteStorage,
+     pub server: Arc<OpcUaServer>,
++    pub config_mutation: std::sync::Mutex<()>,
+     pub config: RwLock<ServerConfig>,
+     pub folders: RwLock<Vec<ServerFolder>>,
+     pub nodes: RwLock<Vec<ServerNode>>,
+@@ -23,7 +26,10 @@ pub struct AppState {
+ impl Default for AppState {
+     fn default() -> Self {
+         Self {
++            #[cfg(feature = "simlab-suite")]
++            suite_storage: crate::suite_storage::SuiteStorage::default(),
+             server: Arc::new(OpcUaServer::new()),
++            config_mutation: std::sync::Mutex::new(()),
+             config: RwLock::new(ServerConfig::default()),
+             folders: RwLock::new(Vec::new()),
+             nodes: RwLock::new(Vec::new()),
+diff --git a/crates/opcuaserver-app/src/suite_storage.rs b/crates/opcuaserver-app/src/suite_storage.rs
+new file mode 100644
+index 0000000..cc545f7
+--- /dev/null
++++ b/crates/opcuaserver-app/src/suite_storage.rs
+@@ -0,0 +1,158 @@
++use crate::config_store::Store;
++use serde::Serialize;
++use serde_json::Value;
++use std::path::Path;
++use std::sync::Mutex;
++
++#[derive(Default)]
++struct Inner {
++    store: Option<Store>,
++    initialized: bool,
++    blocked: Option<String>,
++    error: Option<String>,
++    write_errors: std::collections::BTreeMap<String, String>,
++}
++
++/// One revision-bearing session serves every document belonging to this role.
++#[derive(Default)]
++pub struct SuiteStorage(Mutex<Inner>);
++
++#[derive(Serialize)]
++pub struct PersistenceStatus {
++    pub enabled: bool,
++    pub error: Option<String>,
++}
++
++impl SuiteStorage {
++    pub fn initialize(&self, root: &Path, role: &str) -> Result<(), String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        inner.initialized = true;
++        match Store::open(root, role) {
++            Ok(store) => {
++                inner.store = Some(store);
++                inner.blocked = None;
++                Ok(())
++            }
++            Err(error) => {
++                inner.blocked = Some(error.clone());
++                inner.error = Some(error.clone());
++                Err(error)
++            }
++        }
++    }
++
++    pub fn block(&self, error: String) {
++        if let Ok(mut inner) = self.0.lock() {
++            inner.initialized = true;
++            inner.blocked = Some(error.clone());
++            inner.error = Some(error);
++        }
++    }
++
++    pub fn ensure_writable(&self) -> Result<(), String> {
++        let inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked {
++            return Err(format!("配置恢复失败，已阻止自动保存: {error}"));
++        }
++        if inner.store.is_none() {
++            #[cfg(test)]
++            if !inner.initialized {
++                return Ok(());
++            }
++            return Err("配置存储尚未初始化".into());
++        }
++        Ok(())
++    }
++
++    pub fn migrate(
++        &self,
++        key: &str,
++        data: Option<&[u8]>,
++        source: &str,
++    ) -> Result<Option<Value>, String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked {
++            return Err(error.clone());
++        }
++        let result = inner
++            .store
++            .as_mut()
++            .ok_or("配置存储尚未初始化")?
++            .migrate_json(key, data, source);
++        if let Err(error) = &result {
++            inner.blocked = Some(error.clone());
++            inner.error = Some(error.clone());
++        }
++        result
++    }
++
++    pub fn load(&self, key: &str) -> Result<Option<Value>, String> {
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        if let Some(error) = &inner.blocked {
++            return Err(error.clone());
++        }
++        let result = inner.store.as_mut().ok_or("配置存储尚未初始化")?.load(key);
++        if let Err(error) = &result {
++            inner.blocked = Some(error.clone());
++            inner.error = Some(error.clone());
++        }
++        result
++    }
++
++    pub fn save(&self, key: &str, value: &Value) -> Result<(), String> {
++        self.ensure_writable()?;
++        let mut inner = self.0.lock().map_err(|e| e.to_string())?;
++        #[cfg(test)]
++        if !inner.initialized {
++            return Ok(());
++        }
++        let result = inner
++            .store
++            .as_mut()
++            .ok_or("配置存储尚未初始化")?
++            .save(key, value);
++        match &result { Ok(()) => {inner.write_errors.remove(key);}, Err(error) => {inner.write_errors.insert(key.into(), error.clone());} };
++        result.map_err(|e| format!("配置未保存: {e}"))
++    }
++
++    pub fn load_preferences(&self, legacy: Value) -> Result<Value, String> {
++        validate_preferences(&legacy)?;
++        let data = serde_json::to_vec(&legacy).map_err(|e| e.to_string())?;
++        let value = self
++            .migrate("ui", Some(&data), "webview-localStorage-v1")?
++            .unwrap_or_else(|| serde_json::json!({}));
++        if let Err(error) = validate_preferences(&value) {
++            self.block(error.clone());
++            return Err(error);
++        }
++        Ok(value)
++    }
++
++    pub fn save_preferences(&self, values: Value) -> Result<(), String> {
++        validate_preferences(&values)?;
++        self.save("ui", &values)
++    }
++
++    pub fn status(&self) -> Result<PersistenceStatus, String> {
++        let inner = self.0.lock().map_err(|e| e.to_string())?;
++        Ok(PersistenceStatus {
++            enabled: inner.store.is_some() && inner.blocked.is_none(),
++            error: inner.error.clone().or_else(|| inner.write_errors.values().next().cloned()),
++        })
++    }
++}
++
++fn validate_preferences(value: &Value) -> Result<(), String> {
++    let map = value.as_object().ok_or("界面配置必须是对象")?;
++    for (key, item) in map {
++        match item.get("kind").and_then(Value::as_str) {
++            Some("text") if item.get("value").is_some_and(Value::is_string) => {}
++            Some("json")
++                if item
++                    .get("value")
++                    .is_some_and(|v| v.is_object() || v.is_array()) => {}
++            _ => return Err(format!("界面配置格式无效: {key}")),
++        }
++    }
++    Ok(())
++}
 diff --git a/crates/opcuaserver-app/suite-icons/128x128.png b/crates/opcuaserver-app/suite-icons/128x128.png
 new file mode 100644
 index 0000000000000000000000000000000000000000..8d83d63c1a59814210fc1efd2ad23545677d2a83
@@ -13174,6 +15136,908 @@ index 0000000..35f30af
 +        assert!(resolve(None, None, "opcua-master").is_err());
 +    }
 +}
+diff --git a/crates/shared/config_close.rs b/crates/shared/config_close.rs
+new file mode 100644
+index 0000000..bdf3c9b
+--- /dev/null
++++ b/crates/shared/config_close.rs
+@@ -0,0 +1,138 @@
++//! Native close waits for the suite frontend to finish its registered writes.
++use std::sync::atomic::{AtomicBool, Ordering};
++use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime, State, WindowEvent};
++
++/// The frontend arms the guard only after its event listener is installed.
++/// A failed initial page can therefore still be closed normally.
++#[derive(Default)]
++pub struct CloseGuard {
++    armed: AtomicBool,
++    requested: AtomicBool,
++    approved: AtomicBool,
++}
++#[derive(Debug, PartialEq, Eq)]
++enum CloseDecision {
++    Allow,
++    Prevent { notify: bool },
++}
++impl CloseGuard {
++    fn enable(&self) {
++        self.armed.store(true, Ordering::Release);
++    }
++    fn request(&self) -> CloseDecision {
++        if !self.armed.load(Ordering::Acquire) || self.approved.load(Ordering::Acquire) {
++            return CloseDecision::Allow;
++        }
++        let notify = !self.requested.swap(true, Ordering::AcqRel);
++        CloseDecision::Prevent { notify }
++    }
++    fn confirm(&self) -> Result<(), String> {
++        if !self.armed.load(Ordering::Acquire)
++            || !self.requested.load(Ordering::Acquire)
++            || self
++                .approved
++                .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
++                .is_err()
++        {
++            return Err("No configuration close request is pending".into());
++        }
++        self.requested.store(false, Ordering::Release);
++        Ok(())
++    }
++}
++
++#[tauri::command]
++pub async fn simlab_enable_configuration_close(guard: State<'_, CloseGuard>) -> Result<(), String> {
++    guard.enable();
++    Ok(())
++}
++
++#[tauri::command]
++pub async fn simlab_confirm_configuration_close(
++    app: AppHandle,
++    guard: State<'_, CloseGuard>,
++) -> Result<(), String> {
++    guard.confirm()?;
++    // exit(0) emits ExitRequested too; approval lets that event proceed.
++    app.exit(0);
++    Ok(())
++}
++
++fn request_flush<R: Runtime>(app: &AppHandle<R>) {
++    if let Err(error) = app.emit("saio-before-close", ()) {
++        // Permit another native close request to retry a failed delivery.
++        app.state::<CloseGuard>()
++            .requested
++            .store(false, Ordering::Release);
++        log::error!("configuration flush request could not reach the frontend: {error}");
++    }
++}
++
++pub fn protect<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
++    builder
++        .manage(CloseGuard::default())
++        .on_window_event(|window, event| {
++            if let WindowEvent::CloseRequested { api, .. } = event {
++                if let CloseDecision::Prevent { notify } = window.state::<CloseGuard>().request() {
++                    api.prevent_close();
++                    if notify {
++                        request_flush(window.app_handle());
++                    }
++                }
++            }
++        })
++}
++
++pub fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: RunEvent) {
++    if let RunEvent::ExitRequested { api, .. } = event {
++        if let CloseDecision::Prevent { notify } = app.state::<CloseGuard>().request() {
++            api.prevent_exit();
++            if notify {
++                request_flush(app);
++            }
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn initial_page_without_listener_can_close_or_exit() {
++        let guard = CloseGuard::default();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++        assert!(guard.confirm().is_err());
++    }
++
++    #[test]
++    fn confirmation_without_an_active_request_cannot_exit() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        assert!(guard.confirm().is_err());
++        assert!(!guard.approved.load(Ordering::Acquire));
++    }
++
++    #[test]
++    fn armed_window_and_exit_requests_coalesce_until_confirmation() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: true });
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: false });
++        // A failed frontend flush does not acknowledge the pending request.
++        assert_eq!(guard.request(), CloseDecision::Prevent { notify: false });
++        guard.confirm().unwrap();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++        assert!(guard.confirm().is_err());
++    }
++
++    #[test]
++    fn enabling_again_does_not_revoke_an_approved_exit() {
++        let guard = CloseGuard::default();
++        guard.enable();
++        guard.request();
++        guard.confirm().unwrap();
++        guard.enable();
++        assert_eq!(guard.request(), CloseDecision::Allow);
++    }
++}
+diff --git a/crates/shared/config_schema.sql b/crates/shared/config_schema.sql
+new file mode 100644
+index 0000000..220228d
+--- /dev/null
++++ b/crates/shared/config_schema.sql
+@@ -0,0 +1,17 @@
++CREATE TABLE IF NOT EXISTS document (
++ id INTEGER PRIMARY KEY, role TEXT NOT NULL, key TEXT NOT NULL,
++ revision INTEGER NOT NULL CHECK(revision>0), UNIQUE(role,key)
++);
++CREATE TABLE IF NOT EXISTS field (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
++CREATE TABLE IF NOT EXISTS node (
++ document_id INTEGER NOT NULL REFERENCES document(id) ON DELETE CASCADE,
++ node_id INTEGER NOT NULL, parent_id INTEGER NOT NULL, slot INTEGER NOT NULL,
++ kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 8), value,
++ PRIMARY KEY(document_id,node_id)
++) WITHOUT ROWID;
++CREATE TABLE IF NOT EXISTS migration (
++ role TEXT NOT NULL, key TEXT NOT NULL, source TEXT NOT NULL, sha256 TEXT NOT NULL,
++ PRIMARY KEY(role,key,source)
++) WITHOUT ROWID;
++PRAGMA application_id=1396787535;
++PRAGMA user_version=1;
+diff --git a/crates/shared/config_store.rs b/crates/shared/config_store.rs
+new file mode 100644
+index 0000000..9ea3782
+--- /dev/null
++++ b/crates/shared/config_store.rs
+@@ -0,0 +1,729 @@
++//! Shared, versioned configuration storage. Values are typed SQLite records.
++use rusqlite::{params, Connection, OptionalExtension};
++use serde_json::{Map, Number, Value};
++use std::{
++    collections::{BTreeMap, HashMap, HashSet},
++    path::Path,
++    time::Duration,
++};
++const APPLICATION_ID: i64 = 1396787535;
++const SCHEMA: &str = include_str!("config_schema.sql");
++const CONFLICT: &str = "configuration changed in another window; reload before saving";
++#[derive(Clone, PartialEq)]
++struct Cell {
++    id: i64,
++    parent: i64,
++    slot: i64,
++    kind: i64,
++    value: rusqlite::types::Value,
++}
++pub struct Store {
++    db: Connection,
++    role: String,
++    revisions: HashMap<String, i64>,
++}
++fn valid_role(role: &str) -> bool {
++    matches!(
++        role,
++        "launcher"
++            | "iec104.master"
++            | "iec104.slave"
++            | "modbus.master"
++            | "modbus.slave"
++            | "opcua.master"
++            | "opcua.server"
++            | "pmu.master"
++            | "pmu.sub"
++    )
++}
++fn err(e: impl std::fmt::Display) -> String {
++    e.to_string()
++}
++fn create_private_directory(path: &Path) -> Result<(), String> {
++    let mut builder = std::fs::DirBuilder::new();
++    builder.recursive(true);
++    #[cfg(unix)]
++    {
++        use std::os::unix::fs::DirBuilderExt;
++        builder.mode(0o700);
++    }
++    builder.create(path).map_err(err)
++}
++fn validate(db: &Connection, create: bool) -> Result<(), String> {
++    let id: i64 = db
++        .pragma_query_value(None, "application_id", |r| r.get(0))
++        .map_err(err)?;
++    let version: i64 = db
++        .pragma_query_value(None, "user_version", |r| r.get(0))
++        .map_err(err)?;
++    if id == APPLICATION_ID && version == 1 {
++        return Ok(());
++    }
++    let count: i64 = db
++        .query_row(
++            "SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'",
++            [],
++            |r| r.get(0),
++        )
++        .map_err(err)?;
++    if create && id == 0 && version == 0 && count == 0 {
++        return db.execute_batch(SCHEMA).map_err(err);
++    }
++    Err(format!(
++        "unsupported or unrelated configuration database (application={id} version={version})"
++    ))
++}
++impl Store {
++    pub fn open(root: &Path, role: &str) -> Result<Self, String> {
++        if !root.is_absolute() || !valid_role(role) {
++            return Err("invalid configuration root or role".into());
++        }
++        create_private_directory(root)?;
++        Self::open_file(&root.join("saio.db"), role, false)
++    }
++    fn open_file(path: &Path, role: &str, readonly: bool) -> Result<Self, String> {
++        if !valid_role(role) {
++            return Err("invalid configuration role".into());
++        }
++        if !readonly {
++            let mut options = std::fs::OpenOptions::new();
++            options.read(true).write(true).create(true);
++            #[cfg(unix)]
++            {
++                use std::os::unix::fs::OpenOptionsExt;
++                options.mode(0o600);
++            }
++            drop(options.open(path).map_err(err)?);
++        }
++        let db = if readonly {
++            Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
++        } else {
++            Connection::open(path)
++        }
++        .map_err(err)?;
++        db.busy_timeout(Duration::from_secs(5)).map_err(err)?;
++        db.pragma_update(None, "foreign_keys", true).map_err(err)?;
++        if readonly {
++            validate(&db, false)?
++        } else {
++            db.execute_batch("BEGIN IMMEDIATE").map_err(err)?;
++            if let Err(e) = validate(&db, true) {
++                let _ = db.execute_batch("ROLLBACK");
++                return Err(e);
++            }
++            db.execute_batch("COMMIT; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;")
++                .map_err(err)?;
++        }
++        Ok(Self {
++            db,
++            role: role.into(),
++            revisions: HashMap::new(),
++        })
++    }
++    pub fn load(&mut self, key: &str) -> Result<Option<Value>, String> {
++        self.revisions.remove(key);
++        let tx = self.db.unchecked_transaction().map_err(err)?;
++        let (value, _, rev, _) = read(&tx, &self.role, key)?;
++        tx.commit().map_err(err)?;
++        self.revisions.insert(key.into(), rev);
++        Ok(value)
++    }
++    pub fn save(&mut self, key: &str, value: &Value) -> Result<(), String> {
++        let expected = *self
++            .revisions
++            .get(key)
++            .ok_or("configuration must be loaded before saving")?;
++        let rev = self.write(key, value, expected, None)?;
++        self.revisions.insert(key.into(), rev);
++        Ok(())
++    }
++    pub fn migrate_json(
++        &mut self,
++        key: &str,
++        data: Option<&[u8]>,
++        source: &str,
++    ) -> Result<Option<Value>, String> {
++        let existing = self.load(key)?;
++        if existing.is_some() || data.is_none() {
++            return Ok(existing);
++        }
++        let data = data.unwrap();
++        let value: Value = match serde_json::from_slice(data) {
++            Ok(v) => v,
++            Err(e) => {
++                self.revisions.remove(key);
++                return Err(err(e));
++            }
++        };
++        // SHA-256 comes from the shared dependency, never a legacy-file deletion.
++        use sha2::Digest;
++        let digest = format!("{:x}", sha2::Sha256::digest(data));
++        match self.write(key, &value, 0, Some((source, &digest))) {
++            Ok(rev) => {
++                self.revisions.insert(key.into(), rev);
++                Ok(Some(value))
++            }
++            Err(e) if e == CONFLICT => self.load(key),
++            Err(e) => {
++                self.revisions.remove(key);
++                Err(e)
++            },
++        }
++    }
++    fn write(
++        &mut self,
++        key: &str,
++        value: &Value,
++        expected: i64,
++        migration: Option<(&str, &str)>,
++    ) -> Result<i64, String> {
++        let tx = self
++            .db
++            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
++            .map_err(err)?;
++        let (_, mut doc, mut rev, old) = read(&tx, &self.role, key)?;
++        if rev != expected {
++            return Err(CONFLICT.into());
++        }
++        if rev == 0 {
++            tx.execute(
++                "INSERT INTO document(role,key,revision) VALUES(?,?,1)",
++                params![self.role, key],
++            )
++            .map_err(err)?;
++            doc = tx.last_insert_rowid();
++        }
++        let mut fields = fields(&tx)?
++            .into_iter()
++            .map(|(id, name)| (name, id))
++            .collect::<HashMap<_, _>>();
++        let edges = old
++            .values()
++            .map(|c| ((c.parent, c.slot), c.id))
++            .collect::<HashMap<_, _>>();
++        let mut next = old.keys().copied().max().unwrap_or(0);
++        let mut nodes = BTreeMap::new();
++        flatten(
++            &tx,
++            value,
++            0,
++            -1,
++            0,
++            0,
++            &edges,
++            &mut next,
++            &mut fields,
++            &mut nodes,
++        )?;
++        let mut changed = rev == 0;
++        for id in old.keys() {
++            if !nodes.contains_key(id) {
++                tx.execute(
++                    "DELETE FROM node WHERE document_id=? AND node_id=?",
++                    params![doc, id],
++                )
++                .map_err(err)?;
++                changed = true;
++            }
++        }
++        {
++            let mut statement=tx.prepare_cached("INSERT INTO node(document_id,node_id,parent_id,slot,kind,value) VALUES(?,?,?,?,?,?) ON CONFLICT(document_id,node_id) DO UPDATE SET parent_id=excluded.parent_id,slot=excluded.slot,kind=excluded.kind,value=excluded.value").map_err(err)?;
++            for (id, c) in nodes {
++                if old.get(&id) == Some(&c) {
++                    continue;
++                }
++                statement
++                    .execute(params![doc, id, c.parent, c.slot, c.kind, c.value])
++                    .map_err(err)?;
++                changed = true;
++            }
++        }
++        if rev == 0 {
++            rev = 1
++        } else if changed {
++            rev += 1;
++            tx.execute(
++                "UPDATE document SET revision=? WHERE id=?",
++                params![rev, doc],
++            )
++            .map_err(err)?;
++        }
++        if let Some((source, digest)) = migration {
++            tx.execute(
++                "INSERT INTO migration(role,key,source,sha256) VALUES(?,?,?,?)",
++                params![self.role, key, source, digest],
++            )
++            .map_err(err)?;
++        }
++        tx.commit().map_err(err)?;
++        Ok(rev)
++    }
++}
++fn fields(db: &Connection) -> Result<HashMap<i64, String>, String> {
++    let mut stmt = db.prepare("SELECT id,name FROM field").map_err(err)?;
++    let rows = stmt
++        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
++        .map_err(err)?;
++    rows.collect::<Result<_, _>>().map_err(err)
++}
++fn read(
++    db: &Connection,
++    role: &str,
++    key: &str,
++) -> Result<(Option<Value>, i64, i64, BTreeMap<i64, Cell>), String> {
++    let header: Option<(i64, i64)> = db
++        .query_row(
++            "SELECT id,revision FROM document WHERE role=? AND key=?",
++            params![role, key],
++            |r| Ok((r.get(0)?, r.get(1)?)),
++        )
++        .optional()
++        .map_err(err)?;
++    let Some((doc, rev)) = header else {
++        return Ok((None, 0, 0, BTreeMap::new()));
++    };
++    let mut stmt = db
++        .prepare("SELECT node_id,parent_id,slot,kind,value FROM node WHERE document_id=?")
++        .map_err(err)?;
++    let rows = stmt
++        .query_map([doc], |r| {
++            Ok(Cell {
++                id: r.get(0)?,
++                parent: r.get(1)?,
++                slot: r.get(2)?,
++                kind: r.get(3)?,
++                value: r.get(4)?,
++            })
++        })
++        .map_err(err)?;
++    let mut nodes = BTreeMap::new();
++    let mut children: HashMap<i64, Vec<i64>> = HashMap::new();
++    for row in rows {
++        let c = row.map_err(err)?;
++        if c.id != 0 {
++            children.entry(c.parent).or_default().push(c.id);
++        }
++        nodes.insert(c.id, c);
++    }
++    let sql_nodes = nodes.clone();
++    let mut virtual_id = -2i64;
++    for (id, c) in &sql_nodes {
++        if c.kind == 7 || c.kind == 8 {
++            match &c.value {
++                rusqlite::types::Value::Null => {}
++                rusqlite::types::Value::Blob(data) => {
++                    for mut leaf in unpack_scalars(data)? {
++                        leaf.id = virtual_id;
++                        leaf.parent = *id;
++                        virtual_id -= 1;
++                        children.entry(*id).or_default().push(leaf.id);
++                        nodes.insert(leaf.id, leaf);
++                    }
++                    nodes.get_mut(id).unwrap().value = rusqlite::types::Value::Null;
++                }
++                _ => return Err("invalid packed container".into()),
++            }
++        }
++    }
++    let root = nodes.get(&0).ok_or("missing configuration root")?;
++    if root.parent != -1 || root.slot != 0 {
++        return Err("invalid configuration root".into());
++    }
++    let mut seen = HashSet::new();
++    let value = restore(0, 0, &nodes, &children, &fields(db)?, &mut seen)?;
++    if seen.len() != nodes.len() {
++        return Err("orphan configuration records".into());
++    }
++    Ok((Some(value), doc, rev, sql_nodes))
++}
++fn restore(
++    id: i64,
++    depth: usize,
++    nodes: &BTreeMap<i64, Cell>,
++    children: &HashMap<i64, Vec<i64>>,
++    fields: &HashMap<i64, String>,
++    seen: &mut HashSet<i64>,
++) -> Result<Value, String> {
++    use rusqlite::types::Value as Sql;
++    if depth > 256 || !seen.insert(id) {
++        return Err("invalid configuration node graph".into());
++    }
++    let c = nodes.get(&id).ok_or("missing configuration node")?;
++    let value = match (&c.kind, &c.value) {
++        (0, Sql::Null) => Value::Null,
++        (1, Sql::Null) => Value::Bool(false),
++        (2, Sql::Null) => Value::Bool(true),
++        (3, Sql::Integer(v)) => Value::Number((*v).into()),
++        (4, Sql::Blob(v)) if v.len() == 8 => {
++            Value::Number(u64::from_be_bytes(v.as_slice().try_into().unwrap()).into())
++        }
++        (5, Sql::Real(v)) => {
++            Value::Number(Number::from_f64(*v).ok_or("nonfinite configuration value")?)
++        }
++        (5, Sql::Integer(v)) => Value::Number(Number::from_f64(*v as f64).unwrap()),
++        (6, Sql::Text(v)) => Value::String(v.clone()),
++        (7, Sql::Null) => {
++            let mut ids = children.get(&id).cloned().unwrap_or_default();
++            ids.sort_by_key(|n| -nodes[n].slot);
++            let mut out = Vec::new();
++            for (i, n) in ids.iter().enumerate() {
++                if nodes[n].slot != -(i as i64) - 1 {
++                    return Err("invalid array ordering".into());
++                }
++                out.push(restore(*n, depth + 1, nodes, children, fields, seen)?);
++            }
++            Value::Array(out)
++        }
++        (8, Sql::Null) => {
++            let mut out = Map::new();
++            for n in children.get(&id).into_iter().flatten() {
++                let slot = nodes[n].slot;
++                let name = fields
++                    .get(&slot)
++                    .filter(|_| slot > 0)
++                    .ok_or("invalid object field")?;
++                if out.contains_key(name) {
++                    return Err("duplicate object field".into());
++                }
++                out.insert(
++                    name.clone(),
++                    restore(*n, depth + 1, nodes, children, fields, seen)?,
++                );
++            }
++            Value::Object(out)
++        }
++        _ => return Err("invalid typed configuration value".into()),
++    };
++    Ok(value)
++}
++#[allow(clippy::too_many_arguments)]
++fn flatten(
++    db: &Connection,
++    value: &Value,
++    id: i64,
++    parent: i64,
++    slot: i64,
++    depth: usize,
++    edges: &HashMap<(i64, i64), i64>,
++    next: &mut i64,
++    fields: &mut HashMap<String, i64>,
++    nodes: &mut BTreeMap<i64, Cell>,
++) -> Result<(), String> {
++    use rusqlite::types::Value as Sql;
++    if depth > 256 {
++        return Err("configuration nesting exceeds 256".into());
++    }
++    let (kind, scalar) = make_scalar(value)?;
++    nodes.insert(
++        id,
++        Cell {
++            id,
++            parent,
++            slot,
++            kind,
++            value: scalar,
++        },
++    );
++    let mut packed = Vec::new();
++    let mut child =
++        |v: &Value, slot: i64, fields: &mut HashMap<String, i64>| -> Result<(), String> {
++            if !value_is_container(v) {
++                let (kind, value) = make_scalar(v)?;
++                packed.push(Cell {
++                    id: 0,
++                    parent: id,
++                    slot,
++                    kind,
++                    value,
++                });
++                return Ok(());
++            }
++            let cid = if let Some(cid) = edges.get(&(id, slot)) {
++                *cid
++            } else {
++                *next += 1;
++                *next
++            };
++            flatten(db, v, cid, id, slot, depth + 1, edges, next, fields, nodes)
++        };
++    match value {
++        Value::Array(list) => {
++            for (i, v) in list.iter().enumerate() {
++                child(v, -(i as i64) - 1, fields)?
++            }
++        }
++        Value::Object(map) => {
++            for (name, v) in map {
++                let fid = if let Some(fid) = fields.get(name) {
++                    *fid
++                } else {
++                    db.execute("INSERT OR IGNORE INTO field(name) VALUES(?)", [name])
++                        .map_err(err)?;
++                    let fid = db
++                        .query_row("SELECT id FROM field WHERE name=?", [name], |r| r.get(0))
++                        .map_err(err)?;
++                    fields.insert(name.clone(), fid);
++                    fid
++                };
++                child(v, fid, fields)?
++            }
++        }
++        _ => {}
++    }
++    if !packed.is_empty() {
++        nodes.get_mut(&id).unwrap().value = Sql::Blob(pack_scalars(&mut packed));
++    }
++    Ok(())
++}
++pub fn read_json(root: &Path, role: &str, key: &str) -> Result<Option<Value>, String> {
++    Store::open(root, role)?.load(key)
++}
++pub fn export_project(path: &Path, role: &str, key: &str, value: &Value) -> Result<(), String> {
++    if !valid_role(role) || key.is_empty() {
++        return Err("invalid project role or key".into());
++    }
++    if path.file_name().and_then(|v| v.to_str()).is_some_and(|v| matches!(v.to_ascii_lowercase().as_str(), "saio.db" | "saio.db-wal" | "saio.db-shm" | "saio.db-journal")) {
++        return Err("project export cannot replace the shared configuration database".into());
++    }
++    let parent = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
++    create_private_directory(parent)?;
++    let temp = tempfile::NamedTempFile::new_in(parent).map_err(err)?;
++    {
++        let mut store = Store::open_file(temp.path(), role, false)?;
++        store.load(key)?;
++        store.save(key, value)?;
++        store
++            .db
++            .execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")
++            .map_err(err)?;
++    }
++    temp.persist(path).map_err(err)?;
++    Ok(())
++}
++pub fn read_project(path: &Path, role: &str, key: &str) -> Result<Value, String> {
++    if !valid_role(role) || key.is_empty() {
++        return Err("invalid project role or key".into());
++    }
++    let data = std::fs::read(path).map_err(err)?;
++    if !data.starts_with(b"SQLite format 3\0") {
++        return serde_json::from_slice(&data).map_err(err);
++    }
++    let mut store = Store::open_file(path, role, true)?;
++    let count: i64 = store
++        .db
++        .query_row("SELECT count(*) FROM document", [], |r| r.get(0))
++        .map_err(err)?;
++    if count != 1 {
++        return Err("project must contain exactly one document".into());
++    }
++    store
++        .load(key)?
++        .ok_or_else(|| "project role or document does not match".into())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[cfg(unix)]
++    #[test]
++    fn new_database_and_journals_are_private() {
++        use std::os::unix::fs::PermissionsExt;
++        let base = tempfile::tempdir().unwrap();
++        let root = base.path().join("new-root");
++        let mut store = Store::open(&root,"launcher").unwrap();
++        store.migrate_json("preferences",Some(br#"{"schemaVersion":1}"#),"test").unwrap();
++        assert_eq!(std::fs::metadata(&root).unwrap().permissions().mode() & 0o777,0o700);
++        for name in ["saio.db","saio.db-wal","saio.db-shm"] {
++            if let Ok(info) = std::fs::metadata(root.join(name)) {
++                assert_eq!(info.permissions().mode() & 0o777,0o600,"{name}");
++            }
++        }
++    }
++
++    #[test]
++    fn project_is_single_file_without_journal_sidecars() {
++        let root = tempfile::tempdir().unwrap();
++        let folder = root.path().join("nested");
++        let path = folder.join("case.saioproj");
++        export_project(&path,"pmu.master","workspace",&serde_json::json!({"value":1})).unwrap();
++        read_project(&path,"pmu.master","workspace").unwrap();
++        assert_eq!(std::fs::read_dir(&folder).unwrap().count(),1);
++    }
++
++    #[test]
++    fn failed_migration_revokes_write_and_export_preserves_database() {
++        let root = tempfile::tempdir().unwrap();
++        let mut store = Store::open(root.path(), "launcher").unwrap();
++        store.db.execute_batch("CREATE TRIGGER abort_migration BEFORE INSERT ON migration BEGIN SELECT RAISE(ABORT,'failed migration'); END;").unwrap();
++        assert!(store.migrate_json("preferences", Some(br#"{"theme":"dark"}"#), "legacy").is_err());
++        assert!(store.save("preferences", &serde_json::json!({"theme":"default"})).is_err());
++        assert_eq!(store.db.query_row("SELECT count(*) FROM document", [], |r| r.get::<_,i64>(0)).unwrap(), 0);
++        assert_eq!(store.db.query_row("SELECT count(*) FROM migration", [], |r| r.get::<_,i64>(0)).unwrap(), 0);
++        for name in ["saio.db", "SAIO.DB", "SaIo.Db-WaL", "saio.db-shm", "saio.db-journal"] {
++            assert!(export_project(&root.path().join(name), "pmu.master", "workspace", &Value::Null).is_err());
++        }
++        store.db.execute_batch("DROP TRIGGER abort_migration").unwrap();
++        store.migrate_json("preferences", Some(br#"{"theme":"dark"}"#), "legacy").unwrap();
++        let mut reopened = Store::open(root.path(), "launcher").unwrap();
++        assert_eq!(reopened.load("preferences").unwrap().unwrap()["theme"], "dark");
++    }
++
++    #[test]
++    fn migration_cas_types_and_project() {
++        let root = tempfile::tempdir().unwrap();
++        let mut a = Store::open(root.path(), "pmu.master").unwrap();
++        let mut b = Store::open(root.path(), "pmu.master").unwrap();
++        assert!(a.save("workspace", &Value::Null).is_err());
++        let value = serde_json::json!({"雪":[null,true,false,i64::MIN,u64::MAX,1.0,[],{}]});
++        let data = serde_json::to_vec(&value).unwrap();
++        assert_eq!(
++            a.migrate_json("workspace", Some(&data), "legacy").unwrap(),
++            Some(value.clone())
++        );
++        assert_eq!(b.load("workspace").unwrap(), Some(value));
++        a.save("workspace", &serde_json::json!({})).unwrap();
++        assert_eq!(b.save("workspace", &Value::Null).unwrap_err(), CONFLICT);
++        assert_eq!(
++            a.migrate_json("workspace", Some(b"bad"), "legacy").unwrap(),
++            Some(serde_json::json!({}))
++        );
++        assert!(a.migrate_json("bad", Some(b"{"), "legacy").is_err());
++        assert!(a.save("bad", &Value::Null).is_err());
++        let path = root.path().join("case.saioproj");
++        export_project(
++            &path,
++            "pmu.master",
++            "workspace",
++            &serde_json::json!({"max":u64::MAX}),
++        )
++        .unwrap();
++        assert_eq!(
++            read_project(&path, "pmu.master", "workspace").unwrap(),
++            serde_json::json!({"max":u64::MAX})
++        );
++        assert!(read_project(&path, "pmu.sub", "workspace").is_err());
++    }
++}
++
++fn value_is_container(v: &Value) -> bool {
++    matches!(v, Value::Array(_) | Value::Object(_))
++}
++fn make_scalar(value: &Value) -> Result<(i64, rusqlite::types::Value), String> {
++    use rusqlite::types::Value as Sql;
++    let result = match value {
++        Value::Null => (0, Sql::Null),
++        Value::Bool(false) => (1, Sql::Null),
++        Value::Bool(true) => (2, Sql::Null),
++        Value::String(v) => (6, Sql::Text(v.clone())),
++        Value::Number(v) => {
++            if let Some(i) = v.as_i64() {
++                (3, Sql::Integer(i))
++            } else if let Some(u) = v.as_u64() {
++                (4, Sql::Blob(u.to_be_bytes().to_vec()))
++            } else {
++                (5, Sql::Real(v.as_f64().ok_or("invalid number")?))
++            }
++        }
++        Value::Array(_) => (7, Sql::Null),
++        Value::Object(_) => (8, Sql::Null),
++    };
++    Ok(result)
++}
++fn put_var(out: &mut Vec<u8>, mut value: u64) {
++    while value >= 128 {
++        out.push((value as u8) | 128);
++        value >>= 7;
++    }
++    out.push(value as u8);
++}
++fn take_var(data: &mut &[u8]) -> Result<u64, String> {
++    let mut value = 0u64;
++    for i in 0..10 {
++        let b = *data.first().ok_or("truncated packed scalar")?;
++        *data = &data[1..];
++        if i == 9 && b > 1 {
++            return Err("overflow in packed scalar".into());
++        }
++        value |= ((b & 127) as u64) << (i * 7);
++        if b < 128 {
++            return Ok(value);
++        }
++    }
++    Err("invalid packed scalar varint".into())
++}
++fn pack_scalars(cells: &mut [Cell]) -> Vec<u8> {
++    use rusqlite::types::Value as Sql;
++    cells.sort_by_key(|c| c.slot);
++    let mut out = vec![b'S', 1];
++    for c in cells {
++        put_var(&mut out, ((c.slot << 1) ^ (c.slot >> 63)) as u64);
++        out.push(c.kind as u8);
++        match &c.value {
++            Sql::Null => {}
++            Sql::Integer(v) => put_var(&mut out, ((v << 1) ^ (v >> 63)) as u64),
++            Sql::Real(v) => out.extend_from_slice(&v.to_bits().to_be_bytes()),
++            Sql::Text(v) => {
++                put_var(&mut out, v.len() as u64);
++                out.extend_from_slice(v.as_bytes());
++            }
++            Sql::Blob(v) => out.extend_from_slice(v),
++        }
++    }
++    out
++}
++fn unpack_scalars(mut data: &[u8]) -> Result<Vec<Cell>, String> {
++    use rusqlite::types::Value as Sql;
++    if !data.starts_with(&[b'S', 1]) {
++        return Err("invalid packed scalar record".into());
++    }
++    data = &data[2..];
++    let mut out = Vec::new();
++    let mut seen = HashSet::new();
++    while !data.is_empty() {
++        let n = take_var(&mut data)?;
++        let slot = ((n >> 1) as i64) ^ -((n & 1) as i64);
++        if slot == 0 || !seen.insert(slot) {
++            return Err("invalid packed scalar slot".into());
++        }
++        let kind = *data.first().ok_or("missing packed scalar kind")? as i64;
++        data = &data[1..];
++        let value = match kind {
++            0..=2 => Sql::Null,
++            3 => {
++                let n = take_var(&mut data)?;
++                Sql::Integer(((n >> 1) as i64) ^ -((n & 1) as i64))
++            }
++            4 | 5 => {
++                if data.len() < 8 {
++                    return Err("truncated packed scalar".into());
++                }
++                let b = &data[..8];
++                let value = if kind == 4 {
++                    Sql::Blob(b.to_vec())
++                } else {
++                    Sql::Real(f64::from_bits(u64::from_be_bytes(b.try_into().unwrap())))
++                };
++                data = &data[8..];
++                value
++            }
++            6 => {
++                let len = usize::try_from(take_var(&mut data)?).map_err(err)?;
++                if len > data.len() {
++                    return Err("truncated packed text".into());
++                }
++                let value = Sql::Text(std::str::from_utf8(&data[..len]).map_err(err)?.into());
++                data = &data[len..];
++                value
++            }
++            _ => return Err("invalid packed scalar kind".into()),
++        };
++        out.push(Cell {
++            id: 0,
++            parent: 0,
++            slot,
++            kind,
++            value,
++        });
++    }
++    Ok(out)
++}
 diff --git a/crates/shared/contracts/appearance-cases.json b/crates/shared/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -13215,10 +16079,10 @@ index 0000000..8bdaa34
 +}
 diff --git a/crates/shared/simlab_preferences.rs b/crates/shared/simlab_preferences.rs
 new file mode 100644
-index 0000000..795c0c1
+index 0000000..70c4f6f
 --- /dev/null
 +++ b/crates/shared/simlab_preferences.rs
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,100 @@
 +#[derive(Debug, serde::Serialize, PartialEq)]
 +#[serde(rename_all = "camelCase")]
 +pub(crate) struct AppearanceV1 {
@@ -13236,12 +16100,18 @@ index 0000000..795c0c1
 +        theme: "system".into(),
 +        language: "en".into(),
 +    };
-+    let data = match std::fs::read(root.join("launcher.json")) {
-+        Ok(data) => data,
-+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
-+        Err(error) => return Err(error.to_string()),
++    #[cfg(feature = "simlab-suite")]
++    let stored = crate::config_store::read_json(root, "launcher", "preferences")?;
++    #[cfg(not(feature = "simlab-suite"))]
++    let stored: Option<serde_json::Value> = None;
++    let value = match stored {
++        Some(value) => value,
++        None => match std::fs::read(root.join("launcher.json")) {
++            Ok(data) => serde_json::from_slice(&data).map_err(|e| e.to_string())?,
++            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
++            Err(error) => return Err(error.to_string()),
++        },
 +    };
-+    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
 +    if !value.is_object()
 +        || value.get("schemaVersion").is_some_and(|v| v.as_u64() != Some(1))
 +    {
@@ -13279,17 +16149,7 @@ index 0000000..795c0c1
 +    if !root.is_absolute() {
 +        return Err("SIMLAB_DATA_DIR must be absolute".into());
 +    }
-+    let data = match std::fs::read(root.join("launcher.json")) {
-+        Ok(data) => data,
-+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("system".into()),
-+        Err(error) => return Err(error.to_string()),
-+    };
-+    let value: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
-+    match value["theme"].as_str() {
-+        Some("light") => Ok("light".into()),
-+        Some("dark") => Ok("dark".into()),
-+        _ => Ok("system".into()),
-+    }
++    Ok(read_appearance(&root)?.theme)
 +}
 +
 +#[cfg(test)]
@@ -13361,9 +16221,17 @@ index 0000000..c8d826e
 +<g id="protocol-label" aria-label="UA"><path d="M97.906 94V106.301Q97.906 107.081 97.627 107.738Q97.348 108.396 96.836 108.908Q96.323 109.421 95.655 109.71Q94.986 110 94.229 110Q93.471 110 92.814 109.71Q92.156 109.421 91.644 108.908Q91.131 108.396 90.841 107.738Q90.552 107.081 90.552 106.301V94H92.825V106.078Q92.825 106.925 93.226 107.326Q93.627 107.727 94.229 107.727Q94.83 107.727 95.231 107.326Q95.633 106.925 95.633 106.078V94H97.906ZM104.635 104.318 103.521 98.568H103.477L102.362 104.318H104.635ZM99.02 109.866 102.563 94H104.457L108 109.866H105.727L105.059 106.457H101.961L101.293 109.866H99.02Z" fill="#F9FCFF" aria-label="UA"/></g>
 +</svg>
 diff --git a/frontend/src/App.vue b/frontend/src/App.vue
-index 0528130..c83b455 100644
+index 0528130..22215ba 100644
 --- a/frontend/src/App.vue
 +++ b/frontend/src/App.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { onMounted, onUnmounted, provide, ref } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
+ import { listen } from '@tauri-apps/api/event'
+ import Toolbar from './components/Toolbar.vue'
+ import AddressTree from './components/AddressTree.vue'
 @@ -202,7 +202,7 @@ body {
  
  .app-layout {
@@ -13387,6 +16255,31 @@ index 0528130..c83b455 100644
 +  .property-area { border-left: 0; border-top: 1px solid var(--c-surface0); }
 +}
  </style>
+diff --git a/frontend/src/bootstrap.ts b/frontend/src/bootstrap.ts
+new file mode 100644
+index 0000000..1c724c7
+--- /dev/null
++++ b/frontend/src/bootstrap.ts
+@@ -0,0 +1,19 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
++import { createApp } from 'vue'
++import '@shared/styles/tokens.css'
++import '@shared/styles/transitions.css'
++import '@shared/styles/toolbar.css'
++import App from './App.vue'
++
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
++createApp(App).mount('#app')
++
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++  void import('./components/PersistenceStatus.vue').then(({ default: PersistenceStatus }) => {
++    const statusRoot = document.createElement('div')
++    document.body.append(statusRoot)
++    createApp(PersistenceStatus).mount(statusRoot)
++  })
++}
 diff --git a/frontend/src/components/AddressTree.vue b/frontend/src/components/AddressTree.vue
 index bb6573d..176c225 100644
 --- a/frontend/src/components/AddressTree.vue
@@ -13434,15 +16327,18 @@ index bb6573d..176c225 100644
        </template>
      </div>
 diff --git a/frontend/src/components/ConfigDialog.vue b/frontend/src/components/ConfigDialog.vue
-index d6c5ab1..f0c5722 100644
+index d6c5ab1..b5e09bd 100644
 --- a/frontend/src/components/ConfigDialog.vue
 +++ b/frontend/src/components/ConfigDialog.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import { vModal } from "@app/simlab-ui/modal"
  import { ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import { useServerContext } from '../inject'
 @@ -90,7 +91,7 @@ async function saveConfig() {
  <template>
    <Teleport to="body">
@@ -13480,6 +16376,33 @@ index 1677587..bc3cf7d 100644
                </button>
              </td>
            </tr>
+diff --git a/frontend/src/components/PersistenceStatus.vue b/frontend/src/components/PersistenceStatus.vue
+new file mode 100644
+index 0000000..71864fa
+--- /dev/null
++++ b/frontend/src/components/PersistenceStatus.vue
+@@ -0,0 +1,21 @@
++<script setup lang="ts">
++import { onMounted, onUnmounted, ref } from 'vue'
++import { invoke } from '@app/simlab-ui/configInvoke'
++const status = ref<{enabled: boolean; error: string | null}>({enabled:false,error:null})
++let timer: ReturnType<typeof setInterval> | undefined
++async function refresh() {
++  try { status.value = await invoke('get_persistence_status') }
++  catch (error) { status.value = {enabled:false,error:String(error)} }
++}
++onMounted(() => { void refresh(); timer = setInterval(() => { void refresh() }, 2000) })
++onUnmounted(() => clearInterval(timer))
++</script>
++<template>
++  <div class="suite-persistence-status" :class="{failed: status.error}" :role="status.error ? 'alert' : 'status'" aria-live="polite">
++    {{ status.error ? `配置未保存：${status.error}` : status.enabled ? '配置自动保存' : '配置存储尚未就绪' }}
++  </div>
++</template>
++<style scoped>
++.suite-persistence-status {position:fixed;bottom:8px;left:8px;z-index:10000;max-width:min(520px,75vw);padding:6px 10px;border:1px solid var(--border,#666);border-radius:6px;background:var(--surface,#202124);color:var(--text,#eee);font:12px system-ui;overflow-wrap:anywhere}
++.failed {color:var(--danger,#ffb4a9);border-color:currentColor}
++</style>
 diff --git a/frontend/src/components/PropertyEditor.vue b/frontend/src/components/PropertyEditor.vue
 index 94d6f1b..7fd7887 100644
 --- a/frontend/src/components/PropertyEditor.vue
@@ -13500,15 +16423,38 @@ index 94d6f1b..7fd7887 100644
  
      <div v-else class="panel-scroll">
 diff --git a/frontend/src/components/Toolbar.vue b/frontend/src/components/Toolbar.vue
-index 916d36c..063735c 100644
+index 916d36c..1b793db 100644
 --- a/frontend/src/components/Toolbar.vue
 +++ b/frontend/src/components/Toolbar.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { computed, ref } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { open, save } from '@tauri-apps/plugin-dialog'
+ import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+@@ -90,8 +91,8 @@ async function onAddNode() {
+ 
+ async function onSave() {
+   const path = await save({
+-    defaultPath: 'server.opcuaproj',
+-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
++    defaultPath: import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'server.saioproj' : 'server.opcuaproj',
++    filters: [{ name: 'SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj'] : ['opcuaproj'] }],
+   })
+   if (!path) return
+   try {
+@@ -106,7 +107,7 @@ async function onLoad() {
+   const selected = await open({
+     multiple: false,
+     directory: false,
+-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
++    filters: [{ name: 'OPC UA / SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'opcuaproj', 'json'] : ['opcuaproj'] }],
+   })
+   const path = Array.isArray(selected) ? selected[0] : selected
+   if (!path) return
 @@ -133,9 +134,9 @@ async function onLoad() {
            class="toolbar-btn btn-start"
            :disabled="running || starting"
@@ -13551,37 +16497,89 @@ index 916d36c..063735c 100644
    flex: none;
    display: flex;
    align-items: center;
+diff --git a/frontend/src/main.test.ts b/frontend/src/main.test.ts
+new file mode 100644
+index 0000000..5c3773b
+--- /dev/null
++++ b/frontend/src/main.test.ts
+@@ -0,0 +1,29 @@
++import { afterEach, expect, it, vi } from 'vitest'
++const state = vi.hoisted(() => ({ mounted: false, loaded: false, order: [] as string[], finish: undefined as (() => void) | undefined }))
++vi.mock('@tauri-apps/api/event', () => ({ listen: async (name: string) => {
++  if (name !== 'saio-before-close') throw new Error(`Unexpected event: ${name}`)
++  state.order.push('listening')
++  return () => {}
++} }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: async (command: string) => {
++  if (command !== 'simlab_enable_configuration_close') throw new Error(`Unexpected command: ${command}`)
++  state.order.push('close-enabled')
++} }))
++vi.mock('./simlab-ui/configPreferences', () => ({ installSuitePreferences: async () => {
++  state.order.push('preferences')
++  state.loaded = true
++  await new Promise<void>(resolve => { state.finish = resolve })
++  return { flush: async () => {} }
++} }))
++vi.mock('./bootstrap', () => { state.order.push('application'); state.mounted = true; return {} })
++afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); state.loaded = false; state.mounted = false; state.order.length = 0; state.finish = undefined })
++it('enables native close protection before restoring preferences and importing the application', async () => {
++  vi.stubEnv('VITE_SIMLAB_SUITE', '1')
++  await import('./main')
++  await vi.waitFor(() => expect(state.loaded).toBe(true))
++  expect(state.order).toEqual(['listening', 'close-enabled', 'preferences'])
++  expect(state.mounted).toBe(false)
++  state.finish?.()
++  await vi.waitFor(() => expect(state.mounted).toBe(true))
++  expect(state.order).toEqual(['listening', 'close-enabled', 'preferences', 'application'])
++})
 diff --git a/frontend/src/main.ts b/frontend/src/main.ts
-index 975ab50..08e19c8 100644
+index 975ab50..80a2b1b 100644
 --- a/frontend/src/main.ts
 +++ b/frontend/src/main.ts
-@@ -1,7 +1,11 @@
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
- import { createApp } from 'vue'
- import '@shared/styles/tokens.css'
- import '@shared/styles/transitions.css'
- import '@shared/styles/toolbar.css'
- import App from './App.vue'
+@@ -1,7 +1,19 @@
+-import { createApp } from 'vue'
+-import '@shared/styles/tokens.css'
+-import '@shared/styles/transitions.css'
+-import '@shared/styles/toolbar.css'
+-import App from './App.vue'
++import { installConfigurationClose } from './simlab-ui/configClose'
++async function bootstrap() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { listen } = await import('@tauri-apps/api/event')
++    const { invoke } = await import('@app/simlab-ui/configInvoke')
++    await installConfigurationClose(
++      requested => listen('saio-before-close', requested),
++      () => invoke('simlab_confirm_configuration_close'),
++      () => invoke('simlab_enable_configuration_close'),
++    )
++  }
  
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).mount('#app')
+-createApp(App).mount('#app')
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { installSuitePreferences } = await import('./simlab-ui/configPreferences')
++    await installSuitePreferences('opcua.server')
++  }
++  await import('./bootstrap')
++}
++void bootstrap()
 diff --git a/frontend/src/simlab-ui/.source.json b/frontend/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/frontend/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -14035,6 +17033,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/frontend/src/simlab-ui/configClose.ts b/frontend/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/frontend/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/frontend/src/simlab-ui/configInvoke.ts b/frontend/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/frontend/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/frontend/src/simlab-ui/configPreferences.ts b/frontend/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/frontend/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/frontend/src/simlab-ui/contracts/appearance-cases.json b/frontend/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -14446,9 +17732,17 @@ index 0000000..6466d65
 +<g id="protocol-label" aria-label="UA"><path d="M97.906 94V106.301Q97.906 107.081 97.627 107.738Q97.348 108.396 96.836 108.908Q96.323 109.421 95.655 109.71Q94.986 110 94.229 110Q93.471 110 92.814 109.71Q92.156 109.421 91.644 108.908Q91.131 108.396 90.841 107.738Q90.552 107.081 90.552 106.301V94H92.825V106.078Q92.825 106.925 93.226 107.326Q93.627 107.727 94.229 107.727Q94.83 107.727 95.231 107.326Q95.633 106.925 95.633 106.078V94H97.906ZM104.635 104.318 103.521 98.568H103.477L102.362 104.318H104.635ZM99.02 109.866 102.563 94H104.457L108 109.866H105.727L105.059 106.457H101.961L101.293 109.866H99.02Z" fill="#F9FCFF" aria-label="UA"/></g>
 +</svg>
 diff --git a/master-frontend/src/App.vue b/master-frontend/src/App.vue
-index f94d3a1..40786fb 100644
+index f94d3a1..efc14c4 100644
 --- a/master-frontend/src/App.vue
 +++ b/master-frontend/src/App.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
+ import { listen } from '@tauri-apps/api/event'
+ import { useI18n } from '@shared/i18n'
+ import Toolbar from './components/Toolbar.vue'
 @@ -371,7 +371,7 @@ const context: MasterContext = {
  provide(masterContextKey, context)
  
@@ -14472,17 +17766,37 @@ index f94d3a1..40786fb 100644
 +  .tab-bar { flex-wrap: wrap; height: auto; min-height: 34px; }
 +}
  </style>
+diff --git a/master-frontend/src/bootstrap.ts b/master-frontend/src/bootstrap.ts
+new file mode 100644
+index 0000000..08e19c8
+--- /dev/null
++++ b/master-frontend/src/bootstrap.ts
+@@ -0,0 +1,11 @@
++import './simlab-ui/tokens.css'
++import './simlab-ui/components.css'
++import { startSuiteTheme } from './simlab-ui/theme'
++import { createApp } from 'vue'
++import '@shared/styles/tokens.css'
++import '@shared/styles/transitions.css'
++import '@shared/styles/toolbar.css'
++import App from './App.vue'
++
++if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
++createApp(App).mount('#app')
 diff --git a/master-frontend/src/components/CertManagerDialog.vue b/master-frontend/src/components/CertManagerDialog.vue
-index 5c3df73..ae7b16e 100644
+index 5c3df73..d292b3b 100644
 --- a/master-frontend/src/components/CertManagerDialog.vue
 +++ b/master-frontend/src/components/CertManagerDialog.vue
-@@ -1,4 +1,6 @@
+@@ -1,6 +1,8 @@
  <script setup lang="ts">
 +import { vModal } from "@app/simlab-ui/modal"
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert, showConfirm } from '@shared/composables/useDialog'
+ import type { CertRole, CertSummaryDto } from '../types'
 @@ -78,7 +80,7 @@ const selectedDetail = (): CertSummaryDto | null =>
  <template>
    <Teleport to="body">
@@ -14511,15 +17825,18 @@ index 5c3df73..ae7b16e 100644
                    <div v-if="rejected.length === 0" class="pane-empty">{{ t('common.loading') }}</div>
                  </div>
 diff --git a/master-frontend/src/components/ConnectionTree.vue b/master-frontend/src/components/ConnectionTree.vue
-index f5b911e..f05e3a9 100644
+index f5b911e..31c0545 100644
 --- a/master-frontend/src/components/ConnectionTree.vue
 +++ b/master-frontend/src/components/ConnectionTree.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { computed, reactive, ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showConfirm } from '@shared/composables/useDialog'
+ import { nodeIcon } from '../domain'
 @@ -349,7 +350,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
            <template v-if="conn.state === 'Connected'">
              <div class="section-row" @click="toggleBrowseOpen(conn.id)">
@@ -14601,15 +17918,18 @@ index 6ab03ed..104331d 100644
            </tr>
          </tbody>
 diff --git a/master-frontend/src/components/EventsPanel.vue b/master-frontend/src/components/EventsPanel.vue
-index 80d25a2..a59de0a 100644
+index 80d25a2..ea5c921 100644
 --- a/master-frontend/src/components/EventsPanel.vue
 +++ b/master-frontend/src/components/EventsPanel.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { onMounted, onUnmounted, ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import EmptyState from '@shared/components/EmptyState.vue'
 @@ -94,7 +95,7 @@ onUnmounted(() => {
  <template>
    <div class="events-panel">
@@ -14636,15 +17956,18 @@ index 80d25a2..a59de0a 100644
  
      <div v-else class="table-scroll">
 diff --git a/master-frontend/src/components/HistoryPanel.vue b/master-frontend/src/components/HistoryPanel.vue
-index 5842756..d4de09c 100644
+index 5842756..eb57842 100644
 --- a/master-frontend/src/components/HistoryPanel.vue
 +++ b/master-frontend/src/components/HistoryPanel.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { computed, ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import EmptyState from '@shared/components/EmptyState.vue'
 @@ -114,12 +115,12 @@ watch([mode], () => {
        :title="t('history.emptyTitle')"
        :hint="t('history.emptyHint')"
@@ -14669,16 +17992,31 @@ index 5842756..d4de09c 100644
            </button>
          </div>
        </div>
+diff --git a/master-frontend/src/components/LogPanel.vue b/master-frontend/src/components/LogPanel.vue
+index 9b49765..9ababa4 100644
+--- a/master-frontend/src/components/LogPanel.vue
++++ b/master-frontend/src/components/LogPanel.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
+ import { save } from '@tauri-apps/plugin-dialog'
+ import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
 diff --git a/master-frontend/src/components/MethodCallDialog.vue b/master-frontend/src/components/MethodCallDialog.vue
-index e5ef951..a13268c 100644
+index e5ef951..15fd603 100644
 --- a/master-frontend/src/components/MethodCallDialog.vue
 +++ b/master-frontend/src/components/MethodCallDialog.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import { vModal } from "@app/simlab-ui/modal"
  import { ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import type { CallMethodRequest, MethodArgInfo, MethodArgValue } from '../types'
 @@ -105,7 +106,7 @@ async function onCall() {
  <template>
    <Teleport to="body">
@@ -14689,15 +18027,18 @@ index e5ef951..a13268c 100644
            <div class="dialog-header">
              <span class="dialog-title">{{ t('methodCall.title', { name: displayName }) }}</span>
 diff --git a/master-frontend/src/components/NewConnectionDialog.vue b/master-frontend/src/components/NewConnectionDialog.vue
-index f067351..71cee27 100644
+index f067351..6530939 100644
 --- a/master-frontend/src/components/NewConnectionDialog.vue
 +++ b/master-frontend/src/components/NewConnectionDialog.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import { vModal } from "@app/simlab-ui/modal"
  import { ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import { useMasterContext } from '../inject'
 @@ -133,7 +134,7 @@ async function onSubmit() {
  <template>
    <Teleport to="body">
@@ -14708,15 +18049,18 @@ index f067351..71cee27 100644
            <div class="dialog-header">
              <span class="dialog-title">{{ t('newConn.title') }}</span>
 diff --git a/master-frontend/src/components/Toolbar.vue b/master-frontend/src/components/Toolbar.vue
-index 34e6947..5cc294c 100644
+index 34e6947..98775a7 100644
 --- a/master-frontend/src/components/Toolbar.vue
 +++ b/master-frontend/src/components/Toolbar.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { computed, ref } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { open, save } from '@tauri-apps/plugin-dialog'
+ import { useI18n } from '@shared/i18n'
+ import { showAlert, showConfirm, showPrompt } from '@shared/composables/useDialog'
 @@ -13,6 +14,7 @@ import { useMasterContext } from '../inject'
  import { useConnectionRename } from '../useConnectionRename'
  import type { ConnectionInfo, DiscoveredEndpointDto } from '../types'
@@ -14725,6 +18069,26 @@ index 34e6947..5cc294c 100644
  const { t } = useI18n()
  const { requestRename, renaming } = useConnectionRename()
  const {
+@@ -92,8 +94,8 @@ async function onRefresh() {
+ 
+ async function onSave() {
+   const path = await save({
+-    defaultPath: 'master.opcuaproj',
+-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
++    defaultPath: import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'master.saioproj' : 'master.opcuaproj',
++    filters: [{ name: 'SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj'] : ['opcuaproj'] }],
+   })
+   if (!path) return
+   try {
+@@ -108,7 +110,7 @@ async function onLoad() {
+   const selected = await open({
+     multiple: false,
+     directory: false,
+-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
++    filters: [{ name: 'OPC UA / SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'opcuaproj', 'json'] : ['opcuaproj'] }],
+   })
+   const path = Array.isArray(selected) ? selected[0] : selected
+   if (!path) return
 @@ -183,28 +185,28 @@ function onCreated(conn: ConnectionInfo) {
            class="toolbar-btn btn-start"
            :disabled="!hasSelection || isConnected || isConnecting"
@@ -14762,16 +18126,31 @@ index 34e6947..5cc294c 100644
          <span
            class="persistence-status"
            :class="{ 'persistence-error': persistenceStatus.error }"
+diff --git a/master-frontend/src/components/UpdateControl.vue b/master-frontend/src/components/UpdateControl.vue
+index b9ca6cd..1d64e3a 100644
+--- a/master-frontend/src/components/UpdateControl.vue
++++ b/master-frontend/src/components/UpdateControl.vue
+@@ -1,6 +1,6 @@
+ <script setup lang="ts">
+ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
+ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+ import { useI18n } from '@shared/i18n'
+ 
 diff --git a/master-frontend/src/components/ValuePanel.vue b/master-frontend/src/components/ValuePanel.vue
-index e70b401..e682a86 100644
+index e70b401..823badd 100644
 --- a/master-frontend/src/components/ValuePanel.vue
 +++ b/master-frontend/src/components/ValuePanel.vue
-@@ -1,4 +1,5 @@
+@@ -1,6 +1,7 @@
  <script setup lang="ts">
 +import SuiteIcon from '../simlab-ui/Icon.vue'
  import { computed, ref, watch } from 'vue'
- import { invoke } from '@tauri-apps/api/core'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
  import { useI18n } from '@shared/i18n'
+ import { showAlert } from '@shared/composables/useDialog'
+ import EmptyState from '@shared/components/EmptyState.vue'
 @@ -118,7 +119,7 @@ async function onWrite() {
        :title="t('valuePanel.emptyTitle')"
        :hint="t('valuePanel.emptyHint')"
@@ -14790,37 +18169,89 @@ index e70b401..e682a86 100644
          </button>
        </div>
  
+diff --git a/master-frontend/src/main.test.ts b/master-frontend/src/main.test.ts
+new file mode 100644
+index 0000000..5c3773b
+--- /dev/null
++++ b/master-frontend/src/main.test.ts
+@@ -0,0 +1,29 @@
++import { afterEach, expect, it, vi } from 'vitest'
++const state = vi.hoisted(() => ({ mounted: false, loaded: false, order: [] as string[], finish: undefined as (() => void) | undefined }))
++vi.mock('@tauri-apps/api/event', () => ({ listen: async (name: string) => {
++  if (name !== 'saio-before-close') throw new Error(`Unexpected event: ${name}`)
++  state.order.push('listening')
++  return () => {}
++} }))
++vi.mock('@tauri-apps/api/core', () => ({ invoke: async (command: string) => {
++  if (command !== 'simlab_enable_configuration_close') throw new Error(`Unexpected command: ${command}`)
++  state.order.push('close-enabled')
++} }))
++vi.mock('./simlab-ui/configPreferences', () => ({ installSuitePreferences: async () => {
++  state.order.push('preferences')
++  state.loaded = true
++  await new Promise<void>(resolve => { state.finish = resolve })
++  return { flush: async () => {} }
++} }))
++vi.mock('./bootstrap', () => { state.order.push('application'); state.mounted = true; return {} })
++afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); state.loaded = false; state.mounted = false; state.order.length = 0; state.finish = undefined })
++it('enables native close protection before restoring preferences and importing the application', async () => {
++  vi.stubEnv('VITE_SIMLAB_SUITE', '1')
++  await import('./main')
++  await vi.waitFor(() => expect(state.loaded).toBe(true))
++  expect(state.order).toEqual(['listening', 'close-enabled', 'preferences'])
++  expect(state.mounted).toBe(false)
++  state.finish?.()
++  await vi.waitFor(() => expect(state.mounted).toBe(true))
++  expect(state.order).toEqual(['listening', 'close-enabled', 'preferences', 'application'])
++})
 diff --git a/master-frontend/src/main.ts b/master-frontend/src/main.ts
-index 975ab50..08e19c8 100644
+index 975ab50..aec50a9 100644
 --- a/master-frontend/src/main.ts
 +++ b/master-frontend/src/main.ts
-@@ -1,7 +1,11 @@
-+import './simlab-ui/tokens.css'
-+import './simlab-ui/components.css'
-+import { startSuiteTheme } from './simlab-ui/theme'
- import { createApp } from 'vue'
- import '@shared/styles/tokens.css'
- import '@shared/styles/transitions.css'
- import '@shared/styles/toolbar.css'
- import App from './App.vue'
+@@ -1,7 +1,19 @@
+-import { createApp } from 'vue'
+-import '@shared/styles/tokens.css'
+-import '@shared/styles/transitions.css'
+-import '@shared/styles/toolbar.css'
+-import App from './App.vue'
++import { installConfigurationClose } from './simlab-ui/configClose'
++async function bootstrap() {
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { listen } = await import('@tauri-apps/api/event')
++    const { invoke } = await import('@app/simlab-ui/configInvoke')
++    await installConfigurationClose(
++      requested => listen('saio-before-close', requested),
++      () => invoke('simlab_confirm_configuration_close'),
++      () => invoke('simlab_enable_configuration_close'),
++    )
++  }
  
-+if (import.meta.env.VITE_SIMLAB_SUITE === '1') startSuiteTheme()
- createApp(App).mount('#app')
+-createApp(App).mount('#app')
++  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
++    const { installSuitePreferences } = await import('./simlab-ui/configPreferences')
++    await installSuitePreferences('opcua.master')
++  }
++  await import('./bootstrap')
++}
++void bootstrap()
 diff --git a/master-frontend/src/simlab-ui/.source.json b/master-frontend/src/simlab-ui/.source.json
 new file mode 100644
-index 0000000..3640d0d
+index 0000000..fb9faf7
 --- /dev/null
 +++ b/master-frontend/src/simlab-ui/.source.json
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,19 @@
 +{
 +  "schemaVersion": 1,
-+  "sourceSha256": "8d90ee3aaeb4e5b67a636632dbc1214a103e953ed5450f96cedfd63c010be2a5",
++  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
 +  "files": {
 +    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
 +    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
 +    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
 +    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
 +    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
++    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
++    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
++    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
 +    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
 +    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
 +    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
@@ -15274,6 +18705,294 @@ index 0000000..add4070
 +  .status-badge__indicator--busy { animation: none; }
 +}
 +</style>
+diff --git a/master-frontend/src/simlab-ui/configClose.ts b/master-frontend/src/simlab-ui/configClose.ts
+new file mode 100644
+index 0000000..3dad3fc
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configClose.ts
+@@ -0,0 +1,131 @@
++type Flusher = () => Promise<void>
++type Unsubscribe = () => void
++const flushers = new Set<Flusher>()
++let flushing: Promise<void> | undefined
++let errorBanner: HTMLDivElement | undefined
++
++export function registerConfigurationFlusher(flush: Flusher): Unsubscribe {
++  flushers.add(flush)
++  return () => { flushers.delete(flush) }
++}
++function clearError() { errorBanner?.remove(); errorBanner = undefined }
++function showError(error: unknown, retry: () => void) {
++  clearError()
++  errorBanner = document.createElement('div')
++  errorBanner.dataset.saioCloseError = ''
++  errorBanner.setAttribute('role', 'alert')
++  errorBanner.style.cssText = 'position:fixed;bottom:48px;left:8px;right:8px;z-index:2147483647;padding:12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:13px system-ui;overflow-wrap:anywhere'
++  errorBanner.append(document.createTextNode(`保存失败，窗口保持打开 / Save failed; window remains open: ${String(error)} `))
++  const button = document.createElement('button')
++  button.textContent = '重试并关闭 / Retry and close'
++  button.onclick = retry
++  errorBanner.append(button)
++  document.body.append(errorBanner)
++}
++
++// The registry is shared by browser preferences, protocol forms and in-flight
++// native configuration requests. Concurrent close requests share this work.
++export function flushAllConfiguration(): Promise<void> {
++  if (flushing) return flushing
++  flushing = (async () => {
++    for (const flush of flushers) await flush()
++    clearError()
++  })().catch(error => {
++    showError(error, () => { void flushAllConfiguration().catch(() => {}) })
++    throw error
++  }).finally(() => { flushing = undefined })
++  return flushing
++}
++
++const nativePending = new Set<Promise<unknown>>()
++let nativeFlusherRegistered = false
++export function isConfigurationCommand(command: string): boolean {
++  if (command.startsWith('plugin:') || command.includes('configuration_close')) return false
++  if (['simlab_save_document', 'simlab_save_preferences', 'simlab_import_document', 'simlab_export_document',
++    'batch_add_data_points', 'batch_remove_data_points', 'batch_migrate_data_point_types', 'batch_update_control_options',
++    'rename_connection'].includes(command)) return true
++  return /^(replace_|create_|add_|remove_|delete_|update_|set_|import_|save_|new_project$|open_project$|load_(?:config|project|preset|settings|workspace))/.test(command)
++}
++export function trackConfigurationRequest<T>(command: string, request: Promise<T>): Promise<T> {
++  if (!isConfigurationCommand(command)) return request
++  if (!nativeFlusherRegistered) {
++    nativeFlusherRegistered = true
++    registerConfigurationFlusher(async () => {
++      while (nativePending.size) await Promise.all([...nativePending])
++    })
++  }
++  nativePending.add(request)
++  void request.then(() => { nativePending.delete(request) }, () => { nativePending.delete(request) })
++  return request
++}
++
++export async function installConfigurationClose(
++  subscribe: (requested: () => void) => Promise<Unsubscribe> | Unsubscribe,
++  confirm: () => Promise<void>,
++  enable: () => Promise<void>,
++): Promise<Unsubscribe> {
++  let closing: Promise<void> | undefined
++  function requested(): Promise<void> {
++    if (closing) return closing
++    const wasInert = document.body.inert
++    const wasBusy = document.body.getAttribute('aria-busy')
++    document.body.inert = true
++    document.body.setAttribute('aria-busy', 'true')
++    // Blur commits change-based inputs before Vue's queued watchers are flushed.
++    const focused = document.activeElement
++    if (focused instanceof HTMLElement) focused.blur()
++    closing = (async () => {
++      await Promise.resolve()
++      await flushAllConfiguration()
++      await confirm()
++    })().catch(error => {
++      document.body.inert = wasInert
++      if (wasBusy === null) document.body.removeAttribute('aria-busy')
++      else document.body.setAttribute('aria-busy', wasBusy)
++      showError(error, () => { void requested() })
++    }).finally(() => { closing = undefined })
++    return closing
++  }
++  const stop = await subscribe(() => { void requested() })
++  try { await enable() } catch (error) { stop(); throw error }
++  return stop
++}
++
++export async function installWailsConfigurationClose(
++  eventsOn: (event: string, handler: () => void) => Unsubscribe,
++): Promise<Unsubscribe> {
++  const host = window as unknown as { go?: { main?: { App?: {
++    EnableConfigurationClose(): Promise<void>
++    ConfirmConfigurationClose(): Promise<void>
++  } } } }
++  const app = host.go?.main?.App
++  if (!app) throw new Error('Native configuration close service is unavailable')
++  const mutations = new Set([
++    'Launch', 'SetFavorite', 'SetTheme', 'SetLanguage', 'SavePreferences',
++    'CreateConnection', 'UpdateConnection', 'DeleteConnection',
++    'AddScanGroup', 'UpdateScanGroup', 'RemoveScanGroup', 'UpdateTransport',
++    'AddDevice', 'UpdateDevice', 'RemoveDevice', 'AddRegister', 'UpdateRegister',
++    'RemoveRegister', 'WriteRegister', 'ImportRegisters', 'SetPointMutation',
++    'ClearPointMutation', 'SetDataSource', 'RemoveDataSource', 'LoadProject', 'SaveProject',
++  ])
++  const pending = new Set<Promise<unknown>>()
++  const methods = app as unknown as Record<string, unknown>
++  for (const name of mutations) {
++    const original = methods[name]
++    if (typeof original !== 'function') continue
++    methods[name] = (...args: unknown[]) => {
++      const result = Promise.resolve(original.apply(app, args))
++      pending.add(result)
++      void result.then(() => { pending.delete(result) }, () => { pending.delete(result) })
++      return result
++    }
++  }
++  registerConfigurationFlusher(async () => {
++    while (pending.size) await Promise.all([...pending])
++  })
++  return installConfigurationClose(
++    requested => eventsOn('saio-before-close', requested),
++    () => app.ConfirmConfigurationClose(),
++    () => app.EnableConfigurationClose(),
++  )
++}
+diff --git a/master-frontend/src/simlab-ui/configInvoke.ts b/master-frontend/src/simlab-ui/configInvoke.ts
+new file mode 100644
+index 0000000..a94078f
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configInvoke.ts
+@@ -0,0 +1,10 @@
++import { invoke as nativeInvoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core'
++import { trackConfigurationRequest } from './configClose'
++export * from '@tauri-apps/api/core'
++
++// Keep the SDK bridge untouched: its native invoke property is read-only.
++export function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
++  const request = arguments.length > 2 ? nativeInvoke<T>(command, args, options)
++    : arguments.length > 1 ? nativeInvoke<T>(command, args) : nativeInvoke<T>(command)
++  return trackConfigurationRequest(command, request)
++}
+diff --git a/master-frontend/src/simlab-ui/configPreferences.ts b/master-frontend/src/simlab-ui/configPreferences.ts
+new file mode 100644
+index 0000000..2c16b50
+--- /dev/null
++++ b/master-frontend/src/simlab-ui/configPreferences.ts
+@@ -0,0 +1,129 @@
++import { registerConfigurationFlusher, trackConfigurationRequest } from './configClose'
++type Values = Record<string, string>
++type WireValue = { kind: 'text'; value: string } | { kind: 'json'; value: unknown }
++type WireValues = Record<string, WireValue>
++type NativePreferences = { load(legacy: WireValues): Promise<WireValues>; save(values: WireValues): Promise<void> }
++
++export function encodePreferences(values: Values): WireValues {
++  return Object.fromEntries(Object.entries(values).map(([key, raw]) => {
++    if (/^\s*[\[{]/.test(raw)) {
++      try { return [key, { kind: 'json', value: JSON.parse(raw) }] } catch { /* Ordinary text. */ }
++    }
++    return [key, { kind: 'text', value: raw }]
++  }))
++}
++export function decodePreferences(values: WireValues): Values {
++  return Object.fromEntries(Object.entries(values).map(([key, item]) => {
++    if (item.kind === 'json') return [key, JSON.stringify(item.value)]
++    if (item.kind === 'text' && typeof item.value === 'string') return [key, item.value]
++    throw new Error(`Invalid preference value: ${key}`)
++  }))
++}
++
++function nativePreferences(): NativePreferences {
++  const host = window as unknown as {
++    go?: { main?: { App?: { LoadPreferences(v: WireValues): Promise<WireValues>; SavePreferences(v: WireValues): Promise<void> } } }
++    __TAURI_INTERNALS__?: { invoke<T>(command: string, args: unknown): Promise<T> }
++  }
++  const app = host.go?.main?.App
++  if (app) return { load: legacy => app.LoadPreferences(legacy), save: values => app.SavePreferences(values) }
++  const tauri = host.__TAURI_INTERNALS__
++  if (tauri) return {
++    load: legacy => tauri.invoke<WireValues>('simlab_load_preferences', { legacy }),
++    save: values => trackConfigurationRequest('simlab_save_preferences', tauri.invoke<void>('simlab_save_preferences', { values })),
++  }
++  throw new Error('SAIO configuration service is unavailable')
++}
++
++// Install before importing modules that read preferences during initialization.
++// The original WebView storage remains intact for migration and recovery.
++export async function installSuitePreferences(role: string): Promise<{ flush(): Promise<void> }> {
++  const legacy: Values = Object.create(null)
++  const original = window.localStorage
++  for (let i = 0; i < original.length; i++) {
++    const key = original.key(i)
++    if (key !== null) legacy[key] = original.getItem(key) ?? ''
++  }
++  const banner = document.createElement('div')
++  banner.dataset.saioSaveStatus = 'loading'
++  banner.setAttribute('role', 'status')
++  banner.setAttribute('aria-live', 'polite')
++  banner.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:2147483647;max-width:min(460px,90vw);padding:8px 12px;border:1px solid currentColor;border-radius:6px;background:var(--surface,#202124);color:var(--text,#fff);font:12px system-ui;overflow-wrap:anywhere'
++  document.body.append(banner)
++  let retry: (() => void) | undefined
++  function status(kind: string, message: string, action?: () => void) {
++    banner.dataset.saioSaveStatus = kind
++    banner.replaceChildren(document.createTextNode(message))
++    banner.setAttribute('role', kind === 'error' ? 'alert' : 'status')
++    retry = action
++    if (action) {
++      const button = document.createElement('button')
++      button.textContent = '重试 / Retry'
++      button.style.marginLeft = '8px'
++      button.onclick = () => retry?.()
++      banner.append(button)
++    }
++  }
++  let native: NativePreferences
++  let values: Values
++  for (;;) {
++    status('loading', '正在恢复配置 / Restoring configuration…')
++    try {
++      native = nativePreferences()
++      values = Object.assign(Object.create(null), decodePreferences(await native.load(encodePreferences(legacy))))
++      break
++    } catch (error) {
++      await new Promise<void>(resolve => status('error', `${role}: 配置恢复失败；如读取仍失败，请修复配置后重启程序 / Restore failed. If reading still fails, fix configuration and restart the app: ${String(error)}`, resolve))
++    }
++  }
++  let revision = 0
++  let savedRevision = 0
++  let timer: ReturnType<typeof setTimeout> | undefined
++  let pending: Promise<void> | undefined
++  function changed() {
++    revision++
++    status('saving', '正在保存配置 / Saving configuration…')
++    if (timer) clearTimeout(timer)
++    timer = setTimeout(() => { timer = undefined; void flush().catch(() => {}) }, 300)
++  }
++  async function flush(): Promise<void> {
++    if (timer) { clearTimeout(timer); timer = undefined }
++    if (pending) { await pending; if (savedRevision !== revision) return flush(); return }
++    if (savedRevision === revision) return
++    pending = (async () => {
++      while (savedRevision !== revision) {
++        const savingRevision = revision
++        const snapshot = { ...values }
++        status('saving', '正在保存配置 / Saving configuration…')
++        try { await native.save(encodePreferences(snapshot)) }
++        catch (error) {
++          status('error', `配置未保存 / Configuration not saved: ${String(error)}`, () => { void flush().catch(() => {}) })
++          throw error
++        }
++        savedRevision = savingRevision
++      }
++      status('saved', '配置已保存 / Configuration saved')
++    })()
++    try { await pending } finally { pending = undefined }
++  }
++  const storage: Storage = {
++    get length() { return Object.keys(values).length },
++    key(index) { return Object.keys(values)[index] ?? null },
++    getItem(key) { return Object.prototype.hasOwnProperty.call(values, String(key)) ? values[String(key)] : null },
++    setItem(key, value) { key = String(key); value = String(value); if (values[key] !== value) { values[key] = value; changed() } },
++    removeItem(key) { key = String(key); if (Object.prototype.hasOwnProperty.call(values, key)) { delete values[key]; changed() } },
++    clear() { if (Object.keys(values).length) { values = Object.create(null); changed() } },
++  }
++  Object.defineProperty(window, 'localStorage', { configurable: true, value: storage })
++  const flushVisible = () => { void flush().catch(() => {}) }
++  window.addEventListener('pagehide', flushVisible)
++  window.addEventListener('blur', flushVisible)
++  document.addEventListener('visibilitychange', flushVisible)
++  document.addEventListener('focusout', flushVisible)
++  window.addEventListener('beforeunload', event => {
++    if (savedRevision !== revision) { flushVisible(); event.preventDefault(); event.returnValue = '' }
++  })
++  registerConfigurationFlusher(flush)
++  status('saved', '配置已恢复 / Configuration restored')
++  return { flush }
++}
 diff --git a/master-frontend/src/simlab-ui/contracts/appearance-cases.json b/master-frontend/src/simlab-ui/contracts/appearance-cases.json
 new file mode 100644
 index 0000000..8bdaa34
@@ -15787,3 +19506,14 @@ index 8c16999..09e3606 100644
      <button
        type="button"
        class="github-link"
+diff --git a/shared-frontend/composables/useClipboardFlash.ts b/shared-frontend/composables/useClipboardFlash.ts
+index 9ea6158..65dd9ea 100644
+--- a/shared-frontend/composables/useClipboardFlash.ts
++++ b/shared-frontend/composables/useClipboardFlash.ts
+@@ -1,5 +1,5 @@
+ import { ref, onUnmounted } from 'vue'
+-import { invoke } from '@tauri-apps/api/core'
++import { invoke } from '@app/simlab-ui/configInvoke'
+ import { useI18n } from '../i18n'
+ 
+ export function useClipboardFlash(timeoutMs = 1500) {

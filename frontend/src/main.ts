@@ -1,10 +1,14 @@
-import { startNativeWindowTheme } from './nativeWindowTheme'
-import { createApp } from "vue";
-import App from "./App.vue";
-import "./style.css";
+import { EventsOn } from '../wailsjs/runtime/runtime'
+import { installWailsConfigurationClose } from '../../ui/configClose'
 
-document.documentElement.dataset.simlab = "launcher";
-
-createApp(App).mount("#app");
-
-void startNativeWindowTheme().catch(() => console.warn('Native window theme unavailable'))
+async function start() {
+  if (window.go?.main?.App) await installWailsConfigurationClose(EventsOn)
+  await import('./bootstrap')
+}
+void start().catch(error => {
+  console.error('Application initialization failed', error)
+  const message = document.createElement('div')
+  message.setAttribute('role', 'alert')
+  message.textContent = String(error)
+  document.body.append(message)
+})

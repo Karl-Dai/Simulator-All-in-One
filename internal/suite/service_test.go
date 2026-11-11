@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	configstore "github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -179,14 +180,19 @@ func TestCorruptPreferencesPreserved(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte("broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	got := New(root, data).Snapshot()
+	service := New(root, data)
+	got := service.Snapshot()
 	if got.Warning == "" || got.Preferences.Theme != "system" {
 		t.Fatalf("recovery: %+v", got)
 	}
-	files, _ := filepath.Glob(filepath.Join(data, "launcher.json.corrupt-*"))
-	if len(files) != 1 {
-		t.Fatalf("backups: %v", files)
+	contents, err := os.ReadFile(filepath.Join(data, "launcher.json"))
+	if err != nil || string(contents) != "broken" {
+		t.Fatalf("legacy evidence changed: %s %v", contents, err)
 	}
+	if _, err = service.SetTheme("dark"); err == nil {
+		t.Fatal("restore failure allowed default overwrite")
+	}
+
 }
 
 func TestLaunchUsesBundleAndDataEnvironment(t *testing.T) {
@@ -282,5 +288,61 @@ func TestDataRootOverrideMustBeAbsolute(t *testing.T) {
 	t.Setenv("SIMLAB_DATA_DIR", "relative-path")
 	if _, err := DefaultDataDir(); err == nil {
 		t.Fatal("relative data root accepted")
+	}
+}
+
+func TestLauncherMigrationAndStaleWriter(t *testing.T) {
+	root, data, _ := fixture(t, "program")
+	legacy := `{"schemaVersion":1,"theme":"dark","language":"zh-CN","favorites":["pmu.sub"],"recent":{}}`
+	os.WriteFile(filepath.Join(data, "launcher.json"), []byte(legacy), 0600)
+	a, b := New(root, data), New(root, data)
+	if a.Snapshot().Preferences.Theme != "dark" {
+		t.Fatal("legacy not restored")
+	}
+	if _, e := a.SetTheme("light"); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := b.SetTheme("system"); e == nil {
+		t.Fatal("stale launcher overwrote config")
+	}
+	contents, _ := os.ReadFile(filepath.Join(data, "launcher.json"))
+	if string(contents) != legacy {
+		t.Fatal("migration changed legacy")
+	}
+	if New(root, data).Snapshot().Preferences.Theme != "light" {
+		t.Fatal("legacy was reimported")
+	}
+}
+
+func TestInvalidStoredPreferencesBlockDefaults(t *testing.T) {
+	for _, value := range []any{nil, map[string]any{}, map[string]any{"schemaVersion": 2}} {
+		root := t.TempDir()
+		store, err := configstore.Open(root, "launcher")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = store.Load("preferences", nil); err != nil {
+			t.Fatal(err)
+		}
+		if err = store.Save("preferences", value); err != nil {
+			t.Fatal(err)
+		}
+		service := New(t.TempDir(), root)
+		if service.warning == "" {
+			t.Fatal("invalid stored preferences accepted")
+		}
+		if _, err = service.SetTheme("dark"); err == nil {
+			t.Fatal("defaults overwrote invalid stored preferences")
+		}
+		var after any
+		if _, err = store.Load("preferences", &after); err != nil {
+			t.Fatal(err)
+		}
+		want, _ := json.Marshal(value)
+		got, _ := json.Marshal(after)
+		if string(want) != string(got) {
+			t.Fatalf("invalid original changed: %s -> %s", want, got)
+		}
+		store.Close()
 	}
 }

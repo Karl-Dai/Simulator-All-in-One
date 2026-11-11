@@ -8,10 +8,35 @@ import (
 )
 
 // Appearance exposes read-only display preferences to the suite webview.
-type Appearance struct{ suiteMode bool }
+type Appearance struct {
+	suiteMode bool
+	reader    func(string, string, string) ([]byte, bool, error)
+}
 
 // Both build modes expose stable bindings, but only a suite build may read its settings.
-func NewAppearance(suiteMode bool) *Appearance { return &Appearance{suiteMode: suiteMode} }
+func NewAppearance(suiteMode bool, readers ...func(string, string, string) ([]byte, bool, error)) *Appearance {
+	a := &Appearance{suiteMode: suiteMode}
+	if len(readers) > 0 {
+		a.reader = readers[0]
+	}
+	return a
+}
+func (a *Appearance) read(root string) ([]byte, error) {
+	if a.reader != nil {
+		data, present, err := a.reader(root, "launcher", "preferences")
+		if err != nil {
+			return nil, err
+		}
+		if present {
+			return data, nil
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	return data, err
+}
 
 // AppearanceV1 deliberately excludes private launcher and protocol state.
 type AppearanceV1 struct {
@@ -29,8 +54,8 @@ func (a *Appearance) ReadAppearance() (AppearanceV1, error) {
 	if !filepath.IsAbs(root) {
 		return result, fmt.Errorf("SIMLAB_DATA_DIR must be absolute")
 	}
-	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
-	if os.IsNotExist(err) {
+	data, err := a.read(root)
+	if err == nil && data == nil {
 		return result, nil
 	}
 	if err != nil {
@@ -69,8 +94,8 @@ func (a *Appearance) Theme() (string, error) {
 	if !filepath.IsAbs(root) {
 		return "", fmt.Errorf("SIMLAB_DATA_DIR must be absolute")
 	}
-	data, err := os.ReadFile(filepath.Join(root, "launcher.json"))
-	if os.IsNotExist(err) {
+	data, err := a.read(root)
+	if err == nil && data == nil {
 		return "system", nil
 	}
 	if err != nil {
