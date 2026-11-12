@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/iec101-core"]
+resolver = "2"
