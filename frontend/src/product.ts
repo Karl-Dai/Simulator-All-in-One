@@ -4,4 +4,4 @@ export const PRODUCT_REPOSITORY = "https://github.com/Karl-Dai/Simulator-All-in-
 export const PRODUCT_SUMMARY_EN =
   "One app. Twelve industrial protocol simulators. Independent windows.";
 export const PRODUCT_SUMMARY_ZH =
-  "一个应用，八个工业协议模拟器，各自在独立窗口中运行。";
+  "一个应用，十二个工业协议模拟器，各自在独立窗口中运行。";
