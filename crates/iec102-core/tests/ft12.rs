@@ -1,6 +1,6 @@
 //! FT1.2 帧编解码集成测试。
 
-use iec101_core::ft12::{
+use iec102_core::ft12::{
     checksum, encode_frame, parse_frame, ControlField, EncodeError, Frame, LinkConfig, ParseError,
 };
 
