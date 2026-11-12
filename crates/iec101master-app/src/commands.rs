@@ -301,7 +301,12 @@ async fn run_loop(
                 }
             }
             _ = timer.tick() => {
-                if let Some(frame) = station.next_frame() {
+                // 先推进超时计时,到点时重发上一帧;否则按轮询节奏发下一帧。
+                let frame = match station.tick(interval_ms) {
+                    Some(frame) => Some(frame),
+                    None => station.next_frame(),
+                };
+                if let Some(frame) = frame {
                     let entry = frame_log_entry("tx", &frame, &link_config, &station_config);
                     push_log(&app, &shared, entry);
                     if let Err(err) = connection.write_frame(&frame, &link_config).await {

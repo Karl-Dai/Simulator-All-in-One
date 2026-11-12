@@ -12,7 +12,7 @@ export function stop(): Promise<void> {
 }
 
 export function setPoint(ioa: number, value: unknown): Promise<void> {
-  return invoke<void>('setPoint', { ioa, value })
+  return invoke<void>('set_point', { ioa, value })
 }
 
 export function snapshot(): Promise<Snapshot> {

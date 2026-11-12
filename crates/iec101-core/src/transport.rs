@@ -258,7 +258,7 @@ impl FrameConnection {
         self.stats.snapshot()
     }
 
-    /// 对端地址描述，用于界面展示，例如 `tcp 127.0.0.1:2404`。
+    /// 对端地址描述，用于界面展示，例如 `tcp 127.0.0.1:2401`。
     pub fn peer(&self) -> String {
         self.peer.clone()
     }

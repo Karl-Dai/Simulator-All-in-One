@@ -38,7 +38,7 @@ const snapshot = ref<Snapshot>({
 const transport = reactive<TransportConfig>({
   mode: 'tcp',
   host: '127.0.0.1',
-  port: 2404,
+  port: 2401,
   serialPort: '',
   baudRate: 9600,
   dataBits: 8,

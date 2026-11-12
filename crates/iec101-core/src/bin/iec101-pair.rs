@@ -1,7 +1,7 @@
 //! 命令行主从对，用于在终端面板里并行观察 101 收发。
 //!
-//! 子站：`iec101-pair slave --bind 127.0.0.1:2404`
-//! 主站：`iec101-pair master --connect 127.0.0.1:2404 --interrogate 20 --control 1:off`
+//! 子站：`iec101-pair slave --bind 127.0.0.1:2401`
+//! 主站：`iec101-pair master --connect 127.0.0.1:2401 --interrogate 20 --control 1:off`
 
 use std::time::Duration;
 
@@ -45,8 +45,8 @@ fn hex(frame: &Frame, config: LinkConfig) -> String {
 async fn main() -> std::io::Result<()> {
     let mut args = std::env::args().skip(1);
     let role = args.next().unwrap_or_else(|| "slave".to_string());
-    let mut bind = "127.0.0.1:2404".to_string();
-    let mut connect = "127.0.0.1:2404".to_string();
+    let mut bind = "127.0.0.1:2401".to_string();
+    let mut connect = "127.0.0.1:2401".to_string();
     let mut interrogate: Option<u8> = None;
     let mut control: Option<(u32, bool)> = None;
     while let Some(arg) = args.next() {
@@ -126,6 +126,9 @@ async fn main() -> std::io::Result<()> {
                     StationEvent::PointChanged { ioa } => println!("[子站] 点变化 ioa={ioa}"),
                     StationEvent::LinkReset => println!("[子站] 链路复位"),
                     StationEvent::ProcessReset => println!("[子站] 进程复位"),
+                    StationEvent::CommonAddressMismatch { expected, actual } => {
+                        println!("[子站] 公共地址不匹配: 期望 {expected}, 实际 {actual}")
+                    }
                 }
             }
         }
@@ -145,7 +148,12 @@ async fn main() -> std::io::Result<()> {
         }
         tokio::select! {
             _ = ticker.tick() => {
-                if let Some(frame) = station.next_frame() {
+                // 先推进超时计时,到点时重发上一帧;否则按轮询节奏发下一帧。
+                let frame = match station.tick(200) {
+                    Some(frame) => Some(frame),
+                    None => station.next_frame(),
+                };
+                if let Some(frame) = frame {
                     println!("[主站] TX {} | {}", hex(&frame, cfg), describe(&frame));
                     connection.write_frame(&frame, &cfg).await?;
                 }

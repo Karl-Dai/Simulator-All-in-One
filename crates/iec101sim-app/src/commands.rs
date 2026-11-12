@@ -416,6 +416,16 @@ fn handle_station_events(
             StationEvent::ProcessReset => {
                 push_log(app, shared, LogEntry::new("info", "进程复位"));
             }
+            StationEvent::CommonAddressMismatch { expected, actual } => {
+                push_log(
+                    app,
+                    shared,
+                    LogEntry::new(
+                        "error",
+                        format!("公共地址不匹配: 期望 {expected}, 实际 {actual}"),
+                    ),
+                );
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ export function control(ioa: number, on: boolean): Promise<void> {
 }
 
 export function syncClock(): Promise<void> {
-  return invoke<void>('syncClock')
+  return invoke<void>('sync_clock')
 }
 
 export function snapshot(): Promise<Snapshot> {
