@@ -78,7 +78,7 @@ const errorPanel = ref<HTMLElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
-const roleTotal = computed(() => snapshot.value?.roles.length || 8);
+const roleTotal = computed(() => snapshot.value?.roles.length || 12);
 const readyCount = computed(
   () => snapshot.value?.roles.filter((role) => role.ready).length ?? 0,
 );

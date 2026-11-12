@@ -51,7 +51,7 @@ func (m Manifest) Validate(platform, architecture string) error {
 		}
 	}
 	if len(seen) != len(Roles) {
-		return fmt.Errorf("完整套件需要八个角色，当前清单包含 %d 个", len(seen))
+		return fmt.Errorf("完整套件需要十二个角色，当前清单包含 %d 个", len(seen))
 	}
 	return nil
 }

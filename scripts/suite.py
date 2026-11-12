@@ -686,7 +686,7 @@ def verify_manifest(suite_root, lock=None, root=ROOT):
     manifest_path = suite_root / ("Resources/suite-manifest.json" if suite_root.name == "Contents" else "suite-manifest.json")
     value = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = value.get("components", [])
-    if value.get("schemaVersion") != 1 or len(entries) != 8 or {item["id"] for item in entries} != EXPECTED_IDS:
+    if value.get("schemaVersion") != 1 or len(entries) != len(EXPECTED_IDS) or {item["id"] for item in entries} != EXPECTED_IDS:
         raise SuiteError("Manifest is incomplete or contains duplicate/unknown roles")
     expected = {item["id"]: item for item in lock["components"]} if lock else {}
     repos = {item["id"]: item for item in lock["repositories"]} if lock else {}
@@ -813,7 +813,7 @@ def main():
         collect(args.workspace.resolve(), args.platform, args.arch, adopt=args.adopt_existing, identity=args.signing_identity)
     elif args.command == "verify":
         value = verify_manifest(suite_root_for(ROOT, args.platform, args.arch), read_lock())
-        print(f"Verified {len(value['components'])}/8 roles for {args.platform}/{args.arch}")
+        print(f"Verified {len(value['components'])}/{len(EXPECTED_IDS)} roles for {args.platform}/{args.arch}")
     else:
         package(args.platform, args.arch, webview2=args.webview2, webview2_sha256=args.webview2_sha256)
 
