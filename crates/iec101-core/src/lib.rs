@@ -8,3 +8,4 @@
 //! - `transport`：TCP 与串口传输。
 
 pub mod ft12;
+pub mod link;
