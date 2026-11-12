@@ -7,5 +7,6 @@
 //! - `session`：主站与子站的业务会话。
 //! - `transport`：TCP 与串口传输。
 
+pub mod asdu;
 pub mod ft12;
 pub mod link;
