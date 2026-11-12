@@ -96,6 +96,7 @@ const link = reactive<LinkConfig>({
 const points = ref<PointRow[]>(defaultPoints())
 const logs = ref<LogEntry[]>([])
 const drafts = reactive<Partial<Record<number, string>>>({})
+const importInput = ref<HTMLInputElement | null>(null)
 const onlyErrors = ref(false)
 const starting = ref(false)
 const busy = ref(false)
@@ -288,6 +289,58 @@ function addPoint(): void {
 
 function removePoint(index: number): void {
   points.value.splice(index, 1)
+}
+
+function exportCsv(): void {
+  const lines = [
+    'ioa,kind,value',
+    ...points.value.map((row) =>
+      row.kind === 'single'
+        ? `${row.ioa},${row.kind},${row.value === true}`
+        : `${row.ioa},${row.kind},${initValueText(row)}`,
+    ),
+  ]
+  const blob = new Blob([`\ufeff${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'iec101-points.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function importCsv(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  file.text().then((raw) => {
+    const rows: PointRow[] = []
+    for (const line of raw.replace(/^\ufeff/, '').split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (!trimmed || /^ioa\s*,\s*kind/i.test(trimmed)) continue
+      const [ioaText, kindText, ...rest] = trimmed.split(',')
+      const ioa = Number(ioaText)
+      const kind = (kindText ?? '').trim() as PointKind
+      if (!isInteger(ioa) || !isKnownKind(kind)) {
+        formError.value = `CSV 行无效: ${trimmed}`
+        return
+      }
+      const text = rest.join(',').trim()
+      const value = kind === 'single' ? /^(1|true|on)$/i.test(text) : Number(text)
+      if (!validateInitValue(kind, value)) {
+        formError.value = `CSV 值无效: ${trimmed}`
+        return
+      }
+      rows.push(makeRow(ioa, kind, value))
+    }
+    if (rows.length === 0) {
+      formError.value = 'CSV 没有有效点位'
+      return
+    }
+    points.value = rows
+    formError.value = ''
+  })
+  input.value = ''
 }
 
 function onKindChange(row: PointRow, event: Event): void {
@@ -691,7 +744,20 @@ onBeforeUnmount(() => {
               </tr>
             </tbody>
           </table>
-          <button class="btn small" :disabled="running" @click="addPoint">添加点位</button>
+          <div class="row-actions">
+            <button class="btn small" :disabled="running" @click="addPoint">添加点位</button>
+            <button class="btn small" @click="exportCsv">导出 CSV</button>
+            <button class="btn small" :disabled="running" @click="importInput?.click()">
+              导入 CSV
+            </button>
+            <input
+              ref="importInput"
+              type="file"
+              accept=".csv,text/csv"
+              hidden
+              @change="importCsv"
+            />
+          </div>
         </div>
 
         <p v-if="formError" class="form-error">{{ formError }}</p>

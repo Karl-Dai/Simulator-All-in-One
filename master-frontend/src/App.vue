@@ -75,6 +75,20 @@ function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind
 }
 
+function exportCsv(): void {
+  const lines = [
+    'ioa,kind,value',
+    ...snapshot.value.points.map((point) => `${point.ioa},${point.kind},${valueLabel(point.value)}`),
+  ]
+  const blob = new Blob([`\ufeff${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'iec101-received.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 function valueLabel(value: unknown): string {
   if (typeof value === 'boolean') return value ? '合' : '分'
   if (typeof value === 'number') {
@@ -492,6 +506,9 @@ onBeforeUnmount(() => {
 
         <div class="panel data">
           <h2>数据</h2>
+          <button class="btn small" :disabled="snapshot.points.length === 0" @click="exportCsv">
+            导出 CSV
+          </button>
           <div class="table-wrap">
             <table>
               <thead>

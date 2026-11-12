@@ -503,3 +503,11 @@ td.empty,
   word-break: break-all;
   white-space: normal;
 }
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
