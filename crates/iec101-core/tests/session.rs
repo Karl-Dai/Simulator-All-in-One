@@ -1,0 +1,229 @@
+//! 主站与子站会话集成测试。
+//!
+//! 主站与子站在内存里互发帧，不经过网络或串口。
+
+use iec101_core::asdu::{encode_asdu, Asdu, AsduAddress, InformationObject};
+use iec101_core::ft12::{ControlField, Frame};
+use iec101_core::link::LinkParams;
+use iec101_core::session::{
+    MasterEvent101, MasterStation, PointKind, PointValue, SlaveStation, StationConfig, StationEvent,
+};
+
+const LINK_ADDRESS: u16 = 1;
+
+fn config() -> StationConfig {
+    StationConfig {
+        link: LinkParams {
+            address: LINK_ADDRESS,
+            address_len: 1,
+            max_retries: 3,
+        },
+        address: AsduAddress {
+            common_address: 1,
+            ca_len: 1,
+            ioa_len: 2,
+        },
+        poll_interval_ms: 1000,
+        response_timeout_ms: 3000,
+    }
+}
+
+fn master() -> MasterStation {
+    MasterStation::new(config())
+}
+
+fn slave(points: Vec<(u32, PointKind)>) -> SlaveStation {
+    SlaveStation::new(config(), points)
+}
+
+/// 主站发一帧、子站应答、主站处理，完成一轮收发。
+fn step(m: &mut MasterStation, s: &mut SlaveStation) {
+    if let Some(frame) = m.next_frame() {
+        if let Some(reply) = s.handle_frame(&frame) {
+            m.handle_frame(&reply);
+        }
+    }
+}
+
+/// 返回 received 中某个 IOA 的最新值。
+fn latest(received: &[(u32, PointValue)], ioa: u32) -> Option<PointValue> {
+    received
+        .iter()
+        .rev()
+        .find(|(i, _)| *i == ioa)
+        .map(|(_, v)| *v)
+}
+
+#[test]
+fn reset_link_then_master_gets_link_ok() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+
+    assert!(m.drain_events().contains(&MasterEvent101::LinkOk));
+    assert!(s.drain_events().contains(&StationEvent::LinkReset));
+}
+
+#[test]
+fn interrogation_flow_with_three_points() {
+    let mut m = master();
+    let mut s = slave(vec![
+        (1, PointKind::SinglePoint),
+        (2, PointKind::DoublePoint),
+        (3, PointKind::ShortFloat),
+    ]);
+
+    step(&mut m, &mut s);
+    assert!(m.interrogate(20));
+    for _ in 0..20 {
+        step(&mut m, &mut s);
+    }
+
+    let master_events = m.drain_events();
+    let updates = master_events
+        .iter()
+        .filter(|e| matches!(e, MasterEvent101::PointUpdate { .. }))
+        .count();
+    assert_eq!(updates, 3, "主站应收到 3 个点位更新");
+    assert!(master_events.contains(&MasterEvent101::InterrogationStarted));
+    assert!(master_events.contains(&MasterEvent101::InterrogationFinished));
+
+    let slave_events = s.drain_events();
+    assert!(slave_events.contains(&StationEvent::InterrogationStarted { qoi: 20 }));
+    assert!(slave_events.contains(&StationEvent::InterrogationFinished));
+}
+
+#[test]
+fn interrogation_values_match_set_values() {
+    let mut m = master();
+    let mut s = slave(vec![
+        (1, PointKind::SinglePoint),
+        (2, PointKind::DoublePoint),
+        (3, PointKind::ShortFloat),
+    ]);
+
+    step(&mut m, &mut s);
+    assert!(s.set_value(1, PointValue::Bool(true)));
+    assert!(s.set_value(2, PointValue::Double(1)));
+    assert!(s.set_value(3, PointValue::Float(12.5)));
+
+    assert!(m.interrogate(20));
+    for _ in 0..20 {
+        step(&mut m, &mut s);
+    }
+
+    let received = m.received();
+    assert_eq!(latest(&received, 1), Some(PointValue::Bool(true)));
+    assert_eq!(latest(&received, 2), Some(PointValue::Double(1)));
+    assert_eq!(latest(&received, 3), Some(PointValue::Float(12.5)));
+}
+
+#[test]
+fn forty_five_points_are_split_into_frames() {
+    let points: Vec<(u32, PointKind)> = (1..=45)
+        .map(|ioa| (ioa, PointKind::SinglePoint))
+        .collect();
+    let mut m = master();
+    let mut s = slave(points);
+
+    step(&mut m, &mut s);
+    assert!(m.interrogate(20));
+    for _ in 0..30 {
+        step(&mut m, &mut s);
+    }
+
+    let updates = m
+        .drain_events()
+        .into_iter()
+        .filter_map(|e| match e {
+            MasterEvent101::PointUpdate { ioa, .. } => Some(ioa),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(updates.len(), 45, "主站应收到全部 45 个点位");
+    let mut sorted = updates.clone();
+    sorted.sort_unstable();
+    assert_eq!(sorted, (1..=45).collect::<Vec<_>>());
+}
+
+#[test]
+fn set_value_type_mismatch_then_spontaneous_update() {
+    let mut m = master();
+    let mut s = slave(vec![(1, PointKind::SinglePoint)]);
+
+    step(&mut m, &mut s);
+
+    // 类型不匹配返回 false。
+    assert!(!s.set_value(1, PointValue::Double(1)));
+    // 类型匹配返回 true。
+    assert!(s.set_value(1, PointValue::Bool(true)));
+    assert!(s.drain_events().contains(&StationEvent::PointChanged { ioa: 1 }));
+
+    // 下一次轮询主站收到突发数据。
+    step(&mut m, &mut s);
+    assert!(m.drain_events().contains(&MasterEvent101::PointUpdate {
+        ioa: 1,
+        value: PointValue::Bool(true),
+    }));
+}
+
+#[test]
+fn repeated_interrogate_returns_false() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+
+    assert!(m.interrogate(20));
+    assert!(!m.interrogate(20));
+}
+
+#[test]
+fn unsupported_type_increments_errors_and_master_command_failed() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+
+    // 构造子站不支持的命令类型（单命令 C_SC_NA_1，类型 45）。
+    let command = Asdu {
+        type_id: 45,
+        sq: false,
+        cause: 6,
+        negative: false,
+        test: false,
+        originator: 0,
+        address: config().address,
+        objects: vec![InformationObject::SingleCommand {
+            ioa: 1,
+            on: true,
+            select: false,
+            qualifier: 0,
+        }],
+    };
+    let frame = Frame::Variable {
+        control: ControlField {
+            dir: false,
+            prm: true,
+            fcb: true,
+            fcv: true,
+            acd: false,
+            dfc: false,
+            function: 2,
+        }
+        .encode(),
+        address: LINK_ADDRESS,
+        asdu: encode_asdu(&command).expect("编码应成功"),
+    };
+    let reply = s.handle_frame(&frame).expect("子站应应答");
+    assert!(matches!(reply, Frame::Fixed { .. }));
+    assert_eq!(s.stats().errors, 1, "子站错误计数应加 1");
+
+    // 主站轮询拿到否定确认。
+    step(&mut m, &mut s);
+    assert!(m
+        .drain_events()
+        .iter()
+        .any(|e| matches!(e, MasterEvent101::CommandFailed { .. })));
+}
