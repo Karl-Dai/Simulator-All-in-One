@@ -34,6 +34,20 @@ const FREEZE_OPTIONS = [
   { value: 3, label: '3 复位读' },
 ]
 
+function exportCsv(): void {
+  const lines = [
+    'ioa,reading,sequence',
+    ...snapshot.value.counters.map((c) => `${c.ioa},${c.reading},${c.sequence}`),
+  ]
+  const blob = new Blob([`\ufeff${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'iec102-received.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 const snapshot = ref<Snapshot>({
   connected: false,
   linkState: 'idle',
@@ -453,6 +467,9 @@ onBeforeUnmount(() => {
 
         <div class="panel data">
           <h2>数据</h2>
+          <button class="btn small" :disabled="snapshot.counters.length === 0" @click="exportCsv">
+            导出 CSV
+          </button>
           <div class="table-wrap">
             <table>
               <thead>

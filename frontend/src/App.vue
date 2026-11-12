@@ -72,6 +72,7 @@ const link = reactive<LinkConfig>({
 const counters = ref<CounterRow[]>(defaultCounters())
 const logs = ref<LogEntry[]>([])
 const drafts = reactive<Partial<Record<number, string>>>({})
+const importInput = ref<HTMLInputElement | null>(null)
 const onlyErrors = ref(false)
 const starting = ref(false)
 const busy = ref(false)
@@ -218,6 +219,45 @@ function addCounter(): void {
 
 function removeCounter(index: number): void {
   counters.value.splice(index, 1)
+}
+
+function exportCsv(): void {
+  const lines = ['ioa,reading', ...counters.value.map((row) => `${row.ioa},${row.reading}`)]
+  const blob = new Blob([`\ufeff${lines.join('\n')}\n`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'iec102-counters.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function importCsv(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  file.text().then((raw) => {
+    const rows: CounterRow[] = []
+    for (const line of raw.replace(/^\ufeff/, '').split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (!trimmed || /^ioa\s*,\s*reading/i.test(trimmed)) continue
+      const [ioaText, readingText] = trimmed.split(',')
+      const ioa = Number(ioaText)
+      const reading = Number(readingText)
+      if (!isInteger(ioa) || !isInteger(reading) || reading < 0) {
+        formError.value = `CSV 行无效: ${trimmed}`
+        return
+      }
+      rows.push(makeRow(ioa, reading))
+    }
+    if (rows.length === 0) {
+      formError.value = 'CSV 没有有效计量点'
+      return
+    }
+    counters.value = rows
+    formError.value = ''
+  })
+  input.value = ''
 }
 
 function onInitReadingChange(row: CounterRow, event: Event): void {
@@ -552,7 +592,20 @@ onBeforeUnmount(() => {
               </tr>
             </tbody>
           </table>
-          <button class="btn small" :disabled="running" @click="addCounter">添加计量点</button>
+          <div class="row-actions">
+            <button class="btn small" :disabled="running" @click="addCounter">添加计量点</button>
+            <button class="btn small" @click="exportCsv">导出 CSV</button>
+            <button class="btn small" :disabled="running" @click="importInput?.click()">
+              导入 CSV
+            </button>
+            <input
+              ref="importInput"
+              type="file"
+              accept=".csv,text/csv"
+              hidden
+              @change="importCsv"
+            />
+          </div>
         </div>
 
         <p v-if="formError" class="form-error">{{ formError }}</p>
