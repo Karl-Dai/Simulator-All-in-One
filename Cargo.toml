@@ -1,3 +1,3 @@
 [workspace]
-members = ["crates/iec102-core"]
+members = ["crates/iec102-core", "crates/iec102master-app", "crates/iec102sim-app"]
 resolver = "2"
