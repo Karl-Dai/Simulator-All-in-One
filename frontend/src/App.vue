@@ -242,6 +242,10 @@ function importCsv(event: Event): void {
       const trimmed = line.trim()
       if (!trimmed || /^ioa\s*,\s*reading/i.test(trimmed)) continue
       const [ioaText, readingText] = trimmed.split(',')
+      if ((readingText ?? '').trim() === '') {
+        formError.value = `CSV 读数不能为空: ${trimmed}`
+        return
+      }
       const ioa = Number(ioaText)
       const reading = Number(readingText)
       if (!isInteger(ioa) || !isInteger(reading) || reading < 0) {
