@@ -37,10 +37,6 @@ const CAUSE_NEGATIVE_CONFIRM: u8 = 45;
 
 /// 主站功能码：复位链路。
 const FC_RESET_LINK: u8 = 0;
-/// 主站功能码：发送/确认用户数据。
-const FC_SEND_CONFIRM: u8 = 2;
-/// 主站功能码：发送/无回答用户数据。
-const FC_SEND_NO_REPLY: u8 = 4;
 
 /// 站点配置。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,6 +103,13 @@ pub enum StationEvent102 {
         /// 信息对象地址。
         ioa: u32,
     },
+    /// 公共地址不匹配，ASDU 已丢弃。
+    CommonAddressMismatch {
+        /// 本地配置的公共地址。
+        expected: u16,
+        /// 收到的公共地址。
+        actual: u16,
+    },
 }
 
 /// 主站事件。
@@ -151,24 +154,6 @@ struct CounterPointState {
     reading: u32,
     /// 顺序号，取值 0..=31。
     sequence: u8,
-}
-
-/// 从链路帧提取 ASDU 字节。
-///
-/// 只处理主站方向（PRM=1）的发送/确认用户数据（功能码 2）与发送/无回答
-/// （功能码 4）。其他帧不携带 ASDU。
-fn extract_asdu(frame: &Frame) -> Option<Vec<u8>> {
-    match frame {
-        Frame::Variable { control, asdu, .. } => {
-            let cf = ControlField::parse(*control);
-            if cf.prm && (cf.function == FC_SEND_CONFIRM || cf.function == FC_SEND_NO_REPLY) {
-                Some(asdu.clone())
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
 }
 
 /// 判断是否为复位链路帧。
@@ -217,11 +202,13 @@ impl SlaveStation102 {
         if is_reset_link(frame) {
             self.events.push(StationEvent102::LinkReset);
         }
-        if let Some(asdu) = extract_asdu(frame) {
+        // 先让链路层判重:只有新帧的 ASDU 才会入队,重复帧只重发上一次应答。
+        // 会话再从链路层取出待处理 ASDU,保证业务只执行一次。
+        let reply = self.link.handle(frame);
+        while let Some(asdu) = self.link.take_command() {
             self.stats.asdu_rx += 1;
             self.handle_asdu(&asdu);
         }
-        let reply = self.link.handle(frame);
         if reply.is_some() {
             self.stats.frames_tx += 1;
         }
@@ -232,6 +219,14 @@ impl SlaveStation102 {
     fn handle_asdu(&mut self, bytes: &[u8]) {
         match decode_asdu102(bytes, self.config.address) {
             Ok((asdu, _)) => {
+                if asdu.address.common_address != self.config.address.common_address {
+                    self.stats.errors += 1;
+                    self.events.push(StationEvent102::CommonAddressMismatch {
+                        expected: self.config.address.common_address,
+                        actual: asdu.address.common_address,
+                    });
+                    return;
+                }
                 if asdu.type_id == TYPE_COUNTER_INTERROGATION && asdu.cause == CAUSE_ACTIVATION {
                     self.start_interrogation(&asdu);
                 } else {
@@ -428,6 +423,8 @@ pub struct MasterStation102 {
     stats: SessionStats102,
     /// 是否正在召唤中。
     interrogating: bool,
+    /// 等待确认已经累计的毫秒数。
+    wait_elapsed_ms: u64,
 }
 
 impl MasterStation102 {
@@ -440,6 +437,7 @@ impl MasterStation102 {
             received: Vec::new(),
             stats: SessionStats102::default(),
             interrogating: false,
+            wait_elapsed_ms: 0,
         }
     }
 
@@ -474,8 +472,10 @@ impl MasterStation102 {
                 return;
             }
         };
-        if asdu.negative {
+        if asdu.negative || asdu.cause == CAUSE_NEGATIVE_CONFIRM {
             self.stats.errors += 1;
+            // 否定确认同样结束召唤等待,否则界面会一直提示进行中。
+            self.interrogating = false;
             self.events.push(MasterEvent102::CommandFailed {
                 reason: format!("收到否定确认: 类型 {}, 原因 {}", asdu.type_id, asdu.cause),
             });
@@ -507,10 +507,46 @@ impl MasterStation102 {
     }
 
     /// 生成下一帧。
+    ///
+    /// 等待确认期间返回 `None`,不主动重发;重发由 [`Self::tick`] 超时触发,
+    /// 避免每个轮询周期都原样重发同一帧。
     pub fn next_frame(&mut self) -> Option<Frame> {
+        if self.link.waiting_ack() {
+            return None;
+        }
         let frame = self.link.poll();
         self.stats.frames_tx += 1;
         Some(frame)
+    }
+
+    /// 按经过时间推进会话,等待确认超时后重发上一帧。
+    ///
+    /// 返回 `Some(frame)` 表示需要重发该帧;返回 `None` 表示未到重发时机,或
+    /// 已达到最大重发次数。达到最大重发次数时链路复位,并产生一条命令失败
+    /// 事件,避免链路卡死。
+    pub fn tick(&mut self, elapsed_ms: u64) -> Option<Frame> {
+        if !self.link.waiting_ack() {
+            self.wait_elapsed_ms = 0;
+            return None;
+        }
+        self.wait_elapsed_ms += elapsed_ms;
+        if self.wait_elapsed_ms < self.config.response_timeout_ms {
+            return None;
+        }
+        self.wait_elapsed_ms = 0;
+        match self.link.on_timeout() {
+            Some(frame) => {
+                self.stats.frames_tx += 1;
+                Some(frame)
+            }
+            None => {
+                self.interrogating = false;
+                self.events.push(MasterEvent102::CommandFailed {
+                    reason: "等待确认超时".to_string(),
+                });
+                None
+            }
+        }
     }
 
     /// 发起累计量召唤。
@@ -653,7 +689,12 @@ pub async fn run_master102(
                 forward_master_events(&mut station, &events);
             }
             _ = timer.tick() => {
-                if let Some(frame) = station.next_frame() {
+                // 先推进超时计时,到点时重发上一帧;否则按轮询节奏发下一帧。
+                let frame = match station.tick(interval_ms) {
+                    Some(frame) => Some(frame),
+                    None => station.next_frame(),
+                };
+                if let Some(frame) = frame {
                     connection.write_frame(&frame, &link_config).await?;
                 }
                 forward_master_events(&mut station, &events);

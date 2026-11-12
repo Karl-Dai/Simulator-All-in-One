@@ -1,7 +1,7 @@
 //! 命令行主从对，用于在终端面板里并行观察 102 收发。
 //!
-//! 子站：`iec102-pair slave --bind 127.0.0.1:2405`
-//! 主站：`iec102-pair master --connect 127.0.0.1:2405 --interrogate 0:1`
+//! 子站：`iec102-pair slave --bind 127.0.0.1:2402`
+//! 主站：`iec102-pair master --connect 127.0.0.1:2402 --interrogate 0:1`
 
 use std::time::Duration;
 
@@ -39,8 +39,8 @@ fn hex(frame: &Frame, config: LinkConfig) -> String {
 async fn main() -> std::io::Result<()> {
     let mut args = std::env::args().skip(1);
     let role = args.next().unwrap_or_else(|| "slave".to_string());
-    let mut bind = "127.0.0.1:2405".to_string();
-    let mut connect = "127.0.0.1:2405".to_string();
+    let mut bind = "127.0.0.1:2402".to_string();
+    let mut connect = "127.0.0.1:2402".to_string();
     let mut interrogate: Option<(u8, u8)> = None;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -121,7 +121,12 @@ async fn main() -> std::io::Result<()> {
         }
         tokio::select! {
             _ = ticker.tick() => {
-                if let Some(frame) = station.next_frame() {
+                // 先推进超时计时,到点时重发上一帧;否则按轮询节奏发下一帧。
+                let frame = match station.tick(200) {
+                    Some(frame) => Some(frame),
+                    None => station.next_frame(),
+                };
+                if let Some(frame) = frame {
                     println!("[主站] TX {} | {}", hex(&frame, cfg), describe(&frame));
                     connection.write_frame(&frame, &cfg).await?;
                 }

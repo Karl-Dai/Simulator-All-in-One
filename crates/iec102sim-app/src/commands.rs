@@ -362,6 +362,16 @@ fn handle_station_events(
             StationEvent102::CounterReset { ioa } => {
                 push_log(app, shared, LogEntry::new("info", format!("复位 IOA={ioa}")));
             }
+            StationEvent102::CommonAddressMismatch { expected, actual } => {
+                push_log(
+                    app,
+                    shared,
+                    LogEntry::new(
+                        "error",
+                        format!("公共地址不匹配: 期望 {expected}, 实际 {actual}"),
+                    ),
+                );
+            }
         }
     }
     sync_counters(shared, station);

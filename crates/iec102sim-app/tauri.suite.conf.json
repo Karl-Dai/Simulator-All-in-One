@@ -6,7 +6,6 @@
       {
         "label": "main",
         "title": "IEC102 Slave — SAIO",
-        "create": false,
         "width": 1200,
         "height": 800,
         "minWidth": 800,

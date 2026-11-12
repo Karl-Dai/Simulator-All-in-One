@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   clearScreen: false,
   server: {
-    port: 5182,
+    port: 5184,
   },
   build: {
     target: 'safari13',

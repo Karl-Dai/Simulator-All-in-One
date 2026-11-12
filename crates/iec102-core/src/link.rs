@@ -146,6 +146,14 @@ impl SlaveLink {
         self.commands.len()
     }
 
+    /// 取出一条待处理的主站下发 ASDU。
+    ///
+    /// 只有链路层认定为新帧的 ASDU 才会入队,重复帧不会入队,因此会话层
+    /// 取出处理即可保证业务只执行一次。
+    pub fn take_command(&mut self) -> Option<Vec<u8>> {
+        self.commands.pop_front()
+    }
+
     /// 构造肯定认可帧。
     fn ack(&self, acd: bool) -> Frame {
         Frame::Fixed {
@@ -327,6 +335,11 @@ impl MasterLink {
     /// 返回当前链路状态。
     pub fn state(&self) -> LinkState {
         self.state
+    }
+
+    /// 返回是否正在等待用户数据确认。
+    pub fn waiting_ack(&self) -> bool {
+        self.waiting_ack
     }
 
     /// 生成复位链路帧,并把 FCB 重置为 `true`、等待状态复位。
