@@ -27,3 +27,6 @@ Thumbs.db
 .opencode/
 .agents/
 .codegraph/
+
+# Tauri runtime-generated capability schemas
+crates/*/gen/schemas/
