@@ -326,6 +326,10 @@ function importCsv(event: Event): void {
         return
       }
       const text = rest.join(',').trim()
+      if (text === '') {
+        formError.value = `CSV 值不能为空: ${trimmed}`
+        return
+      }
       const value = kind === 'single' ? /^(1|true|on)$/i.test(text) : Number(text)
       if (!validateInitValue(kind, value)) {
         formError.value = `CSV 值无效: ${trimmed}`
