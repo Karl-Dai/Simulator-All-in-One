@@ -28,6 +28,10 @@ beforeEach(() => {
     roles: [
       ["iec104.master", "iec104", "主站", "IEC104Master"],
       ["iec104.slave", "iec104", "子站", "IEC104Slave"],
+      ["iec101.master", "iec101", "主站", "IEC101Master"],
+      ["iec101.slave", "iec101", "子站", "IEC101Slave"],
+      ["iec102.master", "iec102", "主站", "IEC102Master"],
+      ["iec102.slave", "iec102", "子站", "IEC102Slave"],
       ["modbus.master", "modbus", "主站", "ModbusMaster"],
       ["modbus.slave", "modbus", "从站", "ModbusSlave"],
       ["pmu.master", "pmu", "主站", "PmuSim"],
@@ -66,11 +70,11 @@ afterEach(() => {
 });
 
 describe("complete suite launcher", () => {
-  it("shows eight direct launch actions and no component download flow", async () => {
+  it("shows twelve direct launch actions and no component download flow", async () => {
     const app = render();
     await flushPromises();
-    expect(app.findAll(".launch-button")).toHaveLength(8);
-    expect(app.text()).toContain("8 / 8 已就绪");
+    expect(app.findAll(".launch-button")).toHaveLength(12);
+    expect(app.text()).toContain("12 / 12 已就绪");
     expect(app.findAll("a")).toHaveLength(0);
     await app.get('[aria-label="打开 Modbus 主站"]').trigger("click");
     await flushPromises();
@@ -150,7 +154,7 @@ describe("complete suite launcher", () => {
     expect(app.find(".protocol-grid").exists()).toBe(false);
     expect(app.get(".empty-state").text()).toContain("浏览全部模拟器");
     await app.get(".empty-state button").trigger("click");
-    expect(app.findAll(".launch-button")).toHaveLength(8);
+    expect(app.findAll(".launch-button")).toHaveLength(12);
   });
   it("persists the selected theme", async () => {
     const app = render();

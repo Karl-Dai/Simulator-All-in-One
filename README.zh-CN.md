@@ -21,11 +21,11 @@
 
 **把常用工业协议模拟器，装进同一个桌面工具箱。**
 
-Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、Modbus、PMU 和 OPC UA 工具。一个应用，选择角色，即可在独立窗口开始测试。
+Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-101/104、IEC 60870-5-102、Modbus、PMU 和 OPC UA 工具。一个应用，选择角色，即可在独立窗口开始测试。
 
 <table>
 <tr>
-<td width="50%"><strong>一个应用，八个模拟器</strong><br />四组协议工具完整内置，无需分别下载组件。</td>
+<td width="50%"><strong>一个应用，十二个模拟器</strong><br />六组协议工具完整内置，无需分别下载组件。</td>
 <td width="50%"><strong>独立窗口，并行联调</strong><br />多个角色可同时运行，关闭主入口后子程序继续运行。</td>
 </tr>
 <tr>
@@ -36,7 +36,7 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 
 ## 下载
 
-**当前版本：[v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · 每份安装包都包含入口和全部八个模拟器。
+**当前版本：[v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · 每份安装包都包含入口和全部十二个模拟器。
 
 | 平台 | 下载 | 运行要求 |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 <details>
 <summary><strong>安装、修复与更新说明</strong></summary>
 
-- **Windows：** 后续构建使用单个便携 EXE，内置入口和八个模拟器。WebView2 是独立的一次性依赖，缺少时会提示下载。
+- **Windows：** 后续构建使用单个便携 EXE，内置入口和十二个模拟器。WebView2 是独立的一次性依赖，缺少时会提示下载。
 - **Linux：** 包含 GTK3 / WebKitGTK 4.1，先校验文件再解压到 `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/` 下的稳定版本目录，无需 FUSE。系统负责提供 glibc、显示服务和图形驱动。
 - **更新：** 套件内的子程序随整个套件更新，关闭各自的独立更新入口。0.1.3 尚未实现自动下载并替换完整套件。
 
@@ -65,7 +65,7 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 
 ## 界面预览
 
-<img src="docs/images/launcher-dark.png" alt="SAIO 中文深色主题入口，展示全部八个模拟器角色" width="1160" />
+<img src="docs/images/launcher-dark.png" alt="SAIO 中文深色主题入口，展示全部十二个模拟器角色" width="1160" />
 
 *深色主题 · 简体中文 · 使用应用前端源码和演示数据渲染。*
 
@@ -80,11 +80,13 @@ Simulator All-in-One（**SAIO**，原 SimLab Desktop）集成 IEC 60870-5-104、
 
 ## 协议与组件
 
-四种协议、八个角色，各自使用独立进程和窗口。内置模拟器统一使用 SAIO 版本，随套件一起更新。上游版本和源码提交仅用于诊断与复现构建。
+六种协议、十二个角色，各自使用独立进程和窗口。内置模拟器统一使用 SAIO 版本，随套件一起更新。上游版本和源码提交仅用于诊断与复现构建。
 
 | 协议 | 内置程序 | 角色 |
 | --- | --- | --- |
 | **IEC 60870-5-104** | [IEC104Master · IEC104Slave](https://github.com/Karl-Dai/IEC60870-5-104-Simulator) | 主站 / 子站 |
+| **IEC 60870-5-101** | [IEC101Master · IEC101Slave](https://github.com/Karl-Dai/IEC60870-5-101-Simulator) | 主站 / 子站 |
+| **IEC 60870-5-102** | [IEC102Master · IEC102Slave](https://github.com/Karl-Dai/IEC60870-5-102-Simulator) | 主站（计量中心）/ 子站 |
 | **Modbus** | [ModbusMaster · ModbusSlave](https://github.com/Karl-Dai/ModbusSim) | 主站 / 从站 |
 | **PMU V2 / V3** | [PmuSim · PmuSub](https://github.com/Karl-Dai/PmuSim) | 主站 / 子站 |
 | **OPC UA** | [OPCUAMaster · OPCUAServer](https://github.com/Karl-Dai/OPCUASim) | 客户端 / 服务端 |
@@ -151,7 +153,7 @@ python3 scripts/suite.py package --platform darwin --arch arm64
 
 `bootstrap` 浅拉取精确提交，只向干净、未适配的 checkout 严格应用补丁；不 reset、clean、覆盖未知脏源码。适配后记录补丁和源码指纹，后续构建发现外部修改即停止。本轮已有人工适配的 `.components` 快照不应再次 bootstrap；需要重新构建时，使用全新的绝对路径工作目录，并给各命令传相同的 `--workspace /absolute/path`。Windows 推荐使用 `D:/s` 这样的短路径，避免 OpenSSL 生成文件超出编译器路径限制。
 
-`build` 要求原生平台及架构，构建八个 payload 和入口，记录宿主来源/版本以及完整 payload 树的收据。`collect` 必须取得八个角色，核对收据、身份、架构和资源；缺少任一角色直接失败。`--adopt-existing` 仅用于本轮已审阅的 macOS 初始产物，要求上游 HEAD、整个补丁及子应用 bundle ID / 版本匹配，不是普通构建的默认旁路。
+`build` 要求原生平台及架构，构建十二个 payload 和入口，记录宿主来源/版本以及完整 payload 树的收据。`collect` 必须取得十二个角色，核对收据、身份、架构和资源；缺少任一角色直接失败。`--adopt-existing` 仅用于本轮已审阅的 macOS 初始产物，要求上游 HEAD、整个补丁及子应用 bundle ID / 版本匹配，不是普通构建的默认旁路。
 
 macOS 收集顺序为子应用内部签名 → 子应用签名 → 计算最终哈希 → 写 manifest → 单独签外层应用；外层签名不使用 `--deep` 重签子应用。默认 ad-hoc，`--signing-identity` / `SIMLAB_SIGNING_IDENTITY` 可提供构建机器上已有的身份；公证不包含在当前管线。
 
@@ -177,7 +179,7 @@ dist/staging/linux-amd64/
 
 ## Windows 与 Linux 打包
 
-Windows 构建现在生成 `SAIO_<version>_windows-amd64-portable.exe`。下载一个 EXE，双击即可打开主入口和内置八个模拟器。SAIO 无需安装，不请求管理员权限、不创建快捷方式或卸载项。首次启动将经过校验的程序解压到 `%LOCALAPPDATA%\SAIO\portable\<payload-hash>`，之后重复使用缓存。缓存缺失时重新解压；损坏时先保留旧目录再修复，工程保存在 `%APPDATA%\SimLab`。
+Windows 构建现在生成 `SAIO_<version>_windows-amd64-portable.exe`。下载一个 EXE，双击即可打开主入口和内置十二个模拟器。SAIO 无需安装，不请求管理员权限、不创建快捷方式或卸载项。首次启动将经过校验的程序解压到 `%LOCALAPPDATA%\SAIO\portable\<payload-hash>`，之后重复使用缓存。缓存缺失时重新解压；损坏时先保留旧目录再修复，工程保存在 `%APPDATA%\SimLab`。
 
 **Windows 运行依赖：Microsoft Edge WebView2 运行库。** SAIO 不捆绑或静默安装运行库。缺少运行库或版本过旧时，程序会通过原生 Windows 提示框询问是否打开 [SimLab WebView2 下载页面](https://simlab.carldai.cloud/downloads/webview2/)，取消后正常退出。安装一次运行库后重新打开 SAIO 即可。离线电脑可先在其他电脑下载 x64 离线安装包，再拷贝过去安装。也可使用[微软官方下载页面](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)。
 
@@ -217,9 +219,9 @@ macOS DMG 已通过 `hdiutil verify`。整套 `.app` 已通过 `codesign --verif
 
 所有工作流均由手动触发（`workflow_dispatch`）；发布流程也可调用源码检查和原生构建。推送、PR、标签和定时任务都不会自动启动 CI；需要时在 GitHub Actions 中明确运行对应工作流。
 
-`validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 生成内置八个模拟器的单个便携 EXE，发布包不捆绑 WebView2；CI 单独安装测试运行依赖，原生检查覆盖缓存复用、修复和启动。
+`validate.yml` 执行源码及打包静态检查；`build-suite.yml` 使用 macOS arm64 / x64、Windows x64、Ubuntu 22.04 x64 原生 runner，构建全部组件并上传完整套件。`target` 默认 `all`，也可选择一个原生目标，独立重跑失败的平台。Windows job 生成内置十二个模拟器的单个便携 EXE，发布包不捆绑 WebView2；CI 单独安装测试运行依赖，原生检查覆盖缓存复用、修复和启动。
 
-`validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和八角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前便携包脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
+`validate-package.yml` 可对同一仓库已完成的 `main` 原生构建复验。脚本核对来源、祖先提交、安装包校验值和十二角色完整清单；应用代码、补丁、锁文件或构建脚本变化会拒绝复用。Windows 只恢复清单内的原始 payload，并用当前便携包脚本重新打包；Linux 仅复验原 `.run`，运行时内容变化必须完整重建。产物携带来源与本轮验证提交记录。复用沿用来源 run 的编译环境；调整构建工作流的编译参数或工具链后，应运行完整原生构建。
 
 Rust 缓存保留失败任务的编译结果。完整包在运行验收之前上传，便于检查失败产物；可下载产物不代表该任务已通过。Linux 解压、虚拟显示与启动检查有阶段日志和超时限制。
 
@@ -258,4 +260,4 @@ Windows 工作流安排隔离目录安装、缺组件修复、未知文件保护
 
 ---
 
-<p align="center"><strong>一个应用，八个模拟器，独立窗口。</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">下载 SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">反馈问题</a> · <a href="README.md">English</a></p>
+<p align="center"><strong>一个应用，十二个模拟器，独立窗口。</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">下载 SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">反馈问题</a> · <a href="README.md">English</a></p>

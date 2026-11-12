@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/saio-banner.svg" alt="Simulator All-in-One — One app. Eight simulators. Independent windows." width="1200" />
+  <img src="docs/images/saio-banner.svg" alt="Simulator All-in-One — One app. Twelve simulators. Independent windows." width="1200" />
 </p>
 
 <p align="center">
@@ -21,11 +21,11 @@
 
 **Your industrial protocol test bench, in one desktop suite.**
 
-Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104, Modbus, PMU and OPC UA tools together. Install once, choose a role and start testing in an independent window.
+Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-101/104, IEC 60870-5-102, Modbus, PMU and OPC UA tools together. Install once, choose a role and start testing in an independent window.
 
 <table>
 <tr>
-<td width="50%"><strong>8 simulators, one app</strong><br />All four protocol pairs are bundled. No separate component downloads.</td>
+<td width="50%"><strong>12 simulators, one app</strong><br />All six protocol pairs are bundled. No separate component downloads.</td>
 <td width="50%"><strong>Independent windows</strong><br />Run several roles side by side. Children keep running when the launcher closes.</td>
 </tr>
 <tr>
@@ -36,7 +36,7 @@ Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104,
 
 ## Download
 
-**Current release: [v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · Every package includes the launcher and all eight simulators.
+**Current release: [v0.1.4](https://github.com/Karl-Dai/Simulator-All-in-One/releases/tag/v0.1.4)** · Every package includes the launcher and all twelve simulators.
 
 | Platform | Download | Requirements |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104,
 <details>
 <summary><strong>Installation, repair and updates</strong></summary>
 
-- **Windows:** new builds use one portable EXE containing all eight simulators. WebView2 is a separate one-time prerequisite; a native prompt offers its download page when needed.
+- **Windows:** new builds use one portable EXE containing all twelve simulators. WebView2 is a separate one-time prerequisite; a native prompt offers its download page when needed.
 - **Linux:** the archive includes GTK3/WebKitGTK 4.1, verifies its contents and extracts to a stable version directory under `${XDG_DATA_HOME:-$HOME/.local/share}/SimLab/versions/`. It does not require FUSE. The host provides glibc, the display server and graphics/EGL/GLX drivers.
 - **Updates:** bundled simulators do not independently update themselves. Version 0.1.3 does not automatically download and replace the complete suite.
 
@@ -65,7 +65,7 @@ Simulator All-in-One (**SAIO**, formerly SimLab Desktop) brings IEC 60870-5-104,
 
 ## Preview
 
-<img src="docs/images/launcher-light.png" alt="SAIO launcher in English, light theme, showing all eight simulator roles" width="1160" />
+<img src="docs/images/launcher-light.png" alt="SAIO launcher in English, light theme, showing all twelve simulator roles" width="1160" />
 
 *Light theme · English · Launcher rendered from the application source with demo data.*
 
@@ -85,6 +85,8 @@ Four protocols, paired roles, separate processes and windows. All bundled simula
 | Protocol | Included applications | Roles |
 | --- | --- | --- |
 | **IEC 60870-5-104** | [IEC104Master · IEC104Slave](https://github.com/Karl-Dai/IEC60870-5-104-Simulator) | Master / Slave |
+| **IEC 60870-5-101** | [IEC101Master · IEC101Slave](https://github.com/Karl-Dai/IEC60870-5-101-Simulator) | Master / Slave |
+| **IEC 60870-5-102** | [IEC102Master · IEC102Slave](https://github.com/Karl-Dai/IEC60870-5-102-Simulator) | Metering center / Slave |
 | **Modbus** | [ModbusMaster · ModbusSlave](https://github.com/Karl-Dai/ModbusSim) | Master / Slave |
 | **PMU V2 / V3** | [PmuSim · PmuSub](https://github.com/Karl-Dai/PmuSim) | Master / Substation |
 | **OPC UA** | [OPCUAMaster · OPCUAServer](https://github.com/Karl-Dai/OPCUASim) | Client / Server |
@@ -142,7 +144,7 @@ python3 packaging/linux/runtime.py audit dist/staging/linux-amd64
 
 `components.lock.json` pins all four upstream commits, source-version references, suite patches and Rust lockfiles. npm builds use lockfiles and `npm ci`; Rust builds use `--locked`. `bootstrap` refuses dirty component checkouts rather than resetting them. For another workspace, use the same absolute `--workspace` path for every command. On Windows, keep that path short (for example `D:/s`) for `bootstrap`, `build` and `collect`, to avoid vendored OpenSSL compiler path limits. Do not bootstrap an existing manually adapted `.components/` tree again.
 
-`collect` requires all eight roles and valid source/build receipts. macOS children are signed before their final hashes are written, and the outer app is signed separately. `SIMLAB_SIGNING_IDENTITY` or `--signing-identity` selects an existing identity; notarization is not part of this pipeline. Byte-for-byte reproducibility across compilers or OS images is not promised.
+`collect` requires all twelve roles and valid source/build receipts. macOS children are signed before their final hashes are written, and the outer app is signed separately. `SIMLAB_SIGNING_IDENTITY` or `--signing-identity` selects an existing identity; notarization is not part of this pipeline. Byte-for-byte reproducibility across compilers or OS images is not promised.
 
 ```text
 dist/staging/darwin-arm64/Simulator All-in-One.app/Contents/
@@ -164,7 +166,7 @@ dist/staging/linux-amd64/
 
 ## Windows portable builds
 
-Windows builds now produce `SAIO_<version>_windows-amd64-portable.exe`. Download one EXE and double-click it: the launcher and all eight simulators are embedded. There is no SAIO installer, elevation request, shortcut creation or uninstall entry. First launch extracts verified program files to `%LOCALAPPDATA%\SAIO\portable\<payload-hash>`; later launches reuse that cache. Missing caches are re-extracted and damaged caches are preserved before repair, while projects remain in `%APPDATA%\SimLab`.
+Windows builds now produce `SAIO_<version>_windows-amd64-portable.exe`. Download one EXE and double-click it: the launcher and all twelve simulators are embedded. There is no SAIO installer, elevation request, shortcut creation or uninstall entry. First launch extracts verified program files to `%LOCALAPPDATA%\SAIO\portable\<payload-hash>`; later launches reuse that cache. Missing caches are re-extracted and damaged caches are preserved before repair, while projects remain in `%APPDATA%\SimLab`.
 
 **Windows prerequisite: Microsoft Edge WebView2 Runtime.** SAIO does not bundle or silently install this runtime. If it is missing or outdated, a native Windows prompt offers to open the [SimLab WebView2 download page](https://simlab.carldai.cloud/downloads/webview2/); canceling exits normally. Install the runtime once and reopen SAIO. For offline PCs, download the x64 offline installer on another computer and copy it across. The [official Microsoft download page](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) is also available.
 
@@ -198,7 +200,7 @@ See [implementation and acceptance evidence](docs/implementation-status.md) and 
 
 The public product name, About screens, repository and new executable/package names use **Simulator All-in-One / SAIO**. The Go module is `github.com/Karl-Dai/Simulator-All-in-One`.
 
-The launcher and all eight suite roles automatically save configuration in one `saio.db` SQLite database under the existing `SimLab` user-data root (`SIMLAB_DATA_DIR` overrides it). Restored connections and services stay stopped. Existing auto-save files and WebView preferences migrate once and remain intact. Manual project copies use `.saioproj`; legacy project formats remain importable. Program caches and external certificate/replay files remain separate. See the [storage contract](storage/CONTRACT.md) and [validation results](storage/VALIDATION.md).
+The launcher and all twelve suite roles automatically save configuration in one `saio.db` SQLite database under the existing `SimLab` user-data root (`SIMLAB_DATA_DIR` overrides it). Restored connections and services stay stopped. Existing auto-save files and WebView preferences migrate once and remain intact. Manual project copies use `.saioproj`; legacy project formats remain importable. Program caches and external certificate/replay files remain separate. See the [storage contract](storage/CONTRACT.md) and [validation results](storage/VALIDATION.md).
 
 Compatibility identities remain unchanged: the `SimLab` user-data directory, `SIMLAB_*` environment variables, `cloud.carldai.simlab*` bundle IDs and `simlab-suite` build feature. Existing projects, certificates, favorites and saved language choices keep their current locations. Portable Windows builds use a separate program cache and create no uninstall registry entries or Start Menu shortcuts. Legacy installer checks remain available for previously released packages.
 
@@ -218,4 +220,4 @@ Historical records and existing artifacts retain their original names. Original 
 
 ---
 
-<p align="center"><strong>One app. Eight simulators. Independent windows.</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">Get SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">Report an issue</a> · <a href="README.zh-CN.md">简体中文</a></p>
+<p align="center"><strong>One app. Twelve simulators. Independent windows.</strong><br /><a href="https://github.com/Karl-Dai/Simulator-All-in-One/releases">Get SAIO</a> · <a href="https://github.com/Karl-Dai/Simulator-All-in-One/issues">Report an issue</a> · <a href="README.zh-CN.md">简体中文</a></p>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "suiteVersion": "0.1.4",
+  "suiteVersion": "0.2.0",
   "repositories": [
     {
       "id": "modbus",
@@ -35,6 +35,24 @@
       "patch": "patches/opcua.patch",
       "cargoLock": "packaging/locks/opcua.Cargo.lock",
       "cargoLockSha256": "e03c2ba864c1490ddcc00dfe53de64f1d89114bd9a7b1cef9f711f8aa29778f1"
+    },
+    {
+      "id": "iec101",
+      "directory": "IEC60870-5-101-Simulator",
+      "url": "https://github.com/Karl-Dai/IEC60870-5-101-Simulator.git",
+      "commit": "a2a5700bc1597a2ef0ae659fc2466dcece692654",
+      "patch": "patches/iec101.patch",
+      "cargoLock": "packaging/locks/iec101.Cargo.lock",
+      "cargoLockSha256": "b61d92010530df10f72d0064472b64383f4259accb23ab003c0ff9622bffd51b"
+    },
+    {
+      "id": "iec102",
+      "directory": "IEC60870-5-102-Simulator",
+      "url": "https://github.com/Karl-Dai/IEC60870-5-102-Simulator.git",
+      "commit": "e960309abdfeaad0bf198049a6b0c5e6edd5f5e8",
+      "patch": "patches/iec102.patch",
+      "cargoLock": "packaging/locks/iec102.Cargo.lock",
+      "cargoLockSha256": "861251f0fc4c162f645ef20de663329b1773a7cd9b9b7fa4e0213dc4f4dd916e"
     }
   ],
   "components": [
@@ -117,6 +135,46 @@
       "binary": "opcuaserver-app",
       "sourceVersion": "0.8.0",
       "bundleId": "cloud.carldai.simlab.opcua.server"
+    },
+    {
+      "id": "iec101.master",
+      "repository": "iec101",
+      "product": "IEC101Master",
+      "project": "crates/iec101master-app",
+      "frontend": "master-frontend",
+      "binary": "iec101master-app",
+      "sourceVersion": "0.1.0",
+      "bundleId": "cloud.carldai.simlab.iec101.master"
+    },
+    {
+      "id": "iec101.slave",
+      "repository": "iec101",
+      "product": "IEC101Slave",
+      "project": "crates/iec101sim-app",
+      "frontend": "frontend",
+      "binary": "iec101sim-app",
+      "sourceVersion": "0.1.0",
+      "bundleId": "cloud.carldai.simlab.iec101.slave"
+    },
+    {
+      "id": "iec102.master",
+      "repository": "iec102",
+      "product": "IEC102Master",
+      "project": "crates/iec102master-app",
+      "frontend": "master-frontend",
+      "binary": "iec102master-app",
+      "sourceVersion": "0.1.0",
+      "bundleId": "cloud.carldai.simlab.iec102.master"
+    },
+    {
+      "id": "iec102.slave",
+      "repository": "iec102",
+      "product": "IEC102Slave",
+      "project": "crates/iec102sim-app",
+      "frontend": "frontend",
+      "binary": "iec102sim-app",
+      "sourceVersion": "0.1.0",
+      "bundleId": "cloud.carldai.simlab.iec102.slave"
     }
   ]
 }

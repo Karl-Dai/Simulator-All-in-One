@@ -2,6 +2,18 @@
 
 Notable changes are documented in English and Chinese, following Keep a Changelog.
 
+## [0.2.0] - 2026-11-11
+
+### Added / 新增
+
+- IEC 60870-5-101 master and slave simulators with FT1.2 link layer, TCP and serial transport, general interrogation, control and clock sync. / 新增 IEC 60870-5-101 主站与子站，含 FT1.2 链路、TCP 与串口传输、总召唤、遥控和时钟同步。
+- IEC 60870-5-102 master and slave simulators with integrated-total interrogation, counter freeze and sequence handling. / 新增 IEC 60870-5-102 主站与子站，支持累计量召唤、冻结与顺序号处理。
+- The launcher now shows twelve roles across six protocol groups. / 启动器角色从八个扩展到十二个，共六组协议。
+
+### Changed / 变更
+
+- Suite version is 0.2.0; the lock file references the two new component repositories and their patches. / 套件版本升到 0.2.0，锁文件引用两个新组件仓库及其补丁。
+
 ## [Unreleased]
 
 - 内置模拟器统一使用 SAIO 版本，保留上游源码与补丁摘要用于诊断。 / Bundled simulators share the SAIO version; source and patch identities remain available for diagnostics.

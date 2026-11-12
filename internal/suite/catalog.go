@@ -11,6 +11,10 @@ type Role struct {
 var Roles = []Role{
 	{"iec104.master", "iec104", "主站", "IEC104Master"},
 	{"iec104.slave", "iec104", "子站", "IEC104Slave"},
+	{"iec101.master", "iec101", "主站", "IEC101Master"},
+	{"iec101.slave", "iec101", "子站", "IEC101Slave"},
+	{"iec102.master", "iec102", "主站", "IEC102Master"},
+	{"iec102.slave", "iec102", "子站", "IEC102Slave"},
 	{"modbus.master", "modbus", "主站", "ModbusMaster"},
 	{"modbus.slave", "modbus", "从站", "ModbusSlave"},
 	{"pmu.master", "pmu", "主站", "PmuSim"},

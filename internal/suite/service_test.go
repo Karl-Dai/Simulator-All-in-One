@@ -53,7 +53,7 @@ func writeManifest(t *testing.T, root string, m Manifest) {
 func TestCompleteManifestAndIntegrity(t *testing.T) {
 	root, data, _ := fixture(t, "program")
 	s := New(root, data)
-	if got := s.Snapshot(); len(got.Roles) != 8 {
+	if got := s.Snapshot(); len(got.Roles) != len(Roles) {
 		t.Fatalf("roles: %d", len(got.Roles))
 	} else {
 		for _, role := range got.Roles {
@@ -140,7 +140,7 @@ func TestPreferencesConcurrencyAndReload(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := New(root, data).Snapshot().Preferences
-	if len(got.Favorites) != 8 || got.Theme != "dark" {
+	if len(got.Favorites) != len(Roles) || got.Theme != "dark" {
 		t.Fatalf("preferences: %+v", got)
 	}
 	got.Favorites[0] = "mutated"

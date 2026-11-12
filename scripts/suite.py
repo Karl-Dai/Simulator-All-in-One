@@ -26,6 +26,7 @@ BUILD_TOOLS = ("node", "npm", "python", "go", "rust", "wails")
 EXPECTED_IDS = {
     "iec104.master", "iec104.slave", "modbus.master", "modbus.slave",
     "pmu.master", "pmu.sub", "opcua.master", "opcua.server",
+    "iec101.master", "iec101.slave", "iec102.master", "iec102.slave",
 }
 
 
@@ -118,10 +119,13 @@ def read_lock(root=ROOT):
     if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", value.get("suiteVersion", "")):
         raise SuiteError("The suite version must be a three-part release version")
     ids = [item["id"] for item in value["components"]]
-    if value.get("schemaVersion") != 1 or set(ids) != EXPECTED_IDS or len(ids) != 8:
-        raise SuiteError("The lock must contain exactly the eight supported component IDs")
-    if len(value["repositories"]) != 4:
-        raise SuiteError("The lock must contain four source repositories")
+    if value.get("schemaVersion") != 1 or set(ids) != EXPECTED_IDS or len(ids) != 12:
+        raise SuiteError("The lock must contain exactly the twelve supported component IDs")
+    repo_ids = [repo["id"] for repo in value["repositories"]]
+    if len(set(repo_ids)) != len(repo_ids):
+        raise SuiteError("The lock must not repeat a source repository")
+    if {component["repository"] for component in value["components"]} != set(repo_ids):
+        raise SuiteError("Every source repository must provide at least one component")
     for repo in value["repositories"]:
         if not re.fullmatch(r"[0-9a-f]{40}", repo["commit"]):
             raise SuiteError(f"Invalid source commit: {repo['id']}")
