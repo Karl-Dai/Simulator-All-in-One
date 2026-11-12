@@ -9,9 +9,12 @@
 //! 链路帧的应答由 `link::SlaveLink` 与 `link::MasterLink` 负责，会话只处理
 //! ASDU 与队列。
 
-use crate::asdu::{decode_asdu, encode_asdu, Asdu, AsduAddress, InformationObject, Quality};
-use crate::ft12::{ControlField, Frame};
+use crate::asdu::{
+    decode_asdu, encode_asdu, Asdu, AsduAddress, Cp56Time2a, InformationObject, Quality,
+};
+use crate::ft12::{ControlField, Frame, LinkConfig};
 use crate::link::{LinkParams, MasterEvent, MasterLink, SlaveLink};
+use crate::transport::FrameConnection;
 
 /// 每帧最多上送的点位数量。
 const MAX_POINTS_PER_FRAME: usize = 20;
@@ -38,6 +41,12 @@ const TYPE_SCALED_TIME: u8 = 35;
 const TYPE_SHORT_FLOAT_TIME: u8 = 36;
 /// 总召唤 C_IC_NA_1。
 const TYPE_INTERROGATION: u8 = 100;
+/// 单命令 C_SC_NA_1。
+const TYPE_SINGLE_COMMAND: u8 = 45;
+/// 时钟同步 C_CS_NA_1。
+const TYPE_CLOCK_SYNC: u8 = 103;
+/// 复位进程 C_RP_NA_1。
+const TYPE_RESET_PROCESS: u8 = 105;
 
 /// 传送原因：突发。
 const CAUSE_SPONTANEOUS: u8 = 3;
@@ -51,6 +60,8 @@ const CAUSE_ACTIVATION_TERMINATED: u8 = 10;
 const CAUSE_INTERROGATION_RESPONSE: u8 = 20;
 /// 传送原因：否定确认。
 const CAUSE_NEGATIVE_CONFIRM: u8 = 45;
+/// 传送原因：未知信息对象地址。
+const CAUSE_UNKNOWN_IOA: u8 = 47;
 
 /// 主站功能码：复位链路。
 const FC_RESET_LINK: u8 = 0;
@@ -174,6 +185,17 @@ pub enum StationEvent {
         /// 信息对象地址。
         ioa: u32,
     },
+    /// 遥控命令已确认。
+    ControlConfirmed {
+        /// 信息对象地址。
+        ioa: u32,
+        /// 命令状态，true 为合。
+        on: bool,
+    },
+    /// 时钟同步完成。
+    ClockSynced,
+    /// 进程复位。
+    ProcessReset,
 }
 
 /// 主站事件。
@@ -197,6 +219,15 @@ pub enum MasterEvent101 {
         /// 失败原因。
         reason: String,
     },
+    /// 遥控命令已确认。
+    ControlConfirmed {
+        /// 信息对象地址。
+        ioa: u32,
+        /// 命令状态，true 为合。
+        on: bool,
+    },
+    /// 时钟同步完成。
+    ClockSynced,
 }
 
 /// 一个点位。
@@ -319,6 +350,8 @@ pub struct SlaveStation {
     points: Vec<Point>,
     events: Vec<StationEvent>,
     stats: SessionStats,
+    /// 最近一次时钟同步的时间。
+    last_clock_sync: Option<Cp56Time2a>,
 }
 
 impl SlaveStation {
@@ -340,6 +373,7 @@ impl SlaveStation {
             points,
             events: Vec::new(),
             stats: SessionStats::default(),
+            last_clock_sync: None,
         }
     }
 
@@ -366,6 +400,12 @@ impl SlaveStation {
             Ok((asdu, _)) => {
                 if asdu.type_id == TYPE_INTERROGATION && asdu.cause == CAUSE_ACTIVATION {
                     self.start_interrogation(&asdu);
+                } else if asdu.type_id == TYPE_SINGLE_COMMAND && asdu.cause == CAUSE_ACTIVATION {
+                    self.handle_single_command(&asdu);
+                } else if asdu.type_id == TYPE_CLOCK_SYNC && asdu.cause == CAUSE_ACTIVATION {
+                    self.handle_clock_sync(&asdu);
+                } else if asdu.type_id == TYPE_RESET_PROCESS && asdu.cause == CAUSE_ACTIVATION {
+                    self.handle_reset_process(&asdu);
                 } else {
                     self.stats.errors += 1;
                     self.queue_negative_confirm(&asdu);
@@ -375,6 +415,51 @@ impl SlaveStation {
                 self.stats.errors += 1;
             }
         }
+    }
+
+    /// 处理单命令 C_SC_NA_1。
+    ///
+    /// S/E=0 时把单点值改成命令值并上送突发数据，回原因 7 确认；S/E=1 时只回
+    /// 确认。点不存在或不是单点类型时回原因 47 否定确认。
+    fn handle_single_command(&mut self, asdu: &Asdu) {
+        let (ioa, on, select) = match asdu.objects.first() {
+            Some(InformationObject::SingleCommand {
+                ioa, on, select, ..
+            }) => (*ioa, *on, *select),
+            _ => {
+                self.stats.errors += 1;
+                self.queue_negative_confirm_cause(asdu, CAUSE_UNKNOWN_IOA);
+                return;
+            }
+        };
+        if !select && !self.set_value(ioa, PointValue::Bool(on)) {
+            self.stats.errors += 1;
+            self.queue_negative_confirm_cause(asdu, CAUSE_UNKNOWN_IOA);
+            return;
+        }
+        self.push_confirm(asdu);
+        self.events.push(StationEvent::ControlConfirmed { ioa, on });
+    }
+
+    /// 处理时钟同步 C_CS_NA_1。
+    fn handle_clock_sync(&mut self, asdu: &Asdu) {
+        let time = match asdu.objects.first() {
+            Some(InformationObject::ClockSync { time, .. }) => *time,
+            _ => {
+                self.stats.errors += 1;
+                self.queue_negative_confirm(asdu);
+                return;
+            }
+        };
+        self.last_clock_sync = Some(time);
+        self.events.push(StationEvent::ClockSynced);
+        self.push_confirm(asdu);
+    }
+
+    /// 处理复位进程 C_RP_NA_1。
+    fn handle_reset_process(&mut self, asdu: &Asdu) {
+        self.events.push(StationEvent::ProcessReset);
+        self.push_confirm(asdu);
     }
 
     /// 响应总召唤：排队激活确认、点位数据与激活终止。
@@ -459,10 +544,15 @@ impl SlaveStation {
 
     /// 排队否定确认，类型标识沿用收到的 ASDU。
     fn queue_negative_confirm(&mut self, asdu: &Asdu) {
+        self.queue_negative_confirm_cause(asdu, CAUSE_NEGATIVE_CONFIRM);
+    }
+
+    /// 排队否定确认，传送原因由调用方指定。
+    fn queue_negative_confirm_cause(&mut self, asdu: &Asdu, cause: u8) {
         let negative = Asdu {
             type_id: asdu.type_id,
             sq: false,
-            cause: CAUSE_NEGATIVE_CONFIRM,
+            cause,
             negative: true,
             test: false,
             originator: 0,
@@ -470,6 +560,21 @@ impl SlaveStation {
             objects: asdu.objects.clone(),
         };
         self.push_secondary(&negative);
+    }
+
+    /// 排队激活确认，类型标识与信息对象沿用收到的 ASDU。
+    fn push_confirm(&mut self, asdu: &Asdu) {
+        let confirm = Asdu {
+            type_id: asdu.type_id,
+            sq: false,
+            cause: CAUSE_ACTIVATION_CONFIRM,
+            negative: false,
+            test: false,
+            originator: 0,
+            address: self.config.address,
+            objects: asdu.objects.clone(),
+        };
+        self.push_secondary(&confirm);
     }
 
     /// 设置点位值。
@@ -508,6 +613,11 @@ impl SlaveStation {
         self.points.iter().find(|p| p.ioa == ioa).map(|p| p.value)
     }
 
+    /// 返回最近一次时钟同步的毫秒数。
+    pub fn last_clock_sync(&self) -> Option<u16> {
+        self.last_clock_sync.map(|time| time.milliseconds)
+    }
+
     /// 取出并清空待上报事件。
     pub fn drain_events(&mut self) -> Vec<StationEvent> {
         std::mem::take(&mut self.events)
@@ -528,6 +638,8 @@ pub struct MasterStation {
     stats: SessionStats,
     /// 是否正在召唤中。
     interrogating: bool,
+    /// 是否有一条遥控命令尚未收到确认。
+    command_pending: bool,
 }
 
 impl MasterStation {
@@ -540,6 +652,7 @@ impl MasterStation {
             received: Vec::new(),
             stats: SessionStats::default(),
             interrogating: false,
+            command_pending: false,
         }
     }
 
@@ -576,6 +689,7 @@ impl MasterStation {
         };
         if asdu.negative || asdu.cause == CAUSE_NEGATIVE_CONFIRM {
             self.stats.errors += 1;
+            self.command_pending = false;
             self.events.push(MasterEvent101::CommandFailed {
                 reason: format!(
                     "收到否定确认: 类型 {}, 原因 {}",
@@ -591,6 +705,17 @@ impl MasterStation {
             TYPE_INTERROGATION if asdu.cause == CAUSE_ACTIVATION_TERMINATED => {
                 self.events.push(MasterEvent101::InterrogationFinished);
                 self.interrogating = false;
+            }
+            TYPE_SINGLE_COMMAND if asdu.cause == CAUSE_ACTIVATION_CONFIRM => {
+                self.command_pending = false;
+                if let Some(InformationObject::SingleCommand { ioa, on, .. }) = asdu.objects.first()
+                {
+                    self.events
+                        .push(MasterEvent101::ControlConfirmed { ioa: *ioa, on: *on });
+                }
+            }
+            TYPE_CLOCK_SYNC if asdu.cause == CAUSE_ACTIVATION_CONFIRM => {
+                self.events.push(MasterEvent101::ClockSynced);
             }
             TYPE_SINGLE_POINT
             | TYPE_DOUBLE_POINT
@@ -649,6 +774,61 @@ impl MasterStation {
         }
     }
 
+    /// 排队一条单命令（原因 6，S/E=0）。
+    ///
+    /// 已有命令未完成时返回 false。
+    pub fn control(&mut self, ioa: u32, on: bool) -> bool {
+        if self.command_pending {
+            return false;
+        }
+        let asdu = Asdu {
+            type_id: TYPE_SINGLE_COMMAND,
+            sq: false,
+            cause: CAUSE_ACTIVATION,
+            negative: false,
+            test: false,
+            originator: 0,
+            address: self.config.address,
+            objects: vec![InformationObject::SingleCommand {
+                ioa,
+                on,
+                select: false,
+                qualifier: 0,
+            }],
+        };
+        match encode_asdu(&asdu) {
+            Ok(bytes) => {
+                self.link.send_user_data(bytes);
+                self.command_pending = true;
+                self.stats.asdu_tx += 1;
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// 排队时钟同步命令。
+    pub fn sync_clock(&mut self, time: Cp56Time2a) -> bool {
+        let asdu = Asdu {
+            type_id: TYPE_CLOCK_SYNC,
+            sq: false,
+            cause: CAUSE_ACTIVATION,
+            negative: false,
+            test: false,
+            originator: 0,
+            address: self.config.address,
+            objects: vec![InformationObject::ClockSync { ioa: 0, time }],
+        };
+        match encode_asdu(&asdu) {
+            Ok(bytes) => {
+                self.link.send_user_data(bytes);
+                self.stats.asdu_tx += 1;
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
     /// 取出并清空待上报事件。
     pub fn drain_events(&mut self) -> Vec<MasterEvent101> {
         std::mem::take(&mut self.events)
@@ -662,5 +842,160 @@ impl MasterStation {
     /// 返回会话统计。
     pub fn stats(&self) -> SessionStats {
         self.stats
+    }
+}
+
+/// 子站命令。
+#[derive(Debug, Clone, PartialEq)]
+pub enum SlaveCommand {
+    /// 设置点位值。
+    SetValue {
+        /// 信息对象地址。
+        ioa: u32,
+        /// 点位值。
+        value: PointValue,
+    },
+}
+
+/// 主站请求。
+#[derive(Debug, Clone, PartialEq)]
+pub enum MasterRequest {
+    /// 总召唤。
+    Interrogate {
+        /// 召唤限定词。
+        qoi: u8,
+    },
+    /// 遥控。
+    Control {
+        /// 信息对象地址。
+        ioa: u32,
+        /// 命令状态，true 为合。
+        on: bool,
+    },
+    /// 时钟同步。
+    SyncClock {
+        /// 时标。
+        time: Cp56Time2a,
+    },
+}
+
+/// 把子站事件转发到通道，通道满或关闭时忽略。
+fn forward_slave_events(
+    station: &mut SlaveStation,
+    events: &tokio::sync::mpsc::Sender<StationEvent>,
+) {
+    for event in station.drain_events() {
+        let _ = events.try_send(event);
+    }
+}
+
+/// 把主站事件转发到通道，通道满或关闭时忽略。
+fn forward_master_events(
+    station: &mut MasterStation,
+    events: &tokio::sync::mpsc::Sender<MasterEvent101>,
+) {
+    for event in station.drain_events() {
+        let _ = events.try_send(event);
+    }
+}
+
+/// 读一帧，对端关闭连接时返回 `None`。
+async fn read_frame_or_eof(
+    connection: &mut FrameConnection,
+    config: &LinkConfig,
+) -> std::io::Result<Option<Frame>> {
+    match connection.read_frame(config).await {
+        Ok(frame) => Ok(Some(frame)),
+        Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+/// 运行子站会话，直到连接关闭或命令通道关闭。
+///
+/// 同时等待读帧、命令通道与 50 毫秒定时器。读到帧就调用 `handle_frame` 并把
+/// 应答帧写回；命令通道收到 `SetValue` 时调用 `set_value`。事件用 `try_send`
+/// 转发，通道满或关闭时忽略。
+pub async fn run_slave(
+    mut connection: FrameConnection,
+    mut station: SlaveStation,
+    mut commands: tokio::sync::mpsc::Receiver<SlaveCommand>,
+    events: tokio::sync::mpsc::Sender<StationEvent>,
+) -> std::io::Result<SlaveStation> {
+    let link_config = LinkConfig::new(station.config.link.address_len);
+    let mut timer = tokio::time::interval(std::time::Duration::from_millis(50));
+    loop {
+        tokio::select! {
+            result = read_frame_or_eof(&mut connection, &link_config) => {
+                let frame = match result? {
+                    Some(frame) => frame,
+                    None => return Ok(station),
+                };
+                if let Some(reply) = station.handle_frame(&frame) {
+                    connection.write_frame(&reply, &link_config).await?;
+                }
+                forward_slave_events(&mut station, &events);
+            }
+            command = commands.recv() => {
+                match command {
+                    Some(SlaveCommand::SetValue { ioa, value }) => {
+                        station.set_value(ioa, value);
+                    }
+                    None => return Ok(station),
+                }
+                forward_slave_events(&mut station, &events);
+            }
+            _ = timer.tick() => {
+                forward_slave_events(&mut station, &events);
+            }
+        }
+    }
+}
+
+/// 运行主站会话，直到连接关闭或请求通道关闭。
+///
+/// 按 `config.poll_interval_ms` 间隔调用 `next_frame` 写帧，同时等待读帧与
+/// 请求通道。收到帧调用 `handle_frame` 后把新事件转发出去。
+pub async fn run_master(
+    mut connection: FrameConnection,
+    mut station: MasterStation,
+    mut requests: tokio::sync::mpsc::Receiver<MasterRequest>,
+    events: tokio::sync::mpsc::Sender<MasterEvent101>,
+) -> std::io::Result<MasterStation> {
+    let link_config = LinkConfig::new(station.config.link.address_len);
+    let interval_ms = station.config.poll_interval_ms.max(1);
+    let mut timer = tokio::time::interval(std::time::Duration::from_millis(interval_ms));
+    loop {
+        tokio::select! {
+            result = read_frame_or_eof(&mut connection, &link_config) => {
+                let frame = match result? {
+                    Some(frame) => frame,
+                    None => return Ok(station),
+                };
+                station.handle_frame(&frame);
+                forward_master_events(&mut station, &events);
+            }
+            request = requests.recv() => {
+                match request {
+                    Some(MasterRequest::Interrogate { qoi }) => {
+                        station.interrogate(qoi);
+                    }
+                    Some(MasterRequest::Control { ioa, on }) => {
+                        station.control(ioa, on);
+                    }
+                    Some(MasterRequest::SyncClock { time }) => {
+                        station.sync_clock(time);
+                    }
+                    None => return Ok(station),
+                }
+                forward_master_events(&mut station, &events);
+            }
+            _ = timer.tick() => {
+                if let Some(frame) = station.next_frame() {
+                    connection.write_frame(&frame, &link_config).await?;
+                }
+                forward_master_events(&mut station, &events);
+            }
+        }
     }
 }

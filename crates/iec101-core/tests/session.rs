@@ -2,7 +2,7 @@
 //!
 //! 主站与子站在内存里互发帧，不经过网络或串口。
 
-use iec101_core::asdu::{encode_asdu, Asdu, AsduAddress, InformationObject};
+use iec101_core::asdu::{encode_asdu, Asdu, AsduAddress, Cp56Time2a, InformationObject};
 use iec101_core::ft12::{ControlField, Frame};
 use iec101_core::link::LinkParams;
 use iec101_core::session::{
@@ -226,4 +226,154 @@ fn unsupported_type_increments_errors_and_master_command_failed() {
         .drain_events()
         .iter()
         .any(|e| matches!(e, MasterEvent101::CommandFailed { .. })));
+}
+
+#[test]
+fn control_executes_and_confirms() {
+    let mut m = master();
+    let mut s = slave(vec![(1, PointKind::SinglePoint)]);
+
+    step(&mut m, &mut s);
+    assert!(s.set_value(1, PointValue::Bool(true)));
+    assert!(m.control(1, false));
+    assert!(!m.control(1, true), "已有命令未完成时应返回 false");
+
+    for _ in 0..20 {
+        step(&mut m, &mut s);
+    }
+
+    assert_eq!(s.value(1), Some(PointValue::Bool(false)));
+    assert!(m
+        .drain_events()
+        .contains(&MasterEvent101::ControlConfirmed { ioa: 1, on: false }));
+    assert!(s
+        .drain_events()
+        .contains(&StationEvent::ControlConfirmed { ioa: 1, on: false }));
+}
+
+#[test]
+fn select_command_does_not_change_value() {
+    let mut m = master();
+    let mut s = slave(vec![(1, PointKind::SinglePoint)]);
+
+    step(&mut m, &mut s);
+    assert!(s.set_value(1, PointValue::Bool(true)));
+
+    // 直接构造 S/E=1 的选择命令帧发给子站。
+    let select = Asdu {
+        type_id: 45,
+        sq: false,
+        cause: 6,
+        negative: false,
+        test: false,
+        originator: 0,
+        address: config().address,
+        objects: vec![InformationObject::SingleCommand {
+            ioa: 1,
+            on: false,
+            select: true,
+            qualifier: 0,
+        }],
+    };
+    let frame = Frame::Variable {
+        control: ControlField {
+            dir: false,
+            prm: true,
+            fcb: true,
+            fcv: true,
+            acd: false,
+            dfc: false,
+            function: 2,
+        }
+        .encode(),
+        address: LINK_ADDRESS,
+        asdu: encode_asdu(&select).expect("编码应成功"),
+    };
+    let reply = s.handle_frame(&frame).expect("子站应应答");
+    assert!(matches!(reply, Frame::Fixed { .. }));
+    assert_eq!(s.value(1), Some(PointValue::Bool(true)));
+    assert!(s
+        .drain_events()
+        .contains(&StationEvent::ControlConfirmed { ioa: 1, on: false }));
+}
+
+#[test]
+fn control_unknown_point_gets_negative_confirm() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+    assert!(m.control(99, true));
+
+    for _ in 0..20 {
+        step(&mut m, &mut s);
+    }
+
+    assert_eq!(s.stats().errors, 1, "子站应记录一次错误");
+    assert!(m
+        .drain_events()
+        .iter()
+        .any(|e| matches!(e, MasterEvent101::CommandFailed { .. })));
+}
+
+#[test]
+fn clock_sync_confirms_and_stores_time() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+    let time = Cp56Time2a {
+        milliseconds: 12345,
+        minute: 30,
+        hour: 12,
+        day: 15,
+        month: 6,
+        year: 2026,
+        invalid: false,
+        summer_time: false,
+    };
+    assert!(m.sync_clock(time));
+
+    for _ in 0..20 {
+        step(&mut m, &mut s);
+    }
+
+    assert!(m.drain_events().contains(&MasterEvent101::ClockSynced));
+    assert_eq!(s.last_clock_sync(), Some(12345));
+}
+
+#[test]
+fn reset_process_confirms_and_emits_event() {
+    let mut m = master();
+    let mut s = slave(vec![]);
+
+    step(&mut m, &mut s);
+
+    let reset = Asdu {
+        type_id: 105,
+        sq: false,
+        cause: 6,
+        negative: false,
+        test: false,
+        originator: 0,
+        address: config().address,
+        objects: vec![InformationObject::ResetProcess { ioa: 0, qrp: 1 }],
+    };
+    let frame = Frame::Variable {
+        control: ControlField {
+            dir: false,
+            prm: true,
+            fcb: true,
+            fcv: true,
+            acd: false,
+            dfc: false,
+            function: 2,
+        }
+        .encode(),
+        address: LINK_ADDRESS,
+        asdu: encode_asdu(&reset).expect("编码应成功"),
+    };
+    let reply = s.handle_frame(&frame).expect("子站应应答");
+    assert!(matches!(reply, Frame::Fixed { .. }));
+    assert!(s.drain_events().contains(&StationEvent::ProcessReset));
 }
