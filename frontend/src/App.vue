@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { loadPersistedForm, watchPersistedForm } from './suite-persist'
 import * as api from './api'
 import type {
   LinkConfig,
@@ -94,6 +95,26 @@ const link = reactive<LinkConfig>({
 })
 
 const points = ref<PointRow[]>(defaultPoints())
+
+// 套件模式：恢复上次保存的连接参数与点表，并在变化后写回。
+if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+  loadPersistedForm([transport, link])
+  const savedPoints = localStorage.getItem('iec101.slave:points:v1')
+  if (savedPoints) {
+    try {
+      const parsed = JSON.parse(savedPoints) as PointRow[]
+      if (Array.isArray(parsed)) points.value = parsed
+    } catch {
+      // 忽略损坏的保存内容
+    }
+  }
+  watchPersistedForm([transport, link])
+  watch(
+    points,
+    () => localStorage.setItem('iec101.slave:points:v1', JSON.stringify(points.value)),
+    { deep: true },
+  )
+}
 const logs = ref<LogEntry[]>([])
 const drafts = reactive<Partial<Record<number, string>>>({})
 const importInput = ref<HTMLInputElement | null>(null)

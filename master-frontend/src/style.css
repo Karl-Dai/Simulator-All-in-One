@@ -11,7 +11,7 @@
   --err: #e05d5d;
   --rx: #4a9fd8;
   --info: #8a97a3;
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 * {
@@ -215,7 +215,7 @@ select:disabled {
 .seg button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0d1512;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -255,7 +255,7 @@ select:disabled {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0d1512;
+  color: var(--on-accent);
   font-weight: 600;
 }
 

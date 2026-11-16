@@ -30,3 +30,4 @@ Thumbs.db
 
 # Tauri runtime-generated capability schemas
 crates/*/gen/schemas/
+tsconfig.tsbuildinfo
