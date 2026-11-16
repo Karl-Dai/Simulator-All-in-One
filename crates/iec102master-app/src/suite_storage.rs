@@ -207,15 +207,16 @@ mod tests {
 #[cfg(test)]
 mod theme_tests {
     #[test]
-    fn launcher_theme_light_is_read_from_legacy_file() {
+    fn launcher_theme_follows_light_dark_and_default() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("launcher.json"),
-            r#"{"schemaVersion":1,"theme":"light","language":"zh-CN"}"#,
-        )
-        .unwrap();
         std::env::set_var("SIMLAB_DATA_DIR", dir.path());
-        let theme = crate::simlab_preferences::simlab_theme().unwrap();
-        assert_eq!(theme, "light");
+        let file = dir.path().join("launcher.json");
+        std::fs::write(&file, r#"{"schemaVersion":1,"theme":"light"}"#).unwrap();
+        assert_eq!(crate::simlab_preferences::simlab_theme().unwrap(), "light");
+        std::fs::write(&file, r#"{"schemaVersion":1,"theme":"dark"}"#).unwrap();
+        assert_eq!(crate::simlab_preferences::simlab_theme().unwrap(), "dark");
+        // 没有 launcher.json 时回退到 system。
+        std::fs::remove_file(&file).unwrap();
+        assert_eq!(crate::simlab_preferences::simlab_theme().unwrap(), "system");
     }
 }
