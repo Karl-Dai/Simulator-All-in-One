@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { installConfigurationClose } from './simlab-ui/configClose'
 import { installSuitePreferences } from './simlab-ui/configPreferences'
+import { setPreferencesFlusher } from './suite-persist'
 import { startSuiteTheme } from './simlab-ui/theme'
 import App from './App.vue'
 import './simlab-ui/tokens.css'
@@ -14,7 +15,8 @@ async function bootstrap(): Promise<void> {
   // 套件模式先把 localStorage 换成 SQLite 支撑的实现，再挂载应用。
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
     startSuiteTheme()
-    await installSuitePreferences('iec102.master')
+    const preferences = await installSuitePreferences('iec102.master')
+    setPreferencesFlusher(preferences.flush)
     await installConfigurationClose(
       (requested) => listen('saio-before-close', requested),
       () => invoke('simlab_confirm_configuration_close'),
