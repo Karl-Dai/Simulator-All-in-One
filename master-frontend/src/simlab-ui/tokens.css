@@ -1,0 +1,133 @@
+/* Shared neutral appearance. Blue indicates selection; status colors carry meaning. */
+:root[data-simlab] {
+  color-scheme: light;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: var(--font-ui);
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --workspace: #fafafa;
+  --sidebar: #f7f7f7;
+  --topbar: #ffffff;
+  --surface: #ffffff;
+  --role-surface: #ffffff;
+  --text: #202020;
+  --secondary: #525252;
+  --muted: #666666;
+  --line: #e5e5e5;
+  --brand: #2563eb;
+  --on-brand: #ffffff;
+  --copper: #525252;
+  --danger: #bd3038;
+  --warning: #8a5a10;
+  --on-accent: #ffffff;
+  --accent-hover: #1d4ed8;
+  --danger-surface: #fff1f2;
+  --hover: #f3f3f3;
+  --selected: #edf3ff;
+  --green: #237a46;
+  --green-line: #cbe3d3;
+  --green-surface: #f0f8f2;
+  --focus: #2563eb;
+  --shadow: #00000008;
+}
+:root[data-simlab][data-theme="dark"], :root[data-simlab][data-simlab-theme="dark"] {
+  color-scheme: dark;
+  --workspace: #181818;
+  --sidebar: #202020;
+  --topbar: #242424;
+  --surface: #242424;
+  --role-surface: #242424;
+  --text: #ededed;
+  --secondary: #b5b5b5;
+  --muted: #a3a3a3;
+  --line: #3b3b3b;
+  --brand: #90b0ff;
+  --on-brand: #181818;
+  --copper: #b5b5b5;
+  --danger: #f29ca3;
+  --warning: #edc884;
+  --on-accent: #181818;
+  --accent-hover: #b4c9ff;
+  --danger-surface: #3b2529;
+  --hover: #303030;
+  --selected: #28354d;
+  --green: #92d4a5;
+  --green-line: #385744;
+  --green-surface: #24382a;
+  --focus: #90b0ff;
+  --shadow: #00000022;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-simlab]:not([data-theme="light"]):not([data-theme="dark"]):not([data-simlab-theme="light"]) {
+    color-scheme: dark;
+    --workspace: #181818;
+    --sidebar: #202020;
+    --topbar: #242424;
+    --surface: #242424;
+    --role-surface: #242424;
+    --text: #ededed;
+    --secondary: #b5b5b5;
+    --muted: #a3a3a3;
+    --line: #3b3b3b;
+    --brand: #90b0ff;
+    --on-brand: #181818;
+    --copper: #b5b5b5;
+    --danger: #f29ca3;
+    --warning: #edc884;
+    --on-accent: #181818;
+    --accent-hover: #b4c9ff;
+    --danger-surface: #3b2529;
+    --hover: #303030;
+    --selected: #28354d;
+    --green: #92d4a5;
+    --green-line: #385744;
+    --green-surface: #24382a;
+    --focus: #90b0ff;
+    --shadow: #00000022;
+  }
+}
+:root[data-simlab] {
+  --iec: var(--secondary); --iec-surface: var(--hover);
+  --modbus: var(--secondary); --modbus-surface: var(--hover);
+  --pmu: var(--secondary); --pmu-surface: var(--hover);
+  --opcua: var(--secondary); --opcua-surface: var(--hover);
+}
+
+/* Compatibility aliases keep the protocol components on one semantic palette. */
+:root[data-simlab], :root[data-simlab][data-simlab-theme] {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px;
+  --text-xs: 12px; --text-sm: 12px; --text-md: 13px; --text-lg: 15px;
+  --duration-fast: 120ms; --duration-normal: 180ms;
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --font-sans: var(--font-ui);
+  --c-crust: var(--workspace); --c-mantle: var(--sidebar); --c-base: var(--surface);
+  --c-surface0: var(--line); --c-surface1: color-mix(in srgb, var(--text) 28%, var(--surface));
+  --c-surface2: color-mix(in srgb, var(--text) 42%, var(--surface));
+  --c-overlay0: var(--muted); --c-overlay1: var(--muted); --c-subtext0: var(--muted); --c-subtext1: var(--secondary);
+  --c-text: var(--text); --c-blue: var(--brand); --c-lavender: var(--accent-hover);
+  --c-sapphire: var(--iec); --c-sky: var(--iec); --c-teal: var(--pmu);
+  --c-green: var(--green); --c-yellow: var(--warning); --c-peach: var(--copper);
+  --c-red: var(--danger); --c-mauve: var(--opcua);
+  --c-on-accent: var(--on-accent); --c-accent-hover: var(--accent-hover);
+  --c-control-bg: var(--surface); --c-hover-bg: var(--hover);
+  --c-selection-bg: var(--selected); --c-selection-text: var(--text);
+  --c-row-border: var(--line); --c-row-danger-bg: var(--danger-surface);
+  --c-success-bg: var(--green-surface); --c-success-text: var(--green);
+  --c-neutral-bg: var(--hover); --c-neutral-text: var(--secondary);
+  --bg-app: var(--workspace); --bg-panel: var(--sidebar); --bg-raised: var(--surface);
+  --bg-hover: var(--hover); --bg-active: var(--selected); --bg-inset: var(--workspace);
+  --border-subtle: var(--line); --border-strong: var(--c-surface1);
+  --text-primary: var(--text); --text-secondary: var(--secondary);
+  --text-muted: var(--muted); --text-disabled: var(--muted);
+  --accent: var(--brand); --success: var(--green); --info: var(--iec);
+  --shadow-sm: 0 1px 3px var(--shadow); --shadow-md: 0 4px 16px var(--shadow);
+  --shadow-lg: 0 16px 48px #0003;
+  /* PMU's legacy names use the same surfaces and status semantics. */
+  --bg-chrome: var(--workspace); --bg-content: var(--surface); --bg-input: var(--surface);
+  --bg-disabled: var(--hover); --border: var(--line); --border-soft: var(--line);
+  --border-dash: var(--c-surface1); --accent-dark: var(--accent-hover);
+  --accent-tint: var(--selected); --accent-on-sel: var(--on-accent);
+  --text-dim: var(--secondary); --text-faint: var(--muted);
+  --ok: var(--green); --warn: var(--warning); --err: var(--danger);
+}

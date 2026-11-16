@@ -115,6 +115,8 @@ impl SharedState {
 
 /// Tauri 管理的应用状态。
 pub struct AppState {
+    /// 套件配置存储：界面偏好与工作区参数写入 SQLite。
+    pub suite_storage: crate::suite_storage::SuiteStorage,
     /// tokio 运行时句柄，用于启动服务循环任务。
     pub runtime: tokio::runtime::Handle,
     /// 当前服务循环任务。
@@ -126,6 +128,7 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
+            suite_storage: Default::default(),
             runtime: tauri::async_runtime::handle().inner().clone(),
             task: Mutex::new(None),
             shared: Arc::new(Mutex::new(SharedState::default())),

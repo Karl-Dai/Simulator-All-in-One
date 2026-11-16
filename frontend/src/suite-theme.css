@@ -1,0 +1,15 @@
+/* 套件外观：共享 tokens 提供浅/深两套变量，这里映射到组件自有变量名。 */
+:root[data-simlab] {
+  --bg: var(--workspace);
+  --panel: var(--surface);
+  --panel-2: var(--sidebar);
+  --border: var(--line);
+  --text: var(--text);
+  --muted: var(--muted);
+  --accent: var(--brand);
+  --accent-hover: var(--accent-hover);
+  --ok: var(--green);
+  --err: var(--danger);
+  --rx: var(--brand);
+  --info: var(--secondary);
+}

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { loadPersistedForm, watchPersistedForm } from './suite-persist'
 import * as api from './api'
 import type {
   ConnectConfig,
@@ -75,6 +76,12 @@ const link = reactive<LinkConfig>({
   ioaLen: 3,
   pollIntervalMs: 500,
 })
+
+// 套件模式：恢复上次保存的连接参数，并在变化后写回。
+if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+  loadPersistedForm([transport, link])
+  watchPersistedForm([transport, link])
+}
 
 const logs = ref<LogEntry[]>([])
 const onlyErrors = ref(false)

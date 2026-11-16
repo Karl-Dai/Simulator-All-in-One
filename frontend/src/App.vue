@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { loadPersistedForm, watchPersistedForm } from './suite-persist'
 import * as api from './api'
 import type {
   CounterView,
@@ -70,6 +71,26 @@ const link = reactive<LinkConfig>({
 })
 
 const counters = ref<CounterRow[]>(defaultCounters())
+
+// 套件模式：恢复上次保存的连接参数与计量点表，并在变化后写回。
+if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+  loadPersistedForm([transport, link])
+  const savedCounters = localStorage.getItem('iec102.slave:points:v1')
+  if (savedCounters) {
+    try {
+      const parsed = JSON.parse(savedCounters) as CounterRow[]
+      if (Array.isArray(parsed)) counters.value = parsed
+    } catch {
+      // 忽略损坏的保存内容
+    }
+  }
+  watchPersistedForm([transport, link])
+  watch(
+    counters,
+    () => localStorage.setItem('iec102.slave:points:v1', JSON.stringify(counters.value)),
+    { deep: true },
+  )
+}
 const logs = ref<LogEntry[]>([])
 const drafts = reactive<Partial<Record<number, string>>>({})
 const importInput = ref<HTMLInputElement | null>(null)

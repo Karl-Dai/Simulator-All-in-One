@@ -593,3 +593,21 @@ fn push_log(app: &AppHandle, shared: &Arc<Mutex<SharedState>>, entry: LogEntry) 
     }
     let _ = app.emit("log", &entry);
 }
+
+/// 恢复界面配置；首次启动把旧 WebView 存储迁移进 SQLite。
+#[tauri::command]
+pub async fn simlab_load_preferences(
+    state: State<'_, AppState>,
+    legacy: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    state.suite_storage.load_preferences(legacy)
+}
+
+/// 保存界面配置到 SQLite，供重启后恢复。
+#[tauri::command]
+pub async fn simlab_save_preferences(
+    state: State<'_, AppState>,
+    values: serde_json::Value,
+) -> Result<(), String> {
+    state.suite_storage.save_preferences(values)
+}
