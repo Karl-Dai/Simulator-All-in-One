@@ -112,7 +112,7 @@ if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
   watch(
     points,
     () => localStorage.setItem('iec101.slave:points:v1', JSON.stringify(points.value)),
-    { deep: true },
+    { deep: true, flush: 'sync' },
   )
 }
 const logs = ref<LogEntry[]>([])
