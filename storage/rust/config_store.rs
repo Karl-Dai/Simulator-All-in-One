@@ -34,6 +34,10 @@ fn valid_role(role: &str) -> bool {
             | "opcua.server"
             | "pmu.master"
             | "pmu.sub"
+            | "iec101.master"
+            | "iec101.slave"
+            | "iec102.master"
+            | "iec102.slave"
     )
 }
 fn err(e: impl std::fmt::Display) -> String {

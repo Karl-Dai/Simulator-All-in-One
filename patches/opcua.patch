@@ -15305,10 +15305,10 @@ index 0000000..220228d
 +PRAGMA user_version=1;
 diff --git a/crates/shared/config_store.rs b/crates/shared/config_store.rs
 new file mode 100644
-index 0000000..9ea3782
+index 0000000..6ced9e3
 --- /dev/null
 +++ b/crates/shared/config_store.rs
-@@ -0,0 +1,729 @@
+@@ -0,0 +1,733 @@
 +//! Shared, versioned configuration storage. Values are typed SQLite records.
 +use rusqlite::{params, Connection, OptionalExtension};
 +use serde_json::{Map, Number, Value};
@@ -15345,6 +15345,10 @@ index 0000000..9ea3782
 +            | "opcua.server"
 +            | "pmu.master"
 +            | "pmu.sub"
++            | "iec101.master"
++            | "iec101.slave"
++            | "iec102.master"
++            | "iec102.slave"
 +    )
 +}
 +fn err(e: impl std::fmt::Display) -> String {

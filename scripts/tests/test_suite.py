@@ -228,14 +228,14 @@ class SuiteTests(unittest.TestCase):
             if args[:3] == ["codesign", "--force", "--sign"]:
                 app = Path(args[-1])
                 manifest = app / "Contents/Resources/suite-manifest.json"
-                self.assertEqual(len(signed), 8)
+                self.assertEqual(len(signed), len(self.lock["components"]))
                 self.assertTrue(manifest.is_file())
                 suite.verify_manifest(app / "Contents", self.lock, root=self.root)
 
         with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), \
                 patch.object(suite, "sign_app", side_effect=sign_child), patch.object(suite, "run", side_effect=command):
             output = suite.collect(self.workspace, "darwin", "arm64", root=self.root, adopt=True)
-        self.assertEqual(len(signed), 8)
+        self.assertEqual(len(signed), len(self.lock["components"]))
         manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
         self.assertNotIn("buildToolchain", manifest, "adopting old binaries must not invent build evidence")
         self.assertTrue(all(item["sha256"] == __import__("hashlib").sha256(b"fixturesigned").hexdigest() for item in manifest["components"]))

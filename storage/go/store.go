@@ -53,7 +53,7 @@ type queryer interface {
 
 func validRole(role string) bool {
 	switch role {
-	case "launcher", "iec104.master", "iec104.slave", "modbus.master", "modbus.slave", "opcua.master", "opcua.server", "pmu.master", "pmu.sub":
+	case "launcher", "iec104.master", "iec104.slave", "modbus.master", "modbus.slave", "opcua.master", "opcua.server", "pmu.master", "pmu.sub", "iec101.master", "iec101.slave", "iec102.master", "iec102.slave":
 		return true
 	}
 	return false

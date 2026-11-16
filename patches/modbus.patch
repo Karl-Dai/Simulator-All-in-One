@@ -18172,7 +18172,7 @@ index 0000000..220228d
 +PRAGMA user_version=1;
 diff --git a/go/internal/configstore/store.go b/go/internal/configstore/store.go
 new file mode 100644
-index 0000000..57b2bd6
+index 0000000..8af235d
 --- /dev/null
 +++ b/go/internal/configstore/store.go
 @@ -0,0 +1,934 @@
@@ -18231,7 +18231,7 @@ index 0000000..57b2bd6
 +
 +func validRole(role string) bool {
 +	switch role {
-+	case "launcher", "iec104.master", "iec104.slave", "modbus.master", "modbus.slave", "opcua.master", "opcua.server", "pmu.master", "pmu.sub":
++	case "launcher", "iec104.master", "iec104.slave", "modbus.master", "modbus.slave", "opcua.master", "opcua.server", "pmu.master", "pmu.sub", "iec101.master", "iec101.slave", "iec102.master", "iec102.slave":
 +		return true
 +	}
 +	return false

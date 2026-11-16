@@ -121,4 +121,4 @@ if __name__ == "__main__":
     mode.add_argument("--check", action="store_true")
     args = parser.parse_args()
     (write if args.write else check)(args.workspace.resolve())
-    print("Shared UI assets match all eight roles.")
+    print(f"Shared UI assets match all {len(json.loads((ROOT / 'components.lock.json').read_text())['components'])} roles.")
