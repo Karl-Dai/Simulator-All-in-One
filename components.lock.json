@@ -40,7 +40,7 @@
       "id": "iec101",
       "directory": "IEC60870-5-101-Simulator",
       "url": "https://github.com/Karl-Dai/IEC60870-5-101-Simulator.git",
-      "commit": "932ad68182598c518a72f91d59ca8f15459380be",
+      "commit": "1b1b11235ef72421215e7c7ab632d94a435655e9",
       "patch": "patches/iec101.patch",
       "cargoLock": "packaging/locks/iec101.Cargo.lock",
       "cargoLockSha256": "cafcbe6debe250dca69248a30efba3e63930899dfd9e2187254a55e74ed100de"
@@ -49,7 +49,7 @@
       "id": "iec102",
       "directory": "IEC60870-5-102-Simulator",
       "url": "https://github.com/Karl-Dai/IEC60870-5-102-Simulator.git",
-      "commit": "38e5cd1568aa37f71c8c46f5613acea26ce23b3a",
+      "commit": "a0dacadccbf9e9803c04e60a96b02462264d6c0b",
       "patch": "patches/iec102.patch",
       "cargoLock": "packaging/locks/iec102.Cargo.lock",
       "cargoLockSha256": "7cdb6d66e16b862f100f5637b317806599ef90babb97fc511bebf9b36e86f052"
