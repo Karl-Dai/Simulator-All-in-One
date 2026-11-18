@@ -1,0 +1,265 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 补全已构建版本的更新清单和发布说明
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    if: github.event_name != 'workflow_dispatch'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_target: aarch64-apple-darwin
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust_target: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ''
+            rust_target: ''
+          - platform: windows-latest
+            args: ''
+            rust_target: ''
+          # Windows on ARM. Cross-compiled on the x64 runner; NSIS only —
+          # arm64 WiX/MSI is flaky and a single failing matrix job would mark
+          # the whole `release` job failed, skipping publish-manifest and
+          # leaving the release stuck as a draft. NSIS gives the requested
+          # `PmuSim_<ver>_arm64-setup.exe` plus its updater .sig.
+          - platform: windows-latest
+            args: '--target aarch64-pc-windows-msvc --bundles nsis'
+            rust_target: aarch64-pc-windows-msvc
+            experimental: true
+    runs-on: ${{ matrix.platform }}
+    # First-time arm64 cross-compile: keep it non-blocking so a failure on this
+    # leg can't fail the whole `release` job (which would skip publish-manifest
+    # and leave the release stuck as a draft). The other platforms still ship.
+    continue-on-error: ${{ matrix.experimental || false }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb xdotool x11-utils openbox dbus-x11
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Frontend build is run by tauri's beforeBuildCommand inside tauri-action below.
+
+      - name: Prepare readable AppImage launcher
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash scripts/prepare-appimage-tools.sh
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # createUpdaterArtifacts:true 时 tauri-bundler 会调用 tauri signer 给
+          # 每个 updater target 产物附 .sig。CI 必须能拿到私钥(GitHub Secrets)。
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: crates/pmusim-app
+          tagName: ${{ github.ref_name }}
+          releaseName: 'PmuSim ${{ github.ref_name }}'
+          # Keep the release a draft during the build: GitHub's
+          # `releases/latest` skips drafts, so existing users' update checks
+          # keep hitting the previous *complete* release. publish-manifest
+          # clears the draft flag once installers + manifest + body are all in.
+          releaseDraft: true
+          prerelease: false
+          # The project ships its own latest-pmusim*.json via
+          # gen-update-manifest; tauri-action's latest.json is unused. Being a
+          # single shared filename, every parallel matrix job clobbers it —
+          # the source of the flaky "delete-a-release-asset" 404 race. Skip it.
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
+
+      - name: Verify packaged AppImage permissions and startup
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash scripts/verify-appimage.sh target/release/bundle/appimage/PmuSim_*.AppImage pmusim-app 'PmuSim'
+
+  # Substation simulator (PmuSub). Mirrors the master `release` job but builds
+  # crates/pmusim-sub instead. The sub has NO in-app updater, so it needs no
+  # signing key, produces no .sig, and is excluded from the update manifest
+  # (gen-update-manifest only globs PmuSim_*). The whole job is non-blocking:
+  # this is the sub's first time through CI, and a failure here must not fail
+  # the release / leave it stuck as a draft — the master installers still ship.
+  release-sub:
+    if: github.event_name != 'workflow_dispatch'
+    permissions:
+      contents: write
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_target: aarch64-apple-darwin
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust_target: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ''
+            rust_target: ''
+          - platform: windows-latest
+            args: ''
+            rust_target: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-sub/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb xdotool x11-utils openbox dbus-x11
+
+      - name: Install frontend dependencies
+        working-directory: frontend-sub
+        run: npm ci
+
+      - name: Prepare readable AppImage launcher
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash scripts/prepare-appimage-tools.sh
+
+      - name: Build and release (substation)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: crates/pmusim-sub
+          tagName: ${{ github.ref_name }}
+          releaseName: 'PmuSim ${{ github.ref_name }}'
+          # Same release as the master job — both apps attach their installers
+          # to the one tag. Keep it a draft; publish-manifest clears the flag.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
+
+      - name: Verify packaged AppImage permissions and startup
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash scripts/verify-appimage.sh target/release/bundle/appimage/PmuSub_*.AppImage pmusim-sub 'PmuSim'
+
+  publish-manifest:
+    # Wait for BOTH apps. release-sub is continue-on-error, so a sub build
+    # failure still lets this run and ship the master installers + manifest.
+    needs: [release, release-sub]
+    if: >-
+      !cancelled() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (needs.release.result == 'success' && needs['release-sub'].result == 'success'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Validate stable release tag
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid release tag"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate existing installers before recovery
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > /tmp/release-assets.json
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          import { buildBody } from './scripts/build-release-notes.mjs'
+          const release = JSON.parse(readFileSync('/tmp/release-assets.json', 'utf8'))
+          const names = new Set(release.assets.filter(a => a.state === 'uploaded' && a.size > 0).map(a => a.name))
+          const body = buildBody(process.env.RELEASE_TAG, readFileSync('CHANGELOG.md', 'utf8'))
+          const expected = [...body.matchAll(/`((?:PmuSim|PmuSub)[^`]+\.(?:dmg|exe|msi|AppImage|deb|rpm))`/g)].map(m => m[1])
+          const missing = expected.filter(name => !names.has(name))
+          if (!expected.length || missing.length) throw new Error(`Missing installers: ${missing.join(', ')}`)
+          console.log(`Verified ${expected.length} published installers before recovery`)
+          NODE
+      # Un-draft first: this job only runs once every build succeeded, so the
+      # release is now complete enough to go live. Publishing here (rather than
+      # last) lets the manifest scripts run against a normal published release
+      # — `releases/tags/<tag>` and public asset URLs all work. The residual
+      # window where `releases/latest` lacks the update manifest shrinks from
+      # the whole ~10-minute build to the few seconds of manifest generation.
+      - name: Publish release (clear draft flag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
+      # Release metadata scripts use only Node built-ins; no install is needed.
+      - name: Generate manifests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/gen-update-manifest.mjs "$RELEASE_TAG"
+      - name: Upload manifests to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" \
+              latest-pmusim.json latest-pmusim-cn1.json latest-pmusim-cn2.json latest-pmusim-cn3.json \
+              --clobber; then exit 0; fi
+            echo "::warning::manifest upload attempt $attempt failed, retrying in 10s"
+            sleep 10
+          done
+          echo "::error::manifest upload failed after 5 attempts"; exit 1
+
+      - name: Render rich release body from CHANGELOG
+        run: node scripts/build-release-notes.mjs "$RELEASE_TAG"
+
+      - name: Replace release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --notes-file RELEASE_BODY.md

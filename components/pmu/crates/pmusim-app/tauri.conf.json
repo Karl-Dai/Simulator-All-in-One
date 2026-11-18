@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PmuSim",
+  "version": "0.13.2",
+  "identifier": "com.pmusim.dev",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../../frontend" },
+    "beforeBuildCommand": { "script": "npm run build", "cwd": "../../frontend" },
+    "frontendDist": "../../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "PmuSim - PMU Master Station Simulator",
+        "width": 1100,
+        "height": 700,
+        "minWidth": 900,
+        "minHeight": 500,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://ghfast.top/https://github.com/Karl-Dai/PmuSim/releases/latest/download/latest-pmusim-cn1.json",
+        "https://gh-proxy.com/https://github.com/Karl-Dai/PmuSim/releases/latest/download/latest-pmusim-cn2.json",
+        "https://gh.idayer.com/https://github.com/Karl-Dai/PmuSim/releases/latest/download/latest-pmusim-cn3.json",
+        "https://github.com/Karl-Dai/PmuSim/releases/latest/download/latest-pmusim.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI5RTMwMzI5RTY0NzFDNzkKUldSNUhFZm1LUVBqS2FEa3RJUEZYOW1DMDZDN0EvbTZDSmhnanI4TUd0aXEySnk5Ui9HaDE2QnYK"
+    }
+  }
+}
