@@ -142,7 +142,7 @@ const displayRows = computed<DisplayRow[]>(() => {
   top: 0;
   background: linear-gradient(#eceadf, #dcdacc);
   font-weight: 600;
-  color: #2a2a2a;
+  color: var(--text);
   padding: 7px 10px;
   text-align: left;
   border-right: 1px solid #b6b5a8;

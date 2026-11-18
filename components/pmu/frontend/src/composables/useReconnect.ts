@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../simlab-ui/configInvoke";
 
 export type ReconnectMode = "normal" | "skipCfg2";
 

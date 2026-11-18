@@ -1,0 +1,42 @@
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke }))
+beforeEach(() => { vi.resetModules(); vi.stubEnv('VITE_SIMLAB_SUITE', '1'); const values = new Map<string,string>(); vi.stubGlobal('localStorage', { getItem: (key:string) => values.get(key) ?? null, setItem: (key:string,value:string) => values.set(key,value), removeItem: (key:string) => values.delete(key), clear: () => values.clear() }); document.body.replaceChildren(); invoke.mockReset(); vi.useFakeTimers() })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals() })
+it('imports the old master form into a typed document', async () => {
+ localStorage.setItem('pmusim.config.v1', '{"protocol":"V3","connIp":"127.0.0.1"}')
+ invoke.mockImplementation(async (command, args) => command === 'simlab_load_document' ? args.legacy : undefined)
+ const storage = await import('../src/suiteWorkspace')
+ await storage.restoreDocuments('pmu.master')
+ expect(storage.documentValue('workspace')).toEqual({ protocol: 'V3', connIp: '127.0.0.1' })
+ expect(invoke).toHaveBeenCalledWith('simlab_load_document', { key: 'workspace', legacy: { protocol: 'V3', connIp: '127.0.0.1' } })
+})
+it('uses an existing SQLite workspace before trying an invalid legacy browser value', async () => {
+ localStorage.setItem('pmusim.config.v1', 'broken')
+ invoke.mockImplementation(async (_command, args) => args.key === 'workspace' ? { protocol: 'V2' } : null)
+ const storage = await import('../src/suiteWorkspace')
+ await storage.restoreDocuments('pmu.master')
+ expect(storage.documentValue('workspace')).toEqual({ protocol: 'V2' })
+})
+it('serializes changed drafts and leaves failures visibly retryable', async () => {
+ invoke.mockResolvedValue(null)
+ const storage = await import('../src/suiteWorkspace'); await storage.restoreDocuments('pmu.sub')
+ let complete!: () => void
+ invoke.mockImplementationOnce(() => new Promise(resolve => { complete = () => resolve(undefined) })).mockResolvedValue(undefined)
+ const first = storage.saveDocument('workspace', { mgmt_port: 8000 })
+ storage.scheduleDocument('workspace', { mgmt_port: 8001 })
+ complete(); await first
+ expect(invoke).toHaveBeenLastCalledWith('simlab_save_document', { key: 'workspace', value: { mgmt_port: 8001 } })
+ invoke.mockRejectedValueOnce(new Error('locked'))
+ await expect(storage.saveDocument('settings', { freq_offset_hz: 1 })).rejects.toThrow('locked')
+ expect(document.querySelector('[role="alert"]')?.textContent).toContain('Configuration not saved')
+ expect(storage.documentValue('settings')).toEqual({ freq_offset_hz: 1 })
+ invoke.mockResolvedValue(undefined); await storage.flushDocuments()
+ expect(invoke).toHaveBeenLastCalledWith('simlab_save_document', { key: 'settings', value: { freq_offset_hz: 1 } })
+})
+it('rejects a failed restore before any defaults can be saved', async () => {
+ invoke.mockRejectedValue(new Error('corrupt database'))
+ const storage = await import('../src/suiteWorkspace')
+ await expect(storage.restoreDocuments('pmu.sub')).rejects.toThrow('corrupt database')
+ expect(invoke.mock.calls.every(([command]) => command === 'simlab_load_document')).toBe(true)
+})

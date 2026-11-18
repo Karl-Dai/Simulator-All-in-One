@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../simlab-ui/configInvoke";
 import { useProtocol } from "../composables/useProtocol";
 import { useServerStatus } from "../composables/useServerStatus";
 import { useSessions } from "../composables/useSessions";
@@ -12,6 +12,7 @@ import { listenerReady } from "../composables/usePmuEvents";
 import { useReconnect } from "../composables/useReconnect";
 import { useI18n } from "../i18n";
 import { ask } from "@tauri-apps/plugin-dialog";
+import { documentValue, scheduleDocument, flushDocuments, chooseProject } from "../suiteWorkspace";
 import { hzToPeriod, frameTimeMs } from "../lib/rate";
 
 const { t } = useI18n();
@@ -50,6 +51,7 @@ function debounced<T>(ms: number, fn: (v: T) => void | Promise<void>) {
 
 // 配置持久化:仅记输入表单(运行态不存)。恢复期间用 restoring 抑制下面两个
 // 联动 watch,否则协议/命令端口联动会覆盖刚从 localStorage 载入的端口存值。
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1';
 const PERSIST_KEY = "pmusim.config.v1";
 const restoring = ref(true);
 
@@ -98,9 +100,9 @@ const rawPeriod = ref("0");
 // 载入上次保存的输入配置(仅表单值;sessions/configs 等运行态不持久化)。
 function loadPersisted() {
   try {
-    const raw = localStorage.getItem(PERSIST_KEY);
-    if (!raw) return;
-    const c = JSON.parse(raw);
+    const raw = suiteBuild ? null : localStorage.getItem(PERSIST_KEY);
+    if (!suiteBuild && !raw) return;
+    const c = suiteBuild ? documentValue<Record<string, unknown>>("workspace") : JSON.parse(raw!);
     if (c.protocol === "V2" || c.protocol === "V3") protocol.value = c.protocol;
     if (typeof c.connIp === "string") connIp.value = c.connIp;
     if (typeof c.connMgmtPort === "string") connMgmtPort.value = c.connMgmtPort;
@@ -115,6 +117,9 @@ function loadPersisted() {
   }
 }
 function persist() {
+  if (restoring.value) return;
+  const value = { protocol: protocol.value, connIp: connIp.value, connMgmtPort: connMgmtPort.value, connDataPort: connDataPort.value, connDataPortDirty: connDataPortDirty.value, rateHz: rateHz.value, heartbeatSecs: heartbeatSecs.value, injectAbnormal: injectAbnormal.value, rawPeriod: rawPeriod.value };
+  if (suiteBuild) { scheduleDocument("workspace", value); return; }
   try {
     localStorage.setItem(
       PERSIST_KEY,
@@ -154,6 +159,16 @@ nextTick(() => {
   restoring.value = false;
 });
 
+async function projectAction(action: 'import' | 'export') {
+  try {
+    if (action === 'import' && (running.value || session.value)) throw new Error('Stop communication before importing a project');
+    persist(); await flushDocuments();
+    if (await chooseProject(action) && action === 'import') {
+      restoring.value = true; loadPersisted(); await nextTick(); restoring.value = false;
+    }
+  } catch (error) { pushToast(toastError(error), "error"); }
+}
+
 async function injectPeriod() {
   const s = session.value;
   if (!s) return; // 按钮 disabled 已兜底
@@ -164,6 +179,7 @@ async function injectPeriod() {
     return;
   }
   try {
+    if (suiteBuild) { persist(); await flushDocuments(); }
     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: p });
     pushToast(t("config.injectSent", { period: String(p) }), "info");
@@ -224,6 +240,7 @@ async function startEverything() {
   if (busy.value) return;
   busy.value = true;
   try {
+    if (suiteBuild) { persist(); await flushDocuments(); }
     // Block until the Tauri event listener is attached. If start_server +
     // connect_substation fire before listen() round-trips,every handshake
     // event drops on the floor and the UI never updates (the original
@@ -269,6 +286,7 @@ async function skipCfg2Connect() {
   if (busy.value) return;
   busy.value = true;
   try {
+    if (suiteBuild) { persist(); await flushDocuments(); }
     await listenerReady;
     if (!running.value) {
       const dataPort = protocol.value === "V3" ? 0 : parseInt(connDataPort.value);
@@ -328,6 +346,7 @@ watch(heartbeatSecs, debounced<string>(250, async (v) => {
   const hb = parseFloat(v);
   if (Number.isFinite(hb) && hb > 0) {
     try {
+    if (suiteBuild) { persist(); await flushDocuments(); }
       await invoke("set_heartbeat_interval", { seconds: hb });
     } catch (e) {
       pushToast(t("config.heartbeatFailed", { error: toastError(e) }), "error");
@@ -347,6 +366,7 @@ const applyNormalRate = debounced<string>(250, async (v) => {
   if (!Number.isFinite(hz) || hz <= 0) return;
   const periodVal = hzToPeriod(hz);
   try {
+    if (suiteBuild) { persist(); await flushDocuments(); }
     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
     await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: periodVal });
     pushToast(t("config.rateApplied", { hz: String(hz) }), "info");
@@ -360,6 +380,7 @@ const applyNormalRate = debounced<string>(250, async (v) => {
 // 确认早于连接状态护栏 → 无论连接与否,选中 0Hz 都恰好确认一次。
 let suppressRateWatch = false;
 watch(rateHz, async (v, old) => {
+  if (restoring.value) return;
   if (suppressRateWatch) { suppressRateWatch = false; return; }
   if (v === "0") {
     const ok = await ask(t("config.inject0Confirm"), {
@@ -374,6 +395,7 @@ watch(rateHz, async (v, old) => {
     const s = session.value;
     if (s && (s.state === "streaming" || s.state === "cfg2_sent")) {
       try {
+        if (suiteBuild) { persist(); await flushDocuments(); }
         await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2_cmd", period: null });
         await invoke("send_command", { idcode: s.idcode, cmd: "send_cfg2", period: 0 });
         pushToast(t("config.injectSent", { period: "0" }), "info");
@@ -389,20 +411,24 @@ watch(rateHz, async (v, old) => {
 
 <template>
   <div class="config-panel">
+    <div v-if="suiteBuild" class="row" role="group" aria-label="Configuration project">
+      <button :disabled="running || !!session" @click="projectAction('import')">导入配置 / Import</button>
+      <button @click="projectAction('export')">导出配置 / Export</button>
+    </div>
     <section class="panel">
       <div class="panel-hd">{{ t("config.title") }}</div>
       <div class="panel-bd">
 
-      <div class="row"><label>{{ t("config.substationAddr") }}</label><input v-model="connIp" /></div>
-      <div class="row"><label>{{ t("config.cmdPort") }}</label><input v-model="connMgmtPort" inputmode="numeric" /></div>
+      <div class="row"><label for="pmu-substationAddr">{{ t("config.substationAddr") }}</label><input id="pmu-substationAddr" v-model="connIp" /></div>
+      <div class="row"><label for="pmu-cmdPort">{{ t("config.cmdPort") }}</label><input id="pmu-cmdPort" v-model="connMgmtPort" inputmode="numeric" /></div>
       <div class="row">
-        <label>{{ dataPortLabel }}</label><input :value="connDataPort" @input="onDataPortInput" inputmode="numeric" />
+        <label for="pmu-data-port">{{ dataPortLabel }}</label><input id="pmu-data-port" :value="connDataPort" @input="onDataPortInput" inputmode="numeric" />
       </div>
-      <div class="row"><label>{{ t("config.idcode") }}</label><input :value="idcodeDisplay" readonly :placeholder="t('config.idcodePlaceholder')" /></div>
+      <div class="row"><label for="pmu-idcode">{{ t("config.idcode") }}</label><input id="pmu-idcode" :value="idcodeDisplay" readonly :placeholder="t('config.idcodePlaceholder')" /></div>
       <div class="row">
-        <label>{{ t("config.rate") }}</label>
+        <label for="pmu-rate">{{ t("config.rate") }}</label>
         <div class="ctl-with-suffix">
-          <select v-model="rateHz">
+          <select id="pmu-rate" v-model="rateHz">
             <option value="10">10 Hz</option>
             <option value="25">25 Hz</option>
             <option value="50">50 Hz</option>
@@ -414,13 +440,13 @@ watch(rateHz, async (v, old) => {
         </div>
       </div>
       <div class="row">
-        <label>{{ t("config.abnormalInject") }}</label>
-        <input type="checkbox" v-model="injectAbnormal" />
+        <label for="pmu-abnormalInject">{{ t("config.abnormalInject") }}</label>
+        <input id="pmu-abnormalInject" type="checkbox" v-model="injectAbnormal" />
       </div>
       <div class="row" v-if="injectAbnormal">
-        <label>{{ t("config.rawPeriod") }}</label>
+        <label for="pmu-rawPeriod">{{ t("config.rawPeriod") }}</label>
         <div class="ctl-with-suffix">
-          <input v-model="rawPeriod" inputmode="numeric" style="width: 80px" />
+          <input id="pmu-rawPeriod" v-model="rawPeriod" inputmode="numeric" style="width: 80px" />
           <button
             class="btn"
             @click="injectPeriod"
@@ -433,18 +459,18 @@ watch(rateHz, async (v, old) => {
         <button class="btn" @click="skipCfg2Connect" :disabled="busy">{{ t("config.skipCfg2Connect") }}</button>
       </div>
       <div class="row">
-        <label>{{ t("config.heartbeat") }}</label>
-        <select v-model="heartbeatSecs">
+        <label for="pmu-heartbeat">{{ t("config.heartbeat") }}</label>
+        <select id="pmu-heartbeat" v-model="heartbeatSecs">
           <option value="1">{{ t("config.seconds", { n: 1 }) }}</option>
           <option value="5">{{ t("config.seconds", { n: 5 }) }}</option>
           <option value="10">{{ t("config.seconds", { n: 10 }) }}</option>
           <option value="30">{{ t("config.seconds", { n: 30 }) }}</option>
         </select>
       </div>
-      <div class="row"><label>{{ t("config.commProtocol") }}</label><input value="TCP" disabled /></div>
+      <div class="row"><label for="pmu-commProtocol">{{ t("config.commProtocol") }}</label><input id="pmu-commProtocol" value="TCP" disabled /></div>
       <div class="row">
-        <label>{{ t("config.protocol") }}</label>
-        <select v-model="protocol" :disabled="running">
+        <label for="pmu-protocol">{{ t("config.protocol") }}</label>
+        <select id="pmu-protocol" v-model="protocol" :disabled="running">
           <option value="V2">2006 (V2)</option>
           <option value="V3">2011 (V3)</option>
         </select>
@@ -488,8 +514,9 @@ watch(rateHz, async (v, old) => {
   flex-direction: column;
   gap: 8px;
   padding: 8px;
-  overflow: hidden;
+  overflow-y: auto;
 }
+.config-panel > .panel { flex-shrink: 0; }
 /* Panel = framed group with a label-plate header band. Replaces the old
    fieldset/legend (whose notched border + double top edge read as an
    un-styled browser default). Frame is now continuous; the title lives in
@@ -508,7 +535,7 @@ watch(rateHz, async (v, old) => {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 1.5px;
-  color: #44443d;
+  color: var(--secondary);
   /* 顶层极细竖向拉丝纹理(2px 周期，低对比) 叠在压暗半档的阳极氧化
      深灰镜面渐变上 —— 两者不同轴，纹理不被宏观高光糊掉。 */
   background:
@@ -590,7 +617,7 @@ watch(rateHz, async (v, old) => {
    up across every row. appearance:none kills the macOS native select
    chrome (rounded corners + chevron) that otherwise sits 1–2px taller
    than the input boxes. */
-.row input,
+.row input:not([type="checkbox"]),
 .row select {
   width: 100%;
   height: 22px;
@@ -605,12 +632,13 @@ watch(rateHz, async (v, old) => {
   box-shadow: inset 1px 1px 0 rgba(0,0,0,0.04);
   outline: none;
 }
+.row input[type="checkbox"] { width: 16px; height: 16px; margin: 0; padding: 0; justify-self: start; accent-color: var(--accent); }
 .row input:focus,
 .row select:focus {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px rgba(37,99,168,0.35);
 }
-.row input::placeholder { color: #aaa; font-style: italic; }
+.row input::placeholder { color: var(--muted); font-style: italic; }
 
 /* Custom chevron — single SVG so disabled / enabled selects render
    identically across platforms. */
@@ -638,7 +666,7 @@ watch(rateHz, async (v, old) => {
 
 .readback {
   font-size: 11px;
-  color: #7a7a72;
+  color: var(--muted);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   min-width: 56px;
   text-align: right;
@@ -656,11 +684,11 @@ watch(rateHz, async (v, old) => {
 .btn-wide { grid-column: 1 / -1; }
 .btn {
   height: 30px;
-  border: 1px solid #7a7a72;
+  border: 1px solid var(--muted);
   background: linear-gradient(#f6f5ee, #d6d4c5);
   font-size: 14px;
   font-weight: 600;
-  color: #2a2a2a;
+  color: var(--text);
   cursor: pointer;
   border-radius: 0;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7),
@@ -686,7 +714,7 @@ watch(rateHz, async (v, old) => {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  color: #888;
+  color: var(--muted);
 }
 
 /* Readout — same label grid as form rows so columns line up ---------- */
@@ -762,12 +790,12 @@ watch(rateHz, async (v, old) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #333;
+  color: var(--text);
 }
 .log-line.error { color: var(--err); }
 .log-time { color: var(--text-faint); margin-right: 8px; font-variant-numeric: tabular-nums; }
 .log-empty {
-  color: #aaa;
+  color: var(--muted);
   text-align: center;
   padding: 12px;
   font-style: italic;

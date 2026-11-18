@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '../simlab-ui/configInvoke'
 import { useI18n } from '../i18n'
 
 const props = defineProps<{
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(#eaeae0, #dcdcd0);
 }
 .upd-title { font-size: 14px; font-weight: 700; color: #1a1a1a; }
-.upd-subtitle { font-size: 12px; color: #555; margin-top: 3px; }
+.upd-subtitle { font-size: 12px; color: var(--secondary); margin-top: 3px; }
 .upd-badge {
   flex-shrink: 0;
   font-size: 12px;
@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   font-size: 12px;
   line-height: 1.6;
-  color: #333;
+  color: var(--text);
 }
 .upd-notes:focus-visible { outline: 2px solid #5a8ccc; outline-offset: -1px; }
 .upd-h {
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
   margin: 6px 0;
   padding: 4px 10px;
   border-left: 2px solid #b8b8b0;
-  color: #555;
+  color: var(--secondary);
 }
 .upd-hr { border: none; border-top: 1px solid #d0d0c8; margin: 10px 0; }
 .upd-error {
@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
   border-top: 1px solid #d0d0c8;
   background: linear-gradient(#e0e0d4, #d4d4c8);
 }
-.upd-footer-hint { font-size: 12px; color: #555; }
+.upd-footer-hint { font-size: 12px; color: var(--secondary); }
 .btn {
   padding: 6px 16px;
   border: 1px solid transparent;
@@ -327,6 +327,6 @@ onBeforeUnmount(() => {
 .btn-primary:hover { background: linear-gradient(#6a9cdc, #3c6aa9); }
 .btn-secondary { background: #d9e5f4; color: #1d4377; border-color: #8aa8cc; }
 .btn-secondary:hover { background: #e8f0f9; }
-.btn-ghost { background: #ebebe2; color: #333; border-color: #b8b8b0; }
+.btn-ghost { background: #ebebe2; color: var(--text); border-color: #b8b8b0; }
 .btn-ghost:hover { background: #f5f5ec; }
 </style>

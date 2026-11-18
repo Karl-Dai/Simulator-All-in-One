@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../simlab-ui/configInvoke";
 import type { PmuEvent } from "../types";
 import { useSessions } from "./useSessions";
 import { useCommLog } from "./useCommLog";

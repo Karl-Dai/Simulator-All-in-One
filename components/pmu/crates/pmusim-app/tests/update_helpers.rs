@@ -1,3 +1,4 @@
+#![cfg(not(feature = "simlab-suite"))]
 use chrono::{DateTime, Duration, Utc};
 use pmusim_app::update::{is_skipped, should_check};
 

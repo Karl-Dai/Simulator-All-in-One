@@ -1,13 +1,32 @@
-import { createApp } from "vue";
-import App from "./App.vue";
-import { usePmuEvents } from "./composables/usePmuEvents";
+import { installConfigurationClose } from './simlab-ui/configClose'
+import { installSuitePreferences } from './simlab-ui/configPreferences'
 
-// Tauri 2's `listen()` IPC needs the webview to be fully ready, which
-// only happens AFTER createApp().mount() — calling it earlier (top-level
-// `await listen()` or even synchronously here) deadlocks because the
-// webview message channel isn't yet plumbed. So we mount first, then
-// fire startListening(). Components that issue commands await
-// `listenerReady` from usePmuEvents to ensure the listener is attached
-// before the first invoke (otherwise handshake events drop on the floor).
-createApp(App).mount("#app");
-usePmuEvents().startListening();
+async function start() {
+  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+    const { listen } = await import('@tauri-apps/api/event')
+    const { invoke } = await import('./simlab-ui/configInvoke')
+    await installConfigurationClose(
+      requested => listen('saio-before-close', requested),
+      () => invoke('simlab_confirm_configuration_close'),
+      () => invoke('simlab_enable_configuration_close'),
+    )
+  }
+
+  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('pmu.master')
+  if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+    const { restoreDocuments } = await import('./suiteWorkspace')
+    await restoreDocuments('pmu.master')
+  }
+  await import('./bootstrap')
+}
+void start().catch(error => {
+  console.error('Application initialization failed', error)
+  const message = document.createElement('div')
+  message.setAttribute('role', 'alert')
+  message.textContent = String(error)
+  const retry = document.createElement('button')
+  retry.textContent = '重试 / Retry'
+  retry.onclick = () => window.location.reload()
+  message.append(retry)
+  document.body.append(message)
+})
