@@ -7,7 +7,7 @@ rust-version = "1.77.2"
 
 [features]
 default = []
-simlab-suite = ["iec104sim-core/simlab-suite"]
+simlab-suite = ["iec104sim-core/simlab-suite", "saio-shared/simlab-suite"]
 
 [lib]
 name = "iec104sim_app_lib"
@@ -17,6 +17,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
+saio-shared = { path = "../../../../storage/rust" }
 rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
 sha2 = "0.10"
 tempfile = "3"

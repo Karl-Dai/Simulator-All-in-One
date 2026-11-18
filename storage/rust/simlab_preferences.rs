@@ -1,6 +1,6 @@
 #[derive(Debug, serde::Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AppearanceV1 {
+pub struct AppearanceV1 {
     schema_version: u32,
     theme: String,
     language: String,
@@ -42,7 +42,7 @@ fn read_appearance(root: &std::path::Path) -> Result<AppearanceV1, String> {
 }
 
 #[tauri::command]
-pub(crate) fn simlab_appearance() -> Result<AppearanceV1, String> {
+pub fn simlab_appearance() -> Result<AppearanceV1, String> {
     if !cfg!(feature = "simlab-suite") {
         return Err("Appearance is managed by the standalone application".into());
     }
@@ -54,7 +54,7 @@ pub(crate) fn simlab_appearance() -> Result<AppearanceV1, String> {
 
 /// Legacy theme behavior remains unchanged for components not yet migrated.
 #[tauri::command]
-pub(crate) fn simlab_theme() -> Result<String, String> {
+pub fn simlab_theme() -> Result<String, String> {
     if !cfg!(feature = "simlab-suite") {
         return Err("Appearance is managed by the standalone application".into());
     }
@@ -73,7 +73,7 @@ mod appearance_tests {
 
     #[test]
     fn shared_file_contract_and_read_only_behavior() {
-        let cases: serde_json::Value = serde_json::from_str(include_str!("contracts/appearance-cases.json")).unwrap();
+        let cases: serde_json::Value = serde_json::from_str(include_str!("../../ui/contracts/appearance-cases.json")).unwrap();
         let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
         let root = std::env::temp_dir().join(format!("saio-appearance-{}-{unique}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();

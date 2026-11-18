@@ -2644,6 +2644,7 @@ dependencies = [
  "log",
  "pmusim-core",
  "rusqlite",
+ "saio-shared",
  "serde",
  "serde_json",
  "sha2",
@@ -2676,6 +2677,7 @@ dependencies = [
  "pmusim-app",
  "pmusim-core",
  "rusqlite",
+ "saio-shared",
  "serde",
  "serde_json",
  "sha2",
@@ -3283,6 +3285,19 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "saio-shared"
+version = "0.2.0"
+dependencies = [
+ "log",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tempfile",
+]
 
 [[package]]
 name = "same-file"

@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 const APPLICATION_ID: i64 = 1396787535;
-const SCHEMA: &str = include_str!("config_schema.sql");
+const SCHEMA: &str = include_str!("../go/schema.sql");
 const CONFLICT: &str = "configuration changed in another window; reload before saving";
 #[derive(Clone, PartialEq)]
 struct Cell {

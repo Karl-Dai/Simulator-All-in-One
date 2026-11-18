@@ -6,8 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{Manager, State};
-#[path = "config_store.rs"]
-mod config_store;
+use saio_shared::config_store;
 
 #[derive(Clone)]
 pub struct SuiteStorage {

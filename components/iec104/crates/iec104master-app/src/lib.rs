@@ -1,16 +1,13 @@
 mod commands;
 #[cfg(feature = "simlab-suite")]
-#[path = "../../shared/config_close.rs"]
-mod config_close;
+use saio_shared::config_close;
 #[cfg(feature = "simlab-suite")]
-#[path = "../../shared/config_store.rs"]
-mod config_store;
+use saio_shared::config_store;
 #[cfg(feature = "simlab-suite")]
 mod suite_storage;
 
 pub mod reconnect;
-#[path = "../../shared/simlab_preferences.rs"]
-mod simlab_preferences;
+use saio_shared::simlab_preferences;
 mod state;
 #[path = "../../shared/suite.rs"]
 mod suite;

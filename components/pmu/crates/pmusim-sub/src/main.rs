@@ -1,15 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 #[cfg(feature = "simlab-suite")]
-#[path = "../../shared/config_close.rs"]
-mod config_close;
+use saio_shared::config_close;
 
-#[path = "../../shared/simlab_preferences.rs"]
-mod simlab_preferences;
+use saio_shared::simlab_preferences;
 
 #[cfg(feature = "simlab-suite")]
-#[path = "../../shared/config_store.rs"]
-mod config_store;
+use saio_shared::config_store;
 
 #[cfg(feature = "simlab-suite")]
 use pmusim_sub::suite;

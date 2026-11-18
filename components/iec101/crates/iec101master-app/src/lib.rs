@@ -1,10 +1,7 @@
 mod commands;
-#[path = "../../shared/config_close.rs"]
-mod config_close;
-#[path = "../../shared/config_store.rs"]
-mod config_store;
-#[path = "../../shared/simlab_preferences.rs"]
-mod simlab_preferences;
+use saio_shared::config_close;
+use saio_shared::config_store;
+use saio_shared::simlab_preferences;
 mod state;
 mod suite_storage;
 #[path = "../../shared/suite.rs"]

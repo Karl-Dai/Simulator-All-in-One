@@ -12,6 +12,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
+saio-shared = { path = "../../../../storage/rust" }
 iec101-core = { path = "../iec101-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,4 +27,4 @@ log = "0.4"
 
 [features]
 default = []
-simlab-suite = []
+simlab-suite = ["saio-shared/simlab-suite"]
