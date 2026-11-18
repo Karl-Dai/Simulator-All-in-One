@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
+	"github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"github.com/Karl-Dai/ModbusSim/go/internal/masterstate"
 	"os"
 	"path/filepath"

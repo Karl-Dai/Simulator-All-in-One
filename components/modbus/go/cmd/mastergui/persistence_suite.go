@@ -5,7 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
+	"github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"github.com/Karl-Dai/ModbusSim/go/internal/project"
 	"github.com/Karl-Dai/ModbusSim/go/internal/suitehost"
 	"io"

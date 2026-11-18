@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Karl-Dai/ModbusSim/go/internal/appstate"
-	"github.com/Karl-Dai/ModbusSim/go/internal/configstore"
+	"github.com/Karl-Dai/Simulator-All-in-One/storage/go"
 	"github.com/Karl-Dai/ModbusSim/go/internal/project"
 	"path/filepath"
 	"testing"
