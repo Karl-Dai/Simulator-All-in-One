@@ -11,10 +11,12 @@ import (
 var Version = "0.17.9"
 
 type App struct {
-	mu      sync.RWMutex
-	ctx     context.Context
-	manager *masterstate.Manager
-	emit    func(string, any)
+	closeState configurationClose
+	config     configurationState
+	mu         sync.RWMutex
+	ctx        context.Context
+	manager    *masterstate.Manager
+	emit       func(string, any)
 }
 
 func newApp() *App {
@@ -30,28 +32,42 @@ func newApp() *App {
 	a.manager = masterstate.NewManager(masterstate.Events{Emit: func(name string, payload any) { a.emit(name, payload) }})
 	return a
 }
-func (a *App) startup(ctx context.Context) { a.mu.Lock(); a.ctx = ctx; a.mu.Unlock() }
-func (a *App) shutdown(context.Context)    { a.manager.CloseAll() }
-func (a *App) GetVersion() string          { return Version }
+func (a *App) startup(ctx context.Context) {
+	a.mu.Lock()
+	a.ctx = ctx
+	a.mu.Unlock()
+	a.initializePersistence()
+}
+func (a *App) shutdown(context.Context) {
+	a.config.mu.Lock()
+	defer a.config.mu.Unlock()
+	a.manager.CloseAll()
+	if a.config.store != nil {
+		_ = a.config.store.Close()
+	}
+}
+func (a *App) GetVersion() string { return Version }
 func (a *App) CreateConnection(s masterstate.Settings) (masterstate.ConnectionInfo, error) {
-	return a.manager.CreateConnection(s)
+	return changeValue(a, []string{}, func() (masterstate.ConnectionInfo, error) { return a.manager.CreateConnection(s) })
 }
 func (a *App) UpdateConnection(id string, s masterstate.Settings) error {
-	return a.manager.UpdateConnection(id, s)
+	return a.change([]string{id}, func() error { return a.manager.UpdateConnection(id, s) })
 }
 func (a *App) GetSettings(id string) (masterstate.Settings, error) { return a.manager.GetSettings(id) }
 func (a *App) ListConnections() []masterstate.ConnectionInfo       { return a.manager.ListConnections() }
 func (a *App) Connect(id string) error                             { return a.manager.Connect(id) }
 func (a *App) Disconnect(id string) error                          { return a.manager.Disconnect(id) }
-func (a *App) DeleteConnection(id string) error                    { return a.manager.DeleteConnection(id) }
+func (a *App) DeleteConnection(id string) error {
+	return a.change([]string{id}, func() error { return a.manager.DeleteConnection(id) })
+}
 func (a *App) AddScanGroup(id string, g masterstate.ScanGroup) (masterstate.ScanGroup, error) {
-	return a.manager.AddScanGroup(id, g)
+	return changeValue(a, []string{id}, func() (masterstate.ScanGroup, error) { return a.manager.AddScanGroup(id, g) })
 }
 func (a *App) UpdateScanGroup(id string, g masterstate.ScanGroup) error {
-	return a.manager.UpdateScanGroup(id, g)
+	return a.change([]string{id}, func() error { return a.manager.UpdateScanGroup(id, g) })
 }
 func (a *App) RemoveScanGroup(id, groupID string) error {
-	return a.manager.RemoveScanGroup(id, groupID)
+	return a.change([]string{id}, func() error { return a.manager.RemoveScanGroup(id, groupID) })
 }
 func (a *App) ListScanGroups(id string) ([]masterstate.ScanGroup, error) {
 	return a.manager.ListScanGroups(id)
@@ -88,8 +104,8 @@ func (a *App) CancelScan(id, kind string) error               { return a.manager
 func (a *App) Logs(id string) ([]masterstate.LogEntry, error) { return a.manager.Logs(id) }
 func (a *App) ClearLogs(id string) error                      { return a.manager.ClearLogs(id) }
 func (a *App) ExportLogsCSV(id string) (string, error)        { return a.manager.ExportLogsCSV(id) }
-func (a *App) LoadProject(path string) (int, error)           { return a.manager.LoadProject(path) }
-func (a *App) SaveProject(path string) error                  { return a.manager.SaveProject(path) }
+func (a *App) LoadProject(path string) (int, error)           { return a.readProject(path) }
+func (a *App) SaveProject(path string) error                  { return a.writeProject(path) }
 func (a *App) ListSerialPorts() ([]string, error)             { return serial.ListPorts() }
 
 func (a *App) RefreshScanGroup(id, groupID string) (masterstate.ReadResult, error) {

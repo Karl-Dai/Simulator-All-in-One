@@ -9,6 +9,7 @@ const { t, locale } = useI18n()
 
 const REPO_URL = 'https://github.com/Karl-Dai/ModbusSim'
 const version = ref('')
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
 const showPanel = ref(false)
 onMounted(async () => {
   try { version.value = await desktop?.getVersion() ?? '' } catch { version.value = '' }
@@ -22,7 +23,7 @@ function openRepo() {
 
 <template>
   <div class="version-badge">
-    <span v-if="version" class="version-text" :title="`v${version}`">v{{ version }}</span>
+    <span v-if="version" class="version-text" :title="`${suiteBuild ? 'SAIO ' : ''}v${version}`">{{ suiteBuild ? 'SAIO ' : '' }}v{{ version }}</span>
     <button
       type="button"
       class="github-link"
@@ -56,8 +57,9 @@ function openRepo() {
     <template v-if="showPanel">
       <div class="about-backdrop" @click="showPanel = false"></div>
       <div class="about-panel" role="dialog" :aria-label="t('about.title')">
-        <div class="about-title">ModbusSim<span v-if="version"> v{{ version }}</span></div>
-        <ul class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
+        <div class="about-title">ModbusSim<span v-if="version"> {{ suiteBuild ? 'SAIO ' : '' }}v{{ version }}</span></div>
+        <p v-if="suiteBuild">{{ locale === 'zh-CN' ? '随 SAIO 统一更新。' : 'Updates are delivered with SAIO.' }}</p>
+        <ul v-else class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
       </div>
     </template>
   </div>

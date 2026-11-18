@@ -146,3 +146,49 @@ export function float32ToU16Pair(value: number, byteOrder: ByteOrder): [number, 
   }
   return map[byteOrder]
 }
+
+export type RegisterWriteType = 'raw' | 'uint16' | 'int16' | 'uint32' | 'int32' | 'uint64' | 'int64' | 'float32' | 'float64'
+
+export function registerWriteWidth(type: RegisterWriteType): number {
+  if (type.endsWith('64')) return 4
+  if (type.endsWith('32')) return 2
+  return 1
+}
+
+/** Letters describe the transmitted byte sequence of one value, high byte first. */
+export function registerWriteOrders(type: RegisterWriteType): string[] {
+  const width = registerWriteWidth(type)
+  if (width === 1) return ['AB', 'BA']
+  if (width === 2) return ['ABCD', 'CDAB', 'BADC', 'DCBA']
+  return ['ABCDEFGH', 'GHEFCDAB', 'BADCFEHG', 'HGFEDCBA']
+}
+
+/** Parse text before encoding so 64-bit integers never pass through Number. */
+export function encodeRegisterWrite(input: string, type: RegisterWriteType, order: string): number[] {
+  if (!registerWriteOrders(type).includes(order)) throw new Error('Invalid byte order')
+  const text = input.trim()
+  const width = registerWriteWidth(type)
+  const view = new DataView(new ArrayBuffer(width * 2))
+  if (type === 'float32' || type === 'float64') {
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) throw new Error('Invalid float')
+    const value = Number(text)
+    if (!Number.isFinite(value)) throw new Error('Float overflow')
+    if (type === 'float32') {
+      if (!Number.isFinite(Math.fround(value))) throw new Error('Float32 overflow')
+      view.setFloat32(0, value)
+    } else view.setFloat64(0, value)
+  } else {
+    if (!/^(?:[+-]?\d+|0x[\da-f]+)$/i.test(text)) throw new Error('Invalid integer')
+    const value = BigInt(text)
+    const bits = BigInt(width * 16)
+    const signed = type.startsWith('int')
+    const min = signed ? -(1n << (bits - 1n)) : 0n
+    const max = signed ? (1n << (bits - 1n)) - 1n : (1n << bits) - 1n
+    if (value < min || value > max) throw new Error('Integer out of range')
+    if (width === 4) view.setBigUint64(0, BigInt.asUintN(64, value))
+    else if (width === 2) view.setUint32(0, Number(BigInt.asUintN(32, value)))
+    else view.setUint16(0, Number(BigInt.asUintN(16, value)))
+  }
+  const bytes = [...order].map(letter => view.getUint8(letter.charCodeAt(0) - 65))
+  return Array.from({ length: width }, (_, index) => bytes[index * 2]! * 256 + bytes[index * 2 + 1]!)
+}

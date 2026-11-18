@@ -23,9 +23,11 @@ var Version = "0.17.9"
 
 // App binds native Go DTOs to the desktop; the Manager owns all protocol state.
 type App struct {
-	ctx     context.Context
-	manager *appstate.Manager
-	emit    func(string, interface{})
+	closeState configurationClose
+	config     configurationState
+	ctx        context.Context
+	manager    *appstate.Manager
+	emit       func(string, interface{})
 }
 
 type RegisterChange struct {
@@ -112,14 +114,21 @@ func newApp() *App {
 	return a
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
-func (a *App) shutdown(context.Context)    { a.manager.CloseAll() }
-func (a *App) GetVersion() string          { return Version }
+func (a *App) startup(ctx context.Context) { a.ctx = ctx; a.initializePersistence() }
+func (a *App) shutdown(context.Context) {
+	a.config.mu.Lock()
+	defer a.config.mu.Unlock()
+	a.manager.CloseAll()
+	if a.config.store != nil {
+		_ = a.config.store.Close()
+	}
+}
+func (a *App) GetVersion() string { return Version }
 func (a *App) CreateConnection(req appstate.CreateConnectionRequest) (ConnectionInfo, error) {
 	if err := appstate.ValidateTransport(req.Transport); err != nil {
 		return ConnectionInfo{}, err
 	}
-	info, err := a.manager.CreateConnection(req)
+	info, err := changeValue(a, []string{}, func() (appstate.ConnectionInfo, error) { return a.manager.CreateConnection(req) })
 	return connectionInfo(info), err
 }
 func connectionInfo(info appstate.ConnectionInfo) ConnectionInfo {
@@ -139,21 +148,23 @@ func (a *App) ListConnections() []ConnectionInfo {
 	}
 	return out
 }
-func (a *App) StartConnection(id string) error                   { return a.manager.StartConnection(id) }
-func (a *App) StopConnection(id string) error                    { return a.manager.StopConnection(id) }
-func (a *App) DeleteConnection(id string) error                  { return a.manager.DeleteConnection(id) }
+func (a *App) StartConnection(id string) error { return a.manager.StartConnection(id) }
+func (a *App) StopConnection(id string) error  { return a.manager.StopConnection(id) }
+func (a *App) DeleteConnection(id string) error {
+	return a.change([]string{id}, func() error { return a.manager.DeleteConnection(id) })
+}
 func (a *App) GetTransport(id string) (project.Transport, error) { return a.manager.GetTransport(id) }
 func (a *App) UpdateTransport(id string, transport project.Transport) error {
-	return a.manager.UpdateTransport(id, transport)
+	return a.change([]string{id}, func() error { return a.manager.UpdateTransport(id, transport) })
 }
 func (a *App) AddDevice(req appstate.AddDeviceRequest) (appstate.DeviceInfo, error) {
-	return a.manager.AddDevice(req)
+	return changeValue(a, []string{req.ConnectionID}, func() (appstate.DeviceInfo, error) { return a.manager.AddDevice(req) })
 }
 func (a *App) UpdateDevice(req appstate.UpdateDeviceRequest) (appstate.DeviceInfo, error) {
-	return a.manager.UpdateDevice(req)
+	return changeValue(a, []string{req.ConnectionID}, func() (appstate.DeviceInfo, error) { return a.manager.UpdateDevice(req) })
 }
 func (a *App) RemoveDevice(id string, slaveID uint8) error {
-	return a.manager.RemoveDevice(id, slaveID)
+	return a.change([]string{id}, func() error { return a.manager.RemoveDevice(id, slaveID) })
 }
 func (a *App) ListDevices(id string) ([]appstate.DeviceInfo, error) {
 	rows, err := a.manager.ListDevices(id)
@@ -162,12 +173,14 @@ func (a *App) ListDevices(id string) ([]appstate.DeviceInfo, error) {
 	}
 	return rows, err
 }
-func (a *App) AddRegister(req appstate.AddRegisterRequest) error { return a.manager.AddRegister(req) }
+func (a *App) AddRegister(req appstate.AddRegisterRequest) error {
+	return a.change([]string{req.ConnectionID}, func() error { return a.manager.AddRegister(req) })
+}
 func (a *App) UpdateRegister(req appstate.UpdateRegisterRequest) error {
-	return a.manager.UpdateRegister(req)
+	return a.change([]string{req.ConnectionID}, func() error { return a.manager.UpdateRegister(req) })
 }
 func (a *App) RemoveRegister(id string, slaveID uint8, address uint16, area string) error {
-	return a.manager.RemoveRegister(id, slaveID, address, area)
+	return a.change([]string{id}, func() error { return a.manager.RemoveRegister(id, slaveID, address, area) })
 }
 func (a *App) ListRegisters(id string, slaveID uint8, area string) ([]Point, error) {
 	points, err := a.manager.ListPoints(id, slaveID, area)
@@ -188,19 +201,21 @@ func (a *App) ReadRegistersBulk(id string, slaveID uint8, area string) ([]appsta
 	return rows, err
 }
 func (a *App) WriteRegister(req appstate.WriteRegisterRequest) error {
-	return a.manager.WriteRegister(req)
+	return a.change([]string{req.ConnectionID}, func() error { return a.manager.WriteRegister(req) })
 }
 func (a *App) ImportRegisters(req appstate.ImportRegistersRequest) (int, error) {
-	return a.manager.ImportRegisters(req)
+	return changeValue(a, []string{req.ConnectionID}, func() (int, error) { return a.manager.ImportRegisters(req) })
 }
 func (a *App) ExportRegisters(id string, slaveID uint8) (string, error) {
 	return a.manager.ExportRegisters(id, slaveID)
 }
 func (a *App) SetPointMutation(req SetPointMutationRequest) error {
-	return a.manager.SetPointMutation(appstate.SetPointMutationRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Config: req.Config.ToEngine()})
+	return a.change([]string{req.ConnectionID}, func() error {
+		return a.manager.SetPointMutation(appstate.SetPointMutationRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Config: req.Config.ToEngine()})
+	})
 }
 func (a *App) ClearPointMutation(id string, slaveID uint8, area string, address uint16) error {
-	return a.manager.ClearPointMutation(id, slaveID, area, address)
+	return a.change([]string{id}, func() error { return a.manager.ClearPointMutation(id, slaveID, area, address) })
 }
 func (a *App) ListPointMutations(id string, slaveID uint8) ([]appstate.PointMutationInfo, error) {
 	rows, err := a.manager.ListPointMutations(id, slaveID)
@@ -212,10 +227,12 @@ func (a *App) ListPointMutations(id string, slaveID uint8) ([]appstate.PointMuta
 func (a *App) SetMutationRunning(running bool) { a.manager.SetMutationRunning(running) }
 func (a *App) MutationRunning() bool           { return a.manager.MutationRunning() }
 func (a *App) SetDataSource(req SetDataSourceRequest) error {
-	return a.manager.SetDataSource(appstate.SetDataSourceRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Source: req.Source.ToEngine(), UpdateIntervalMS: req.UpdateIntervalMS})
+	return a.change([]string{req.ConnectionID}, func() error {
+		return a.manager.SetDataSource(appstate.SetDataSourceRequest{ConnectionID: req.ConnectionID, SlaveID: req.SlaveID, RegisterType: req.RegisterType, Address: req.Address, Source: req.Source.ToEngine(), UpdateIntervalMS: req.UpdateIntervalMS})
+	})
 }
 func (a *App) RemoveDataSource(id string, slaveID uint8, area string, address uint16) error {
-	return a.manager.RemoveDataSource(id, slaveID, area, address)
+	return a.change([]string{id}, func() error { return a.manager.RemoveDataSource(id, slaveID, area, address) })
 }
 func (a *App) Logs(id string) ([]LogEntry, error) {
 	rows, err := a.manager.Logs(id)
@@ -227,8 +244,8 @@ func (a *App) Logs(id string) ([]LogEntry, error) {
 }
 func (a *App) ClearLogs(id string) error               { return a.manager.ClearLogs(id) }
 func (a *App) ExportLogsCSV(id string) (string, error) { return a.manager.ExportLogsCSV(id) }
-func (a *App) LoadProject(path string) (int, error)    { return a.manager.LoadProject(path) }
-func (a *App) SaveProject(path string) error           { return a.manager.SaveProject(path) }
+func (a *App) LoadProject(path string) (int, error)    { return a.readProject(path) }
+func (a *App) SaveProject(path string) error           { return a.writeProject(path) }
 func (a *App) ListSerialPorts() ([]string, error)      { return serial.ListPorts() }
 func (a *App) InspectModbusFrame(data, transport, direction, lang string) (string, error) {
 	return explain.Explain(data, transport, direction, explain.LangFromCode(lang))

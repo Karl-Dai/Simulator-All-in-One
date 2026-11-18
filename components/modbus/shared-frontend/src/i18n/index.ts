@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { detectInitialLocale, storeLocale } from './detect'
 import zhCN, { type Messages } from './locales/zh-CN'
 import enUS from './locales/en-US'
@@ -12,6 +12,7 @@ const dictionaries: Record<Locale, Messages> = {
 }
 
 const locale = ref<Locale>(detectInitialLocale())
+const languageManaged = ref(false)
 
 function lookup(dict: Messages, key: string): string | null {
   const parts = key.split('.')
@@ -42,8 +43,15 @@ function translate(key: string, params?: Record<string, string | number>): strin
 }
 
 function setLocale(next: Locale): void {
+  if (languageManaged.value) return
   locale.value = next
   storeLocale(next)
+}
+
+function setEffectiveLocale(next: Locale | null): void {
+  if (next !== null && next !== 'zh-CN' && next !== 'en-US') return
+  languageManaged.value = next !== null
+  locale.value = next ?? detectInitialLocale()
 }
 
 export function useI18n() {
@@ -51,5 +59,7 @@ export function useI18n() {
     t: translate,
     locale,
     setLocale,
+    setEffectiveLocale,
+    languageManaged: readonly(languageManaged),
   }
 }

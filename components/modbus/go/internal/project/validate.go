@@ -14,11 +14,20 @@ import (
 // device point definitions and their generated-value sources, scan groups, and
 // the request/reconnect/proxy limits.
 func (p *Project) Validate() error {
+	if p == nil {
+		return fmt.Errorf("project is missing")
+	}
+	if p.Version != CurrentVersion {
+		return fmt.Errorf("unsupported project version: %d", p.Version)
+	}
 	if p.Type != TypeSlave && p.Type != TypeMaster {
 		return fmt.Errorf("project type must be slave or master")
 	}
 	seen := map[string]bool{}
 	for i, conn := range p.Connections {
+		if conn == nil {
+			return fmt.Errorf("connection %d is null", i)
+		}
 		if err := conn.Validate(); err != nil {
 			return fmt.Errorf("connection %d: %w", i, err)
 		}
@@ -50,6 +59,13 @@ func (c *Connection) Validate() error {
 			return fmt.Errorf("serial port is required for the %s transport", c.Transport.Type)
 		}
 	}
+	if c.Transport.Type == TransportTCPTLS && c.Transport.TLS != nil {
+		switch c.Transport.TLS.Version {
+		case "", "auto", "1.2", "1.3":
+		default:
+			return fmt.Errorf("unsupported TLS version %q", c.Transport.TLS.Version)
+		}
+	}
 	if c.Transport.Type == TransportTCPTLS && c.Transport.ServerTLS != nil {
 		if err := validateServerTLS(*c.Transport.ServerTLS); err != nil {
 			return err
@@ -77,12 +93,23 @@ func (c *Connection) Validate() error {
 			return fmt.Errorf("SOCKS5 username and password must either both be set or both be empty")
 		}
 	}
+	seenDevices := map[uint8]bool{}
 	for _, dev := range c.Devices {
+		if dev == nil {
+			return fmt.Errorf("device is null")
+		}
+		if seenDevices[dev.SlaveID] {
+			return fmt.Errorf("duplicate slave ID %d", dev.SlaveID)
+		}
+		seenDevices[dev.SlaveID] = true
 		if err := dev.Validate(); err != nil {
 			return err
 		}
 	}
 	for _, group := range c.ScanGroups {
+		if group == nil {
+			return fmt.Errorf("scan group is null")
+		}
 		if err := group.Validate(); err != nil {
 			return err
 		}
@@ -97,6 +124,9 @@ func (d *Device) Validate() error {
 	}
 	defs := make([]register.RegisterDef, 0, len(d.Points))
 	for _, pt := range d.Points {
+		if pt == nil {
+			return fmt.Errorf("point definition is null")
+		}
 		defs = append(defs, pt.ToDef())
 		if pt.Mutation != nil && pt.Mutation.Enabled && pt.DataSource != nil {
 			return fmt.Errorf("register %s@%d cannot use mutation and a data source simultaneously",

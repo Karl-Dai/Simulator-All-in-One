@@ -2,7 +2,7 @@
 import { useI18n } from 'shared-frontend'
 import type { Locale } from 'shared-frontend'
 
-const { locale, setLocale } = useI18n()
+const { t, locale, setLocale, languageManaged } = useI18n()
 
 function pick(next: Locale) {
   if (locale.value !== next) setLocale(next)
@@ -15,16 +15,19 @@ function pick(next: Locale) {
       type="button"
       class="lang-toggle-btn"
       :class="{ active: locale === 'zh-CN' }"
-      title="切换到中文"
+      :title="languageManaged ? t('suiteAppearance.managed') : '切换到中文'"
+      :disabled="languageManaged"
       @click="pick('zh-CN')"
     >中</button>
     <button
       type="button"
       class="lang-toggle-btn"
       :class="{ active: locale === 'en-US' }"
-      title="Switch to English"
+      :title="languageManaged ? t('suiteAppearance.managed') : 'Switch to English'"
+      :disabled="languageManaged"
       @click="pick('en-US')"
     >EN</button>
+    <span v-if="languageManaged" class="managed-label">{{ t('suiteAppearance.managed') }}</span>
   </div>
 </template>
 
@@ -59,4 +62,6 @@ function pick(next: Locale) {
   color: var(--c-selection-text);
   font-weight: 600;
 }
+.managed-label { align-self: center; padding-inline: 5px; font-size: 11px; white-space: nowrap; }
+button:disabled { cursor: default; }
 </style>

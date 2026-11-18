@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-func (m *Manager) SaveProject(path string) error {
+func (m *Manager) Project() (*project.Project, error) {
 	m.workspace.Lock()
 	defer m.workspace.Unlock()
 	m.mu.Lock()
 	if m.closed {
 		m.mu.Unlock()
-		return fmt.Errorf("workspace closed")
+		return nil, fmt.Errorf("workspace closed")
 	}
 	list := []*connection{}
 	for _, id := range m.order {
@@ -30,21 +30,36 @@ func (m *Manager) SaveProject(path string) error {
 		for _, g := range groups {
 			f, err := readFunction(g.Function)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			sid := s.SlaveID
 			if g.SlaveID != nil {
 				sid = *g.SlaveID
 			}
-			pg = append(pg, &project.ScanGroup{ID: g.ID, Name: g.Name, SlaveID: sid, FunctionCode: f.FCByte(), StartAddress: g.StartAddress, Count: g.Quantity, IntervalMS: g.IntervalMS, Enabled: g.Enabled})
+			pg = append(pg, &project.ScanGroup{UseDefaultSlaveID: g.SlaveID == nil, ID: g.ID, Name: g.Name, SlaveID: sid, FunctionCode: f.FCByte(), StartAddress: g.StartAddress, Count: g.Quantity, IntervalMS: g.IntervalMS, Enabled: g.Enabled})
 		}
 		p.Connections = append(p.Connections, s.project(c.id, pg))
+	}
+	return p, nil
+}
+func (m *Manager) SaveProject(path string) error {
+	p, err := m.Project()
+	if err != nil {
+		return err
 	}
 	return project.SaveFile(path, p)
 }
 func (m *Manager) LoadProject(path string) (int, error) {
 	p, err := project.LoadFile(path)
 	if err != nil {
+		return 0, err
+	}
+	return m.ApplyProject(p)
+}
+
+// ApplyProject restores configurations stopped; it never reconnects or starts polling.
+func (m *Manager) ApplyProject(p *project.Project) (int, error) {
+	if err := p.Validate(); err != nil {
 		return 0, err
 	}
 	if p.Type != project.TypeMaster {
@@ -86,6 +101,9 @@ func (m *Manager) LoadProject(path string) (int, error) {
 			}
 			sid := pg.SlaveID
 			g := ScanGroup{ID: gid, Name: pg.Name, Function: fn, StartAddress: pg.StartAddress, Quantity: pg.Count, IntervalMS: pg.IntervalMS, Enabled: pg.Enabled, SlaveID: &sid}
+			if pg.UseDefaultSlaveID {
+				g.SlaveID = nil
+			}
 			if _, err := g.engine(); err != nil {
 				return 0, err
 			}
@@ -124,4 +142,56 @@ func (m *Manager) LoadProject(path string) (int, error) {
 	m.replacing = false
 	m.mu.Unlock()
 	return total, nil
+}
+
+// RestoreConnections rolls back only configuration targets. Other connections
+// retain their engines, polling tasks and logs. Restored targets stay stopped.
+func (m *Manager) RestoreConnections(p *project.Project, ids []string) error {
+	staged := NewManager(Events{})
+	if _, err := staged.ApplyProject(p); err != nil {
+		return err
+	}
+	selected := map[string]bool{}
+	for _, id := range ids {
+		selected[id] = true
+	}
+	m.workspace.Lock()
+	defer m.workspace.Unlock()
+	m.mu.Lock()
+	old := []*connection{}
+	for id := range selected {
+		if c := m.connections[id]; c != nil {
+			old = append(old, c)
+		}
+	}
+	m.mu.Unlock()
+	for _, c := range old {
+		c.cancel()
+		c.disconnect(true)
+	}
+	m.mu.Lock()
+	for id := range selected {
+		delete(m.connections, id)
+		if c := staged.connections[id]; c != nil {
+			c.owner = m
+			m.connections[id] = c
+		}
+	}
+	order := []string{}
+	for _, c := range p.Connections {
+		if m.connections[c.ID] != nil {
+			order = append(order, c.ID)
+		}
+	}
+	m.order = order
+	if staged.nextID > m.nextID {
+		m.nextID = staged.nextID
+	}
+	m.mu.Unlock()
+	for id := range selected {
+		if m.events.Emit != nil {
+			m.events.Emit("master-connection-state", ConnectionStateEvent{id, "Disconnected"})
+		}
+	}
+	return nil
 }

@@ -150,6 +150,7 @@ func DefaultSerialConfig() *SerialConfig {
 
 // ClientTLS mirrors transport.rs's TlsConfig (master connects as a client).
 type ClientTLS struct {
+	Version            string `json:"Version,omitempty"`
 	Enabled            bool
 	CAFile             string `json:"CAFile,omitempty"`
 	CertFile           string `json:"CertFile,omitempty"`
@@ -157,6 +158,7 @@ type ClientTLS struct {
 	PKCS12File         string `json:"PKCS12File,omitempty"`
 	PKCS12Password     string `json:"PKCS12Password,omitempty"`
 	AcceptInvalidCerts bool   `json:"AcceptInvalidCerts,omitempty"`
+	VerifyServerName   bool   `json:"VerifyServerName,omitempty"`
 }
 
 // ServerTLS mirrors transport.rs's SlaveTlsConfig (slave listens as a server).
@@ -258,14 +260,15 @@ type DataSource struct {
 
 // ScanGroup is a periodic read performed by a master project.
 type ScanGroup struct {
-	ID           string `json:"ID,omitempty"`
-	Name         string
-	SlaveID      uint8
-	FunctionCode uint8
-	StartAddress uint16
-	Count        uint16
-	IntervalMS   uint64
-	Enabled      bool
+	UseDefaultSlaveID bool   `json:"UseDefaultSlaveID,omitempty"`
+	ID                string `json:"ID,omitempty"`
+	Name              string
+	SlaveID           uint8
+	FunctionCode      uint8
+	StartAddress      uint16
+	Count             uint16
+	IntervalMS        uint64
+	Enabled           bool
 }
 
 // RequestSettings mirrors request.rs's RequestSettings.

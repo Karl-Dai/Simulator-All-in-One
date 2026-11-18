@@ -42,6 +42,7 @@ export namespace masterstate {
 	    Error?: string;
 	}
 	export interface RegisterScanRequest {
+	    SlaveID?: number;
 	    Function: string;
 	    StartAddress: number;
 	    EndAddress: number;
@@ -79,6 +80,7 @@ export namespace masterstate {
 export namespace project {
 
 	export interface ClientTLS {
+	    Version?: string;
 	    Enabled: boolean;
 	    CAFile?: string;
 	    CertFile?: string;
@@ -86,6 +88,7 @@ export namespace project {
 	    PKCS12File?: string;
 	    PKCS12Password?: string;
 	    AcceptInvalidCerts?: boolean;
+	    VerifyServerName?: boolean;
 	}
 	export interface ReconnectPolicy {
 	    Enabled: boolean;
@@ -128,6 +131,16 @@ export namespace project {
 	    Serial?: SerialConfig;
 	    TLS?: ClientTLS;
 	    ServerTLS?: ServerTLS;
+	}
+
+}
+
+export namespace suitehost {
+
+	export interface AppearanceV1 {
+	    schemaVersion: number;
+	    theme: string;
+	    language: string;
 	}
 
 }

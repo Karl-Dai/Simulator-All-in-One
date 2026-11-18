@@ -6,6 +6,7 @@ import { ModalShell, useI18n, RELEASE_HIGHLIGHTS } from 'shared-frontend'
 const emit = defineEmits<{ close: [] }>()
 const { t, locale } = useI18n()
 const version = ref('')
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
 const error = ref('')
 const busy = ref(false)
 onMounted(async () => {
@@ -18,9 +19,10 @@ async function openLink(path: string) {
 }
 </script>
 <template>
-  <ModalShell :title="t('toolbar.appTitleSlave')" :subtitle="version ? `v${version}` : '—'" :busy="busy" @close="emit('close')">
+  <ModalShell :title="t('toolbar.appTitleSlave')" :subtitle="version ? `${suiteBuild ? 'SAIO ' : ''}v${version}` : '—'" :busy="busy" @close="emit('close')">
     <p class="hint">{{ t('parity.aboutDescription') }}</p>
-    <ul class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
+    <p v-if="suiteBuild">{{ locale === 'zh-CN' ? '随 SAIO 统一更新。' : 'Updates are delivered with SAIO.' }}</p>
+    <ul v-else class="release-notes"><li v-for="note in RELEASE_HIGHLIGHTS[locale]" :key="note">{{ note }}</li></ul>
     <div class="links"><button @click="openLink(locale === 'zh-CN' ? '/blob/main/README_CN.md' : '/blob/main/README.md')">{{ t('parity.documentation') }}</button><button @click="openLink('/releases')">{{ t('parity.releases') }}</button><button @click="openLink('')">GitHub</button></div>
 <p v-if="error" class="error" role="alert">{{ error }}</p>
   </ModalShell>

@@ -36,8 +36,9 @@ type Transport struct {
 	Serial *serial.Config `json:"-"`
 }
 
-// TLSConfig mirrors Rust's TlsConfig (master side, transport.rs).
+// TLSConfig selects the master TLS identity and certificate verification policy.
 type TLSConfig struct {
+	Version            string `json:"version,omitempty"`
 	Enabled            bool   `json:"enabled"`
 	CAFile             string `json:"ca_file"`
 	CertFile           string `json:"cert_file"`
@@ -45,6 +46,9 @@ type TLSConfig struct {
 	PKCS12File         string `json:"pkcs12_file"`
 	PKCS12Password     string `json:"pkcs12_password"`
 	AcceptInvalidCerts bool   `json:"accept_invalid_certs"`
+	// VerifyServerName opts into matching the dial host against DNS/IP SANs.
+	// Its zero value retains chain verification without requiring a name match.
+	VerifyServerName bool `json:"verify_server_name"`
 }
 
 // Config is the master connection configuration (MasterConfig).
@@ -357,7 +361,17 @@ func (c *Connection) exchange(ctx context.Context, slaveID uint8, reqPDU []byte,
 	if c.log != nil {
 		c.log.AddRequest("tx", fc, txDetail)
 	}
-	resp, err := tr.exchange(slaveID, reqPDU, timeout)
+	var resp []byte
+	if contextual, ok := tr.(interface {
+		exchangeContext(context.Context, uint8, []byte, time.Duration) ([]byte, error)
+	}); ok {
+		resp, err = contextual.exchangeContext(ctx, slaveID, reqPDU, timeout)
+	} else {
+		resp, err = tr.exchange(slaveID, reqPDU, timeout)
+	}
+	if ctx.Err() != nil {
+		return nil, errCancelled()
+	}
 	if err != nil {
 		if c.log != nil {
 			c.log.AddRequest("rx", fc, fmt.Sprintf("ERR: %v", err))

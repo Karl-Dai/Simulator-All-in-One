@@ -1,17 +1,35 @@
 <script setup lang="ts">
-import { ref, provide, onMounted, onUnmounted } from 'vue'
+import StatusBadge from './simlab-ui/components/StatusBadge.vue'
+import ErrorNotice from './simlab-ui/components/ErrorNotice.vue'
+import { suiteAppearanceKey } from './suiteAppearance'
+import { ref, provide, inject, computed, onMounted, onUnmounted } from 'vue'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import Toolbar from './components/Toolbar.vue'
 import ConnectionTree from './components/ConnectionTree.vue'
 import DataTable from './components/DataTable.vue'
 import ValuePanel from './components/ValuePanel.vue'
 import LogPanel from './components/LogPanel.vue'
-import { AppDialog } from 'shared-frontend'
+import { AppDialog, useI18n } from 'shared-frontend'
 import type { ScanGroupInfo, RegisterValueDto } from './types'
+
+const { t } = useI18n()
 
 // Shared state
 const selectedConnectionId = ref<string | null>(null)
 const selectedConnectionState = ref<string>('Disconnected')
+const appearance = inject(suiteAppearanceKey, null)
+const connectionStatus = computed(() => {
+  const state = selectedConnectionState.value
+  const keys: Record<string, string> = {
+    Connected: 'connected', Disconnected: 'disconnected',
+    Connecting: 'connecting', Reconnecting: 'reconnecting',
+  }
+  return {
+    label: t(`suiteAppearance.${selectedConnectionId.value ? (keys[state] ?? 'unknown') : 'noConnection'}`, { state }),
+    tone: (selectedConnectionId.value && state === 'Connected' ? 'success' : 'neutral') as 'success' | 'neutral',
+    busy: !!selectedConnectionId.value && (state === 'Connecting' || state === 'Reconnecting'),
+  }
+})
 const selectedScanGroup = ref<ScanGroupInfo | null>(null)
 const selectedRegisters = ref<RegisterValueDto[]>([])
 const logExpanded = ref(false)
@@ -61,6 +79,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  appearance?.dispose()
   unlistenConnState?.()
   unlistenPollError?.()
 })
@@ -107,6 +126,15 @@ provide('workspaceReplaced', workspaceReplaced)
   <div :class="['app-layout', { 'log-expanded': logExpanded }]">
     <header class="toolbar-area">
       <Toolbar />
+      <div class="suite-foundation">
+        <StatusBadge :label="connectionStatus.label" :tone="connectionStatus.tone" :busy="connectionStatus.busy"
+          :aria-label="`${t('suiteAppearance.selectedConnection')}: ${connectionStatus.label}`" />
+        <ErrorNotice v-if="appearance?.visible.value"
+          :message="t('suiteAppearance.readFailed')" :details="t('suiteAppearance.repairHint')"
+          :details-label="t('suiteAppearance.details')" :close-label="t('suiteAppearance.close')"
+          :retry-label="t('suiteAppearance.retry')" :busy="appearance.busy.value"
+          @close="appearance.dismiss()" @retry="appearance.retry()" />
+      </div>
     </header>
 
     <aside class="tree-area">
@@ -133,6 +161,16 @@ provide('workspaceReplaced', workspaceReplaced)
 </template>
 
 <style>
+.suite-foundation {
+  --surface: var(--c-base);
+  --text: var(--c-text);
+  --muted: var(--c-subtext0);
+  --success: var(--c-green);
+  --warning: var(--c-yellow);
+  --danger: var(--c-red);
+  padding: 4px 12px;
+}
+.suite-foundation > .error-notice { margin-top: 6px; max-height: 180px; overflow: auto; }
 * {
   margin: 0;
   padding: 0;

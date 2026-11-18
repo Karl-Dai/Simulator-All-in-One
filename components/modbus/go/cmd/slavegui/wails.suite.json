@@ -1,0 +1,6 @@
+{
+  "build:tags": "simlab_suite",
+  "info": {
+    "comments": "SimLab embedded ModbusSlave"
+  }
+}

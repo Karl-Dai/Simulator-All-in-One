@@ -21,17 +21,25 @@ func main() {
 		log.Fatal(err)
 	}
 	app := newApp()
-	appMenu := menu.NewMenu()
+	// Native application/edit roles are only supported on macOS.
+	// Passing them to Windows produces an empty menu bar.
+	var appMenu *menu.Menu
 	if runtime.GOOS == "darwin" {
+		appMenu = menu.NewMenu()
 		appMenu.Append(menu.AppMenu())
+		appMenu.Append(menu.EditMenu())
 	}
-	appMenu.Append(menu.EditMenu())
-	if err := wails.Run(&options.App{
+	appOptions := &options.App{
 		Title: "ModbusSlave — Go", Width: 1280, Height: 800,
 		MinWidth: 900, MinHeight: 600, Menu: appMenu,
 		AssetServer: &assetserver.Options{Assets: frontend},
-		OnStartup:   app.startup, OnShutdown: app.shutdown, Bind: []interface{}{app},
-	}); err != nil {
+		OnStartup:   app.startup, OnShutdown: app.shutdown, OnBeforeClose: app.beforeClose,
+		Bind: []interface{}{app},
+	}
+	if err := configureSuite(appOptions); err != nil {
+		log.Fatal(err)
+	}
+	if err := wails.Run(appOptions); err != nil {
 		log.Fatal(err)
 	}
 }

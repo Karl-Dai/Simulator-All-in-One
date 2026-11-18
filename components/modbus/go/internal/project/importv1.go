@@ -148,6 +148,7 @@ type v1ClientTLS struct {
 	PKCS12File         string `json:"pkcs12_file"`
 	PKCS12Password     string `json:"pkcs12_password"`
 	AcceptInvalidCerts bool   `json:"accept_invalid_certs"`
+	VerifyServerName   bool   `json:"verify_server_name"`
 }
 
 // v1ServerTLS is transport.rs:55-63.
@@ -282,6 +283,7 @@ func importTransport(raw json.RawMessage) (*Transport, error) {
 				PKCS12File:         body.ClientTLS.PKCS12File,
 				PKCS12Password:     body.ClientTLS.PKCS12Password,
 				AcceptInvalidCerts: body.ClientTLS.AcceptInvalidCerts,
+				VerifyServerName:   body.ClientTLS.VerifyServerName,
 			}
 		}
 		if body.ServerTLS != nil {

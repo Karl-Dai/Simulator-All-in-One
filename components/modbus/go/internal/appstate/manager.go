@@ -38,6 +38,8 @@ type CreateConnectionRequest struct {
 	InitMode  string
 	SlaveID   uint8
 	Name      string
+	// A non-nil slice selects explicit ranges; an empty slice creates no points.
+	RegisterRanges []RegisterRange
 }
 
 // CreateConnection registers a stopped connection with one default device, as
@@ -46,6 +48,10 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
 	if req.SlaveID < 1 || req.SlaveID > 247 {
 		return ConnectionInfo{}, errors.New("slave_id must be between 1 and 247")
 	}
+	device, err := createDevice(req.SlaveID, req.Name, req.InitMode, req.RegisterRanges, true)
+	if err != nil {
+		return ConnectionInfo{}, err
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -53,12 +59,6 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
 	m.nextID++
 
 	conn := m.newConnection(id, req.Transport)
-	var device *slave.Device
-	if req.InitMode == "random" {
-		device = slave.WithRandomRegisters(req.SlaveID, req.Name, defaultMaxAddress)
-	} else {
-		device = slave.WithDefaultRegisters(req.SlaveID, req.Name, defaultMaxAddress)
-	}
 	if err := conn.server.AddDevice(device); err != nil {
 		return ConnectionInfo{}, fmt.Errorf("failed to add default device: %w", err)
 	}
@@ -72,6 +72,13 @@ func (m *Manager) CreateConnection(req CreateConnectionRequest) (ConnectionInfo,
 // transport is running: data sources keep advancing registers on a stopped
 // connection, which is what the app-global Rust tick tasks do.
 func (m *Manager) newConnection(id string, t Transport) *connection {
+	conn := m.buildConnection(id, t)
+	conn.simulator.Start()
+	return conn
+}
+
+// buildConnection prepares configuration without starting simulation or networking.
+func (m *Manager) buildConnection(id string, t Transport) *connection {
 	collector := logcol.NewCollector()
 	server := slave.NewServer()
 	server.Log = collector
@@ -89,7 +96,6 @@ func (m *Manager) newConnection(id string, t Transport) *connection {
 	server.ChangeCallback = func(changes []slave.Change) { m.events.registerValueChanged(id, changes) }
 	collector.SetAppendCallback(func(logcol.Entry) { m.events.logAppended(id) })
 	conn.simulator.SetMutationEnabled(m.mutationR)
-	conn.simulator.Start()
 	return conn
 }
 
@@ -260,13 +266,14 @@ type DeviceInfo struct {
 	RegisterCount int
 }
 
-// AddDeviceRequest is add_slave_device's input. InitMode selects the seeded
-// register set: "random", "zero", or anything else for an empty device.
+// AddDeviceRequest configures initial points and values for one new device.
+// Nil RegisterRanges preserves legacy IPC behavior; [] explicitly creates no points.
 type AddDeviceRequest struct {
-	ConnectionID string
-	SlaveID      uint8
-	Name         string
-	InitMode     string
+	ConnectionID   string
+	SlaveID        uint8
+	Name           string
+	InitMode       string
+	RegisterRanges []RegisterRange
 }
 
 // AddDevice registers a device on a connection.
@@ -281,14 +288,9 @@ func (m *Manager) AddDevice(req AddDeviceRequest) (DeviceInfo, error) {
 		return DeviceInfo{}, err
 	}
 
-	var device *slave.Device
-	switch req.InitMode {
-	case "random":
-		device = slave.WithRandomRegisters(req.SlaveID, req.Name, defaultMaxAddress)
-	case "zero":
-		device = slave.WithDefaultRegisters(req.SlaveID, req.Name, defaultMaxAddress)
-	default:
-		device = slave.NewDevice(req.SlaveID, req.Name)
+	device, err := createDevice(req.SlaveID, req.Name, req.InitMode, req.RegisterRanges, false)
+	if err != nil {
+		return DeviceInfo{}, err
 	}
 	count := len(device.RegisterDefs)
 	if err := conn.server.AddDevice(device); err != nil {

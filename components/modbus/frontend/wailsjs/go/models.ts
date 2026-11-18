@@ -1,10 +1,18 @@
 export namespace appstate {
 
+	export interface RegisterRange {
+	    RegisterType: string;
+	    StartAddress: number;
+	    EndAddress: number;
+	    DataType: string;
+	    Endian: string;
+	}
 	export interface AddDeviceRequest {
 	    ConnectionID: string;
 	    SlaveID: number;
 	    Name: string;
 	    InitMode: string;
+	    RegisterRanges: RegisterRange[];
 	}
 	export interface AddRegisterRequest {
 	    ConnectionID: string;
@@ -21,6 +29,7 @@ export namespace appstate {
 	    InitMode: string;
 	    SlaveID: number;
 	    Name: string;
+	    RegisterRanges: RegisterRange[];
 	}
 	export interface DeviceInfo {
 	    SlaveID: number;
@@ -42,6 +51,7 @@ export namespace appstate {
 	    Min: number;
 	    Max: number;
 	}
+
 	export interface RegisterValueInfo {
 	    Address: number;
 	    Value: number;

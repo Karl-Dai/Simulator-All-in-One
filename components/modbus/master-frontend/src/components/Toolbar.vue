@@ -46,6 +46,9 @@ const shortcuts = useProjectShortcuts({
   save: () => run(saveProject),
   saveAs: () => run(saveProjectAs),
 })
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1"
+const projectExtensions = suiteBuild ? ["saioproj", "modbusproj", "json"] : ["modbusproj"]
+const saveExtensions = suiteBuild ? ["saioproj"] : ["modbusproj"]
 const currentProjectPath = ref<string | null>(null)
 const showNewConn = ref(false)
 const editingConnectionId = ref<string | null>(null)
@@ -54,13 +57,13 @@ const showWriteModal = ref(false)
 const showScanDialog = ref(false)
 
 const workspaceReplaced = inject<() => void>('workspaceReplaced', refreshTree)
-const projectFilters = [{ Name: 'Modbus Project', Extensions: ['modbusproj'] }]
+const projectFilters = [{ Name: 'Modbus Project', Extensions: projectExtensions }]
 async function openProject() {
   try {
     const path = await App.OpenFileDialog(projectFilters)
     if (!path) return
     await App.LoadProject(path)
-    currentProjectPath.value = path
+    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
     workspaceReplaced()
   } catch (e) { await showAlert(String(e)) }
 }
@@ -74,10 +77,10 @@ async function saveProject() {
 
 async function saveProjectAs() {
   try {
-    const path = await App.SaveFileDialog('untitled.modbusproj', projectFilters)
+    const path = await App.SaveFileDialog(suiteBuild ? "untitled.saioproj" : "untitled.modbusproj", [{ Name: "SAIO Project", Extensions: saveExtensions }])
     if (!path) return
     await App.SaveProject(path)
-    currentProjectPath.value = path
+    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
   } catch (e) { await showAlert(String(e)) }
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import * as App from '../../wailsjs/go/main/App'
-import { useI18n, showAlert, float32ToU16Pair, type ByteOrder } from 'shared-frontend'
+import { useI18n, showAlert, vModal, encodeRegisterWrite, registerWriteOrders, registerWriteWidth, type RegisterWriteType } from 'shared-frontend'
 
 const { t } = useI18n()
 
@@ -14,13 +14,13 @@ const form = ref({
   Function: 'write_single_register',
   Address: 0,
   value: '',
-  dataType: 'raw' as 'raw' | 'float32',
-  byteOrder: 'ABCD' as ByteOrder,
+  dataType: 'raw' as RegisterWriteType,
+  byteOrder: 'AB',
 })
 
 watch(() => props.show, (visible) => {
   if (!visible) return
-  form.value = { Function: 'write_single_register', Address: 0, value: '', dataType: 'raw', byteOrder: 'ABCD' }
+  form.value = { Function: 'write_single_register', Address: 0, value: '', dataType: 'raw', byteOrder: 'AB' }
 })
 
 watch(() => form.value.Function, (fc) => {
@@ -29,6 +29,7 @@ watch(() => form.value.Function, (fc) => {
 })
 
 const busy = ref(false)
+function close() { if (!busy.value) emit('close') }
 const isMultiCoilFC = computed(() => form.value.Function === 'write_multiple_coils')
 // Keep empty comma-separated entries so an omitted value cannot shift later addresses.
 const coilTokens = computed(() => {
@@ -64,40 +65,46 @@ function toggleCoil(index: number) {
 }
 
 const isMultiRegFC = computed(() => form.value.Function === 'write_multiple_registers')
-const isFloat32Mode = computed(() => isMultiRegFC.value && form.value.dataType === 'float32')
-
-const float32Preview = computed(() => {
-  if (!isFloat32Mode.value) return null
-  const parts = form.value.value.split(',').map(s => s.trim()).filter(s => s !== '')
-  if (parts.length === 0) return null
-  return parts.map((input, index) => {
-    const n = parseFloat(input)
-    if (isNaN(n)) return { index, input, float: null, regs: null, Error: t('errors.invalidNumber') }
-    const pair = float32ToU16Pair(n, form.value.byteOrder)
-    return { index, input, float: n, regs: pair, Error: '' }
+const registerTypes: RegisterWriteType[] = ['raw', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64']
+const byteOrders = computed(() => registerWriteOrders(form.value.dataType))
+watch(() => form.value.dataType, () => {
+  if (!byteOrders.value.includes(form.value.byteOrder)) form.value.byteOrder = byteOrders.value[0]!
+})
+const registerTokens = computed(() => {
+  const input = form.value.value.trim()
+  return input ? input.split(/[,，]/).flatMap(part => part.trim() ? part.trim().split(/\s+/) : ['']) : []
+})
+const registerPreview = computed(() => {
+  if (!isMultiRegFC.value) return []
+  return registerTokens.value.map((input, index) => {
+    try {
+      return { input, index, regs: encodeRegisterWrite(input, form.value.dataType, form.value.byteOrder), error: '' }
+    } catch {
+      return { input, index, regs: [] as number[], error: t('errors.invalidRegisterValue', { index: index + 1, type: form.value.dataType }) }
+    }
   })
 })
-
-const float32Valid = computed(() => {
-  if (!float32Preview.value) return false
-  return float32Preview.value.length > 0 && float32Preview.value.every(r => !r.Error)
-})
-
-const float32RegCount = computed(() => {
-  if (!float32Preview.value) return 0
-  return float32Preview.value.filter(r => !r.Error).length * 2
-})
-
-const float32Warning = computed(() => {
-  if (!float32Preview.value || !float32Valid.value) return ''
-  const count = float32Preview.value.length
-  if (count * 2 > 123) return t('errors.overflowFC16', { count: count * 2 })
-  if (form.value.Address + count * 2 - 1 > 65535) return t('errors.addressOverflow')
+const registerCount = computed(() => registerTokens.value.length * registerWriteWidth(form.value.dataType))
+const registerAddressError = computed(() => {
+  if (!Number.isInteger(form.value.Address) || form.value.Address < 0 || form.value.Address > 65535) return t('errors.invalidRegisterAddress')
+  if (form.value.Address + registerCount.value - 1 > 65535) return t('errors.addressOverflow')
   return ''
+})
+const registerValueError = computed(() => {
+  if (!registerTokens.value.length) return t('errors.emptyRegisterValues')
+  if (registerCount.value > 123) return t('errors.overflowFC16', { count: registerCount.value })
+  return registerPreview.value.find(row => row.error)?.error ?? ''
+})
+const registerError = computed(() => isMultiRegFC.value ? registerAddressError.value || registerValueError.value : '')
+const registerPlaceholder = computed(() => {
+  if (form.value.dataType.startsWith('float')) return '3.14, 2.71'
+  if (form.value.dataType === 'int64') return '-9223372036854775808, 9223372036854775807'
+  if (form.value.dataType === 'uint64') return '18446744073709551615'
+  return form.value.dataType.startsWith('int') ? '-1, 123' : '10, 20'
 })
 
 async function submit() {
-  if (!props.connectionId || busy.value || (isMultiCoilFC.value && coilError.value)) return
+  if (!props.connectionId || busy.value || (isMultiCoilFC.value && coilError.value) || registerError.value) return
   busy.value = true
   try {
     const fc = form.value.Function
@@ -106,18 +113,7 @@ async function submit() {
     } else if (fc === 'write_single_coil') {
       await App.WriteSingleCoilSlave(props.connectionId, props.slaveId ?? null, form.value.Address, form.value.value === '1' || form.value.value.toLowerCase() === 'true')
     } else if (fc === 'write_multiple_registers') {
-      let values: number[]
-      if (form.value.dataType === 'float32') {
-        const floats = form.value.value.split(',').map(v => parseFloat(v.trim()))
-        if (floats.some(isNaN)) { await showAlert(t('errors.invalidFloat')); return }
-        values = []
-        for (const f of floats) {
-          const [r0, r1] = float32ToU16Pair(f, form.value.byteOrder)
-          values.push(r0, r1)
-        }
-      } else {
-        values = form.value.value.split(',').map(v => parseInt(v.trim()))
-      }
+      const values = registerPreview.value.flatMap(row => row.regs)
       await App.WriteMultipleRegistersSlave(props.connectionId, props.slaveId ?? null, form.value.Address, values)
     } else if (fc === 'write_multiple_coils') {
       const values = [...coilValues.value]
@@ -131,10 +127,11 @@ async function submit() {
 
 <template>
   <Teleport to="body">
-    <div v-if="show" class="modal-backdrop" @click.self="emit('close')">
-      <div class="modal-box" :class="{ 'coil-modal': isMultiCoilFC }">
+    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
+      <div v-modal="close" :aria-label="t('dialog.writeRegisters')" :aria-busy="busy" class="modal-box" :class="{ 'coil-modal': isMultiCoilFC, 'register-modal': isMultiRegFC }">
         <div class="modal-title">{{ t('dialog.writeRegisters') }}</div>
-        <div class="modal-body">
+        <div class="modal-scroll">
+        <fieldset class="modal-body" :disabled="busy">
           <div class="form-hint write-target">{{ writeTarget }}</div>
           <label class="form-label">
             {{ t('table.function') }}
@@ -148,22 +145,18 @@ async function submit() {
           <label v-if="isMultiRegFC" class="form-label">
             {{ t('dialog.dataType') }}
             <select v-model="form.dataType" class="form-input">
-              <option value="raw">Raw u16</option>
-              <option value="float32">Float32 (REAL)</option>
+              <option v-for="type in registerTypes" :key="type" :value="type">{{ t(`dialog.writeType_${type}`) }}</option>
             </select>
           </label>
-          <label v-if="isFloat32Mode" class="form-label">
+          <label v-if="isMultiRegFC" class="form-label">
             {{ t('dialog.byteOrder') }}
             <select v-model="form.byteOrder" class="form-input">
-              <option value="ABCD">AB CD (Big Endian)</option>
-              <option value="CDAB">CD AB (Little Endian Word Swap)</option>
-              <option value="BADC">BA DC (Byte Swap)</option>
-              <option value="DCBA">DC BA (Little Endian)</option>
+              <option v-for="order in byteOrders" :key="order" :value="order">{{ order }}</option>
             </select>
           </label>
           <label class="form-label">
             {{ isMultiCoilFC ? t('dialog.coilStartAddress') : t('table.address') }}
-            <input v-model.number="form.Address" class="form-input" type="number" min="0" max="65535" />
+            <input v-model.number="form.Address" class="form-input" type="number" min="0" max="65535" :aria-invalid="isMultiRegFC && !!registerAddressError" :aria-describedby="isMultiRegFC && registerAddressError ? 'register-write-error' : undefined" />
           </label>
           <label v-if="isMultiCoilFC" class="form-label">
             {{ t('dialog.coilQuantity') }}
@@ -173,11 +166,12 @@ async function submit() {
           <label class="form-label">
             {{ t('dialog.simpleValue') }}
             <span id="coil-value-hint" class="form-hint" v-if="isMultiCoilFC">{{ t('dialog.coilValuesHint') }}</span>
-            <span class="form-hint" v-else-if="isFloat32Mode">{{ t('dialog.valueHintFloat32') }}</span>
+            <span id="register-value-hint" class="form-hint" v-else-if="isMultiRegFC">{{ t(form.dataType.startsWith('float') ? 'dialog.registerFloatHint' : 'dialog.registerIntegerHint') }}</span>
             <span class="form-hint" v-else-if="form.Function.includes('multiple')">{{ t('dialog.valueHintMultiple') }}</span>
             <textarea v-if="isMultiCoilFC" v-model="form.value" class="form-input form-textarea" placeholder="1, 0, 1, 0" rows="3"
               :disabled="busy" :aria-invalid="!!coilError" :aria-describedby="coilError ? 'coil-value-hint coil-value-error' : 'coil-value-hint'" />
-            <textarea v-else-if="isFloat32Mode" v-model="form.value" class="form-input form-textarea" placeholder="3.14, 2.71, 1.41" rows="3" />
+            <textarea v-else-if="isMultiRegFC" v-model="form.value" class="form-input form-textarea" :placeholder="registerPlaceholder" rows="3"
+              :aria-invalid="!!registerValueError" :aria-describedby="registerError ? 'register-value-hint register-write-error' : 'register-value-hint'" />
             <input v-else v-model="form.value" class="form-input" type="text" placeholder="0" />
           </label>
           <template v-if="isMultiCoilFC">
@@ -192,28 +186,26 @@ async function submit() {
               </div>
             </template>
           </template>
-          <div v-if="float32Preview && float32Preview.length > 0" class="float-preview">
-            <div class="preview-summary">
-              {{ t('dialog.float32Summary', { count: float32Preview.length, regCount: float32RegCount, addr: form.Address }) }}
-              <span v-if="float32Warning" class="preview-warn">{{ float32Warning }}</span>
-            </div>
+          <p v-if="registerError" id="register-write-error" class="coil-error" role="alert">{{ registerError }}</p>
+          <div v-if="isMultiRegFC && registerPreview.length && !registerError" class="register-preview">
+            <p class="preview-summary" role="status">{{ t('dialog.registerWriteSummary', { count: registerPreview.length, regCount: registerCount, start: form.Address, end: form.Address + registerCount - 1 }) }}</p>
             <table class="preview-table">
-              <thead><tr><th>{{ t('table.address') }}</th><th>Float</th><th>Reg[0]</th><th>Reg[1]</th></tr></thead>
+              <thead><tr><th>{{ t('table.address') }}</th><th>{{ t('dialog.simpleValue') }}</th><th>{{ t('dialog.registerWriteWords') }}</th></tr></thead>
               <tbody>
-                <tr v-for="item in float32Preview" :key="item.index" :class="{ 'preview-error': item.Error }">
-                  <td>{{ form.Address + item.index * 2 }}</td>
-                  <td>{{ item.Error || item.float }}</td>
-                  <td>{{ item.regs ? '0x' + item.regs[0].toString(16).toUpperCase().padStart(4, '0') : '-' }}</td>
-                  <td>{{ item.regs ? '0x' + item.regs[1].toString(16).toUpperCase().padStart(4, '0') : '-' }}</td>
+                <tr v-for="item in registerPreview" :key="item.index">
+                  <td>{{ form.Address + item.index * registerWriteWidth(form.dataType) }}</td>
+                  <td>{{ item.input }}</td>
+                  <td>{{ item.regs.map(reg => '0x' + reg.toString(16).toUpperCase().padStart(4, '0')).join(' ') }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </fieldset>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" @click="emit('close')">{{ t('common.cancel') }}</button>
+          <button class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" @click="submit"
-            :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || (isFloat32Mode && (!float32Valid || !!float32Warning))">{{ t('toolbar.write') }}</button>
+            :aria-busy="busy" :disabled="busy || (isMultiCoilFC && !!coilError) || !!registerError">{{ t('toolbar.write') }}</button>
         </div>
       </div>
     </div>
@@ -221,9 +213,11 @@ async function submit() {
 </template>
 
 <style scoped>
+.modal-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 340px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; box-sizing: border-box; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
 .coil-modal { width: min(520px, calc(100vw - 32px)); min-width: 0; box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; }
+.register-modal { width: min(560px, calc(100vw - 32px)); }
 .coil-modal .form-label, .coil-modal .form-hint { color: var(--c-subtext1); }
 .coil-error { margin: 0; color: var(--c-red); font-size: 12px; }
 .coil-summary { margin: 0; color: var(--c-green); font-size: 12px; }
@@ -232,11 +226,11 @@ async function submit() {
 .coil-toggle.on { background: var(--c-success-bg); color: var(--c-success-text); border-color: var(--c-green); }
 .coil-toggle:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
 .coil-toggle:disabled { cursor: default; opacity: 0.6; }
-.modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
-.modal-body { display: flex; flex-direction: column; gap: 12px; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.modal-title { flex-shrink: 0;  font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
-.form-input { padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
+.form-input { min-width: 0; padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
 .form-input:focus { outline: none; border-color: var(--c-blue); }
 .form-hint { color: var(--c-subtext0); font-size: 11px; }
 .form-textarea { resize: vertical; min-height: 60px; font-family: var(--font-mono); }
@@ -246,11 +240,9 @@ async function submit() {
 .btn-primary:disabled { opacity: 0.4; cursor: default; }
 .btn-secondary { background: var(--c-neutral-bg); color: var(--c-text); }
 .btn-secondary:hover { background: var(--c-hover-bg); }
-.float-preview { margin-top: 4px; border: 1px solid var(--c-surface0); border-radius: 4px; overflow: hidden; }
+.register-preview { margin-top: 4px; border: 1px solid var(--c-surface0); border-radius: 4px; overflow-x: auto; }
 .preview-summary { padding: 4px 8px; font-size: 11px; color: var(--c-green); background: var(--c-mantle); }
-.preview-warn { color: var(--c-peach); margin-left: 8px; }
 .preview-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .preview-table th { background: var(--c-mantle); color: var(--c-subtext0); font-weight: 500; padding: 3px 8px; text-align: left; }
 .preview-table td { padding: 2px 8px; color: var(--c-text); font-family: var(--font-mono); border-top: 1px solid var(--c-base); }
-.preview-error td { color: var(--c-red); }
 </style>

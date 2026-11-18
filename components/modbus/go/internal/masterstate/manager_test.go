@@ -164,7 +164,7 @@ func TestDiscoveryTerminalAndCancel(t *testing.T) {
 	if fmt.Sprint(terminal.FoundIDs) != "[1 7]" {
 		t.Fatalf("found: %v", terminal.FoundIDs)
 	}
-	regID, err := m.StartRegisterScan(id, RegisterScanRequest{"read_holding_registers", 65533, 65535, 2, 20})
+	regID, err := m.StartRegisterScan(id, RegisterScanRequest{Function: "read_holding_registers", StartAddress: 65533, EndAddress: 65535, ChunkSize: 2, TimeoutMS: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,8 +227,8 @@ func TestProjectTransactionalLoadAndEffectiveStation(t *testing.T) {
 		t.Fatal("load auto-connected")
 	}
 	gs, _ := m.ListScanGroups(id)
-	if gs[0].SlaveID == nil || *gs[0].SlaveID != 1 {
-		t.Fatal("effective station not persisted")
+	if gs[0].SlaveID != nil {
+		t.Fatal("default-station inheritance not preserved")
 	}
 	s := DefaultSettings()
 	info, err := m.CreateConnection(s)

@@ -9,8 +9,8 @@ const { state, dialogConfirm, dialogCancel } = useDialogState()
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputValue = ref('')
 
-watch(() => state.value.visible, async (visible) => {
-  if (visible && state.value.mode === 'prompt') {
+watch(() => state.value, async (current) => {
+  if (current.visible && current.mode === 'prompt') {
     inputValue.value = state.value.defaultValue
     await nextTick()
     inputRef.value?.focus()
@@ -26,19 +26,12 @@ function handleConfirm() {
   }
 }
 
-function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    handleConfirm()
-  } else if (e.key === 'Escape') {
-    dialogCancel()
-  }
-}
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="state.visible" v-modal="dialogCancel" :aria-label="state.title" class="dialog-backdrop" @click.self="dialogCancel" @keydown="handleKeydown">
-      <div class="dialog" role="dialog" aria-modal="true">
+    <div v-if="state.visible" v-modal="dialogCancel" :aria-label="state.title" class="dialog-backdrop" @pointerdown.self.left="dialogCancel">
+      <div class="dialog">
         <div class="dialog-header">
           <span class="dialog-title">{{ state.title }}</span>
         </div>
@@ -87,6 +80,8 @@ function handleKeydown(e: KeyboardEvent) {
   border-radius: 8px;
   width: 360px;
   max-width: 90vw;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 

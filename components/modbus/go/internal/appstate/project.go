@@ -149,24 +149,31 @@ func (m *Manager) ApplyProject(proj *project.Project) (int, error) {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.closeLocked()
-	m.connections = map[string]*connection{}
-	m.order = nil
-
+	staged := map[string]*connection{}
+	order := []string{}
 	devices := 0
 	for _, config := range proj.Connections {
-		conn := m.newConnection(config.ID, config.Transport)
+		conn := m.buildConnection(config.ID, config.Transport)
 		for _, device := range config.Devices {
 			if err := conn.loadDevice(device); err != nil {
 				return 0, err
 			}
 			devices++
 		}
-		m.connections[config.ID] = conn
-		m.order = append(m.order, config.ID)
+		conn.simulator.SetMutationEnabled(false)
+		staged[config.ID] = conn
+		order = append(order, config.ID)
 	}
+	// Publish only after every connection/device has been built successfully.
+	m.closeLocked()
+	m.connections = staged
+	m.order = order
 	m.nextID = nextIDAfter(m.connections)
 	m.mutationR = false
+	for _, conn := range staged {
+		conn.simulator.Start()
+	}
+
 	return devices, nil
 }
 
@@ -251,4 +258,51 @@ func (m *Manager) CloseAll() {
 	m.order = nil
 	m.nextID = 1
 	m.mutationR = false
+}
+
+// RestoreConnections leaves healthy, unrelated listeners and simulations intact.
+// Rolled-back targets are recreated stopped and publish that stopped state.
+func (m *Manager) RestoreConnections(proj *project.Project, ids []string) error {
+	if err := proj.Validate(); err != nil {
+		return err
+	}
+	selected := map[string]bool{}
+	for _, id := range ids {
+		selected[id] = true
+	}
+	configs := map[string]*project.Connection{}
+	for _, config := range proj.Connections {
+		configs[config.ID] = config
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id := range selected {
+		if conn := m.connections[id]; conn != nil {
+			conn.stop()
+			conn.simulator.Stop()
+			delete(m.connections, id)
+		}
+		if config := configs[id]; config != nil {
+			conn := m.newConnection(config.ID, config.Transport)
+			for _, device := range config.Devices {
+				if err := conn.loadDevice(device); err != nil {
+					conn.stop()
+					conn.simulator.Stop()
+					return err
+				}
+			}
+			m.connections[id] = conn
+		}
+	}
+	m.order = nil
+	for _, config := range proj.Connections {
+		if m.connections[config.ID] != nil {
+			m.order = append(m.order, config.ID)
+		}
+	}
+	m.nextID = nextIDAfter(m.connections)
+	for id := range selected {
+		m.events.connectionStateChanged(id, Stopped)
+	}
+	return nil
 }

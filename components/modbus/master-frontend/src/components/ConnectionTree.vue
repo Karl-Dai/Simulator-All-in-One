@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, inject, watch, onMounted, type Ref } from 'vue'
+import { ref, computed, nextTick, inject, watch, onMounted, onUnmounted, type Ref } from 'vue'
 import * as App from '../../wailsjs/go/main/App'
-import { useI18n } from 'shared-frontend'
+import { useI18n, showAlert } from 'shared-frontend'
+import NewConnectionDialog from './NewConnectionDialog.vue'
+import NewScanGroupDialog from './NewScanGroupDialog.vue'
 import type { MasterConnectionInfo, ScanGroupInfo } from '../types'
 
 const { t } = useI18n()
@@ -22,6 +24,24 @@ interface TreeConnection {
 
 const connections = ref<TreeConnection[]>([])
 const selectedNodeId = ref<string | null>(null)
+const editingConnectionId = ref<string | null>(null)
+const editingGroup = ref<{ connId: string; group: ScanGroupInfo } | null>(null)
+const menuElement = ref<HTMLElement | null>(null)
+const contextConnection = computed(() => connections.value.find(c => c.info.ID === contextMenu.value.connId))
+function dismissOutside(event: PointerEvent) {
+  if (!menuElement.value?.contains(event.target as Node)) hideContextMenu()
+}
+function dismissEscape(event: KeyboardEvent) { if (event.key === 'Escape') hideContextMenu() }
+onMounted(() => {
+  document.addEventListener('pointerdown', dismissOutside)
+  document.addEventListener('keydown', dismissEscape)
+  window.addEventListener('resize', hideContextMenu)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', dismissOutside)
+  document.removeEventListener('keydown', dismissEscape)
+  window.removeEventListener('resize', hideContextMenu)
+})
 
 // Context menu
 const contextMenu = ref<{ visible: boolean; x: number; y: number; type: 'connection' | 'scan_group'; connId: string; groupId?: string }>({
@@ -65,13 +85,54 @@ function toggleExpand(conn: TreeConnection) {
   conn.expanded = !conn.expanded
 }
 
-function showContextMenu(e: MouseEvent, type: 'connection' | 'scan_group', connId: string, groupId?: string) {
+async function showContextMenu(e: MouseEvent, type: 'connection' | 'scan_group', connId: string, groupId?: string) {
   e.preventDefault()
+  const conn = connections.value.find(c => c.info.ID === connId)
+  if (!conn) return
+  const group = conn.scanGroups.find(g => g.ID === groupId)
+  if (group) selectScanGroup(conn, group)
+  else selectConnection(conn)
   contextMenu.value = { visible: true, x: e.clientX, y: e.clientY, type, connId, groupId }
+  await nextTick()
+  const rect = menuElement.value?.getBoundingClientRect()
+  if (rect) {
+    contextMenu.value.x = Math.max(4, Math.min(e.clientX, window.innerWidth - rect.width - 4))
+    contextMenu.value.y = Math.max(4, Math.min(e.clientY, window.innerHeight - rect.height - 4))
+  }
+  menuElement.value?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
 }
 
 function hideContextMenu() {
   contextMenu.value.visible = false
+}
+
+function ctxEditConnection() {
+  if (contextConnection.value?.info.State !== 'Disconnected') return
+  editingConnectionId.value = contextMenu.value.connId
+  hideContextMenu()
+}
+function ctxEditScanGroup() {
+  const group = contextConnection.value?.scanGroups.find(g => g.ID === contextMenu.value.groupId)
+  if (!group) return
+  editingGroup.value = { connId: contextMenu.value.connId, group: { ...group } }
+  hideContextMenu()
+}
+async function connectionSaved(id: string) {
+  await loadTree()
+  const conn = connections.value.find(c => c.info.ID === id)
+  if (conn) selectConnection(conn)
+  refreshTree()
+}
+function groupSaved(group: ScanGroupInfo) {
+  const conn = connections.value.find(c => c.info.ID === editingGroup.value?.connId)
+  if (conn) selectScanGroup(conn, group)
+  refreshTree()
+}
+async function ctxDisconnect() {
+  const id = contextMenu.value.connId
+  hideContextMenu()
+  try { await App.Disconnect(id); refreshTree() }
+  catch (e) { await showAlert(String(e)) }
 }
 
 async function ctxStartPolling() {
@@ -154,23 +215,30 @@ function fcLabel(fn: string): string {
         >
           <span :class="['poll-indicator', { active: group.IsPolling }]"></span>
           <span class="node-label">{{ group.Name }}</span>
-          <span class="node-meta">{{ fcLabel(group.Function) }} {{ group.StartAddress }}x{{ group.Quantity }}</span>
+          <span class="node-meta">{{ t('dialog.slaveId') }}:{{ group.SlaveID ?? conn.info.SlaveID }} · {{ fcLabel(group.Function) }} {{ group.StartAddress }}x{{ group.Quantity }}</span>
         </div>
       </div>
     </div>
 
     <!-- Context Menu -->
-    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
+    <div v-if="contextMenu.visible" ref="menuElement" role="menu" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
       <template v-if="contextMenu.type === 'connection'">
-        <div class="ctx-item danger" @click="ctxDeleteConnection">{{ t('tree.deleteConnection') }}</div>
+        <button role="menuitem" class="ctx-item" :disabled="contextConnection?.info.State !== 'Disconnected'" :title="t('dialog.editConnectionHint')" @click="ctxEditConnection">{{ t('parity.connectionSettings') }}</button>
+        <button v-if="contextConnection?.info.State !== 'Disconnected'" role="menuitem" class="ctx-item" @click="ctxDisconnect">{{ t('toolbar.disconnect') }}</button>
+        <button role="menuitem" class="ctx-item danger" @click="ctxDeleteConnection">{{ t('tree.deleteConnection') }}</button>
       </template>
       <template v-else>
-        <div class="ctx-item" @click="ctxStartPolling">{{ t('tree.startPolling') }}</div>
-        <div class="ctx-item" @click="ctxStopPolling">{{ t('tree.stopPolling') }}</div>
-        <div class="ctx-item danger" @click="ctxRemoveScanGroup">{{ t('tree.deleteScanGroup') }}</div>
+        <button role="menuitem" class="ctx-item" @click="ctxEditScanGroup">{{ t('dialog.editScanGroup') }}</button>
+        <button role="menuitem" class="ctx-item" @click="ctxStartPolling">{{ t('tree.startPolling') }}</button>
+        <button role="menuitem" class="ctx-item" @click="ctxStopPolling">{{ t('tree.stopPolling') }}</button>
+        <button role="menuitem" class="ctx-item danger" @click="ctxRemoveScanGroup">{{ t('tree.deleteScanGroup') }}</button>
       </template>
     </div>
   </div>
+  <NewConnectionDialog v-if="editingConnectionId" :show="true" :connection-id="editingConnectionId"
+    @close="editingConnectionId = null" @saved="connectionSaved(contextMenu.connId)" />
+  <NewScanGroupDialog v-if="editingGroup" :show="true" :connection-id="editingGroup.connId" :group="editingGroup.group"
+    @close="editingGroup = null" @saved="groupSaved" />
 </template>
 
 <style scoped>
@@ -295,12 +363,15 @@ function fcLabel(fn: string): string {
 }
 
 .ctx-item {
+  display: block; width: 100%; text-align: left; border: 0; background: transparent; color: var(--c-text); font-family: inherit;
   padding: 6px 14px;
   cursor: pointer;
   font-size: 12px;
 }
 
-.ctx-item:hover {
+.ctx-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.ctx-item:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
+.ctx-item:hover:not(:disabled) {
   background: var(--c-control-bg);
 }
 

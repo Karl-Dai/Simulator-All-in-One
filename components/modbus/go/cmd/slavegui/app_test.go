@@ -123,7 +123,7 @@ func TestNativePointConfigAndProjectRoundTrip(t *testing.T) {
 	if err != nil || len(points) == 0 || points[0].Mutation == nil || points[0].Mutation.PeriodMS != 500 {
 		t.Fatalf("configs: %+v %v", points, err)
 	}
-	path := filepath.Join(t.TempDir(), "native.modbusproj")
+	path := filepath.Join(t.TempDir(), "native"+projectFileExtension)
 	if err := app.SaveProject(path); err != nil {
 		t.Fatal(err)
 	}

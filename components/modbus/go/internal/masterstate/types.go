@@ -61,7 +61,7 @@ func (s Settings) validate() error {
 func (s Settings) engine() *master.Connection {
 	cfg := master.Config{TargetAddress: s.Transport.Host, Port: s.Transport.Port, SlaveID: s.SlaveID, TimeoutMs: s.TimeoutMS, Requests: master.RequestSettings{IntervalMs: s.Requests.IntervalMS, MaxReadRegisters: s.Requests.MaxReadRegisters, MaxReadBits: s.Requests.MaxReadBits}}
 	if t := s.Transport.TLS; t != nil {
-		cfg.TLS = master.TLSConfig{Enabled: t.Enabled, CAFile: t.CAFile, CertFile: t.CertFile, KeyFile: t.KeyFile, PKCS12File: t.PKCS12File, PKCS12Password: t.PKCS12Password, AcceptInvalidCerts: t.AcceptInvalidCerts}
+		cfg.TLS = master.TLSConfig{Version: t.Version, Enabled: t.Enabled, CAFile: t.CAFile, CertFile: t.CertFile, KeyFile: t.KeyFile, PKCS12File: t.PKCS12File, PKCS12Password: t.PKCS12Password, AcceptInvalidCerts: t.AcceptInvalidCerts, VerifyServerName: t.VerifyServerName}
 	}
 	if p := s.Socks5; p != nil {
 		cfg.Socks5 = socks5.Config{Enabled: true, Host: p.Host, Port: p.Port, Username: p.Username, Password: p.Password}
@@ -191,6 +191,7 @@ type SlaveScanRequest struct {
 	TimeoutMS uint64
 }
 type RegisterScanRequest struct {
+	SlaveID      *uint8
 	Function     string
 	StartAddress uint16
 	EndAddress   uint16
@@ -202,15 +203,20 @@ type FoundRegister struct {
 	Value   uint16
 }
 type SlaveScanEvent struct {
+	Completed    uint16
+	Error        string `json:",omitempty"`
 	ConnectionID string
 	TaskID       string
 	CurrentID    uint8
 	Total        uint16
-	FoundIDs     []uint8
+	FoundIDs     []uint16
 	Done         bool
 	Cancelled    bool
 }
 type RegisterScanEvent struct {
+	Completed      uint32
+	Total          uint32
+	Error          string `json:",omitempty"`
 	ConnectionID   string
 	TaskID         string
 	CurrentAddress uint16

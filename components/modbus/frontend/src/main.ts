@@ -1,13 +1,16 @@
-import 'shared-frontend/src/styles/tokens.css'
-import { createApp } from 'vue'
-import './style.css'
-import 'shared-frontend/src/styles/transitions.css'
-import 'shared-frontend/src/styles/toolbar.css'
-import { desktopServicesKey, initTheme } from 'shared-frontend'
-import App from './App.vue'
+import { installWailsConfigurationClose } from './simlab-ui/configClose'
+import { EventsOn } from '../wailsjs/runtime/runtime'
+import { installSuitePreferences } from './simlab-ui/configPreferences'
 
-import { GetVersion } from '../wailsjs/go/main/App'
-import { BrowserOpenURL } from '../wailsjs/runtime/runtime'
-
-initTheme()
-createApp(App).provide(desktopServicesKey, { getVersion: GetVersion, openURL: BrowserOpenURL }).mount('#app')
+async function start() {
+  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installWailsConfigurationClose(EventsOn)
+  if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installSuitePreferences('modbus.slave')
+  await import('./bootstrap')
+}
+void start().catch(error => {
+  console.error('Application initialization failed', error)
+  const message = document.createElement('div')
+  message.setAttribute('role', 'alert')
+  message.textContent = String(error)
+  document.body.append(message)
+})

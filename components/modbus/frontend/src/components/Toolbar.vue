@@ -60,7 +60,7 @@ async function openProjectByPath() {
   if (!path?.trim()) return
   try {
     await App.LoadProject(path.trim())
-    currentProjectPath.value = path.trim()
+    currentProjectPath.value = suiteBuild && !path.trim().endsWith(".saioproj") ? null : path.trim()
     resetWorkspaceView()
   } catch (error) { await showAlert(String(error)) }
 }
@@ -69,16 +69,19 @@ const shortcuts = useProjectShortcuts({
   save: () => run(saveProject),
   saveAs: () => run(saveProjectAs),
 })
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === "1"
+const projectExtensions = suiteBuild ? ["saioproj", "modbusproj", "json"] : ["modbusproj"]
+const saveExtensions = suiteBuild ? ["saioproj"] : ["modbusproj"]
 const currentProjectPath = ref<string | null>(null)
 const showNewConn = ref(false)
 const showNewSlave = ref(false)
 
 async function openProject() {
   try {
-    const path = await App.OpenFileDialog([{ Name: 'Modbus Project', Extensions: ['modbusproj'] }])
+    const path = await App.OpenFileDialog([{ Name: 'Modbus Project', Extensions: projectExtensions }])
     if (!path) return
     await App.LoadProject(path)
-    currentProjectPath.value = path as string
+    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
     selectedConnectionId.value = null
     selectedSlaveId.value = null
     selectedConnectionState.value = 'Stopped'
@@ -95,10 +98,10 @@ async function saveProject() {
 
 async function saveProjectAs() {
   try {
-    const path = await App.SaveFileDialog('untitled.modbusproj', [{ Name: 'Modbus Project', Extensions: ['modbusproj'] }])
+    const path = await App.SaveFileDialog(suiteBuild ? "untitled.saioproj" : "untitled.modbusproj", [{ Name: 'Modbus Project', Extensions: saveExtensions }])
     if (!path) return
     await App.SaveProject(path)
-    currentProjectPath.value = path
+    currentProjectPath.value = suiteBuild && !path.endsWith(".saioproj") ? null : path
   } catch (e) { await showAlert(String(e)) }
 }
 

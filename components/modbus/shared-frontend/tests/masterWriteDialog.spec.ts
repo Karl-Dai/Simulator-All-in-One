@@ -139,7 +139,7 @@ describe('FC15 coil editing', () => {
     await flushPromises()
     expect(App.WriteSingleCoilSlave).toHaveBeenLastCalledWith('test-connection', null, 0, true)
     await wrapper.get('select').setValue('write_multiple_registers')
-    await wrapper.get('input[type="text"]').setValue('10,20')
+    await valuesInput().setValue('10,20')
     await writeButton().trigger('click')
     await flushPromises()
     expect(App.WriteMultipleRegistersSlave).toHaveBeenLastCalledWith('test-connection', null, 0, [10, 20])

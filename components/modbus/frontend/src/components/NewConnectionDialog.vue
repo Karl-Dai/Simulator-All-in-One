@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { project } from "../../wailsjs/go/models"
 import { vModal } from 'shared-frontend'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import * as App from '../../wailsjs/go/main/App'
 import { PathField, showAlert, useI18n } from 'shared-frontend'
+
+import RegisterRangeEditor from './RegisterRangeEditor.vue'
+import { rangesValid, type RegisterRange } from '../utils/registerRanges'
 
 const { t } = useI18n()
 
@@ -15,6 +18,9 @@ const port = ref('5020')
 const slaveId = ref('1')
 const slaveName = ref('')
 const initMode = ref('zero')
+const registerRanges = ref<RegisterRange[]>([])
+const isSaving = ref(false)
+const canSubmit = computed(() => !isSaving.value && rangesValid(registerRanges.value))
 const transport = ref('tcp')
 const serialPort = ref('')
 const baudRate = ref(9600)
@@ -37,6 +43,7 @@ watch(() => props.show, (visible) => {
   slaveId.value = '1'
   slaveName.value = ''
   initMode.value = 'zero'
+  registerRanges.value = []
   transport.value = 'tcp'
   serialPort.value = ''
   baudRate.value = 9600
@@ -81,6 +88,7 @@ async function pickFile(target: 'cert' | 'key' | 'ca' | 'pkcs12') {
 }
 
 async function submit() {
+  if (!canSubmit.value) return
   const portNum = Number(port.value)
   const initialSlaveId = Number(slaveId.value)
   const needsPort = transport.value === 'tcp' || transport.value === 'rtu_over_tcp'
@@ -112,21 +120,25 @@ async function submit() {
       RequireClientCert: tlsRequireClientCert.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value,
     }
   }
+  isSaving.value = true
   try {
-    await App.CreateConnection({ Transport: transportPayload, InitMode: initMode.value, SlaveID: initialSlaveId, Name: slaveName.value.trim() })
+    await App.CreateConnection({ Transport: transportPayload, InitMode: initMode.value, SlaveID: initialSlaveId, Name: slaveName.value.trim(), RegisterRanges: registerRanges.value })
     emit('created')
     emit('close')
   } catch (e) {
     await showAlert(String(e))
+  } finally {
+    isSaving.value = false
   }
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="show" v-modal="() => emit('close')" class="modal-overlay" @click.self="emit('close')">
-      <div class="modal-box">
-        <div class="modal-title">{{ t('toolbar.newConnection') }}</div>
+    <div v-if="show" v-modal="() => { if (!isSaving) emit('close') }" class="modal-overlay" aria-labelledby="new-connection-title" @pointerdown.self.left="!isSaving && emit('close')">
+      <div class="modal-box" :aria-busy="isSaving">
+        <fieldset class="creation-fields" :disabled="isSaving">
+        <div id="new-connection-title" class="modal-title">{{ t('toolbar.newConnection') }}</div>
         <div class="modal-field">
           <label>{{ t('dialog.transport') }}</label>
           <select v-model="transport" class="form-select">
@@ -138,8 +150,8 @@ async function submit() {
         </div>
         <template v-if="transport === 'tcp' || transport === 'rtu_over_tcp'">
           <div class="modal-field">
-            <label>{{ t('dialog.portNumber') }}</label>
-            <input v-model="port" type="number" min="1" max="65535" @keyup.enter="submit" />
+            <label for="new-connection-port">{{ t('dialog.portNumber') }}</label>
+            <input id="new-connection-port" v-model="port" type="number" min="1" max="65535" @keyup.enter="submit" />
           </div>
         </template>
         <template v-if="transport === 'tcp'">
@@ -222,12 +234,12 @@ async function submit() {
           </div>
         </template>
         <div class="modal-field">
-          <label>{{ t('dialog.slaveId') }}</label>
-          <input v-model="slaveId" type="number" min="1" max="247" />
+          <label for="new-connection-slaveId">{{ t('dialog.slaveId') }}</label>
+          <input id="new-connection-slaveId" v-model="slaveId" type="number" min="1" max="247" />
         </div>
         <div class="modal-field">
-          <label>{{ t('dialog.slaveName') }}</label>
-          <input v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" />
+          <label for="new-connection-slaveName">{{ t('dialog.slaveName') }}</label>
+          <input id="new-connection-slaveName" v-model="slaveName" type="text" :placeholder="t('dialog.slaveNamePlaceholder')" />
         </div>
         <div class="modal-field">
           <label>{{ t('dialog.initValue') }}</label>
@@ -240,9 +252,11 @@ async function submit() {
             </label>
           </div>
         </div>
+        <RegisterRangeEditor v-model="registerRanges" :disabled="isSaving" />
+        </fieldset>
         <div class="modal-actions">
-          <button class="modal-btn cancel" @click="emit('close')">{{ t('common.cancel') }}</button>
-          <button class="modal-btn confirm" @click="submit">{{ t('common.ok') }}</button>
+          <button class="modal-btn cancel" :disabled="isSaving" @click="emit('close')">{{ t('common.cancel') }}</button>
+          <button class="modal-btn confirm" :disabled="!canSubmit" @click="submit">{{ t(isSaving ? 'ranges.creating' : 'common.ok') }}</button>
         </div>
       </div>
     </div>
@@ -251,7 +265,9 @@ async function submit() {
 
 <style scoped>
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; min-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.modal-box { background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: min(760px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.creation-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.modal-btn:disabled { opacity: .5; cursor: default; }
 .modal-title { font-size: 14px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
 .modal-field { margin-bottom: 14px; }
 .modal-field label { display: block; font-size: 12px; color: var(--c-subtext0); margin-bottom: 6px; }

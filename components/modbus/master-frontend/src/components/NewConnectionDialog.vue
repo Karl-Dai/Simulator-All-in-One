@@ -38,11 +38,13 @@ const parityMode = ref('none')
 const serialPorts = ref<{ name: string; description: string; manufacturer: string }[]>([])
 
 const useTls = ref(false)
+const tlsVersion = ref('')
 const tlsCaFile = ref('')
 const tlsCertFile = ref('')
 const tlsKeyFile = ref('')
 const tlsPkcs12File = ref('')
 const tlsPkcs12Password = ref('')
+const tlsVerifyServerName = ref(false)
 const tlsAcceptInvalidCerts = ref(false)
 const useSocks5 = ref(false)
 const socks5Host = ref('127.0.0.1')
@@ -64,11 +66,13 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
   stopBits.value = 1
   parityMode.value = 'none'
   useTls.value = false
+  tlsVersion.value = ''
   tlsCaFile.value = ''
   tlsCertFile.value = ''
   tlsKeyFile.value = ''
   tlsPkcs12File.value = ''
   tlsPkcs12Password.value = ''
+  tlsVerifyServerName.value = false
   tlsAcceptInvalidCerts.value = false
   useSocks5.value = false
   socks5Host.value = '127.0.0.1'
@@ -88,8 +92,10 @@ watch(() => [props.show, props.connectionId] as const, async ([visible, connecti
     if (transport.Serial) { const sc = transport.Serial; serialPort.value = sc.Port; baudRate.value = sc.BaudRate; dataBits.value = sc.DataBits; stopBits.value = sc.StopBits; parityMode.value = sc.Parity }
     useTls.value = transport.Type === 'tcp_tls'
     const tls = transport.TLS
+    tlsVersion.value = tls?.Version === 'auto' ? '' : tls?.Version ?? ''
     tlsCaFile.value = tls?.CAFile ?? ''; tlsCertFile.value = tls?.CertFile ?? ''; tlsKeyFile.value = tls?.KeyFile ?? ''
     tlsPkcs12File.value = tls?.PKCS12File ?? ''; tlsPkcs12Password.value = tls?.PKCS12Password ?? ''; tlsAcceptInvalidCerts.value = tls?.AcceptInvalidCerts ?? false
+    tlsVerifyServerName.value = tls?.VerifyServerName ?? false
     const proxy = settings.Socks5
     useSocks5.value = !!proxy; socks5Host.value = proxy?.Host ?? '127.0.0.1'; socks5Port.value = proxy?.Port ?? 1080
     socks5Username.value = proxy?.Username ?? ''; socks5Password.value = proxy?.Password ?? ''
@@ -154,7 +160,7 @@ async function submit() {
   const transport: project.Transport = needsSerial
     ? { Type: form.value.transport, Serial: { Port: serialPort.value, BaudRate: baudRate.value, DataBits: dataBits.value, StopBits: stopBits.value, Parity: parityMode.value } }
     : { Type: form.value.transport === 'tcp' && useTls.value ? 'tcp_tls' : form.value.transport, Host: form.value.target_address.trim(), Port: form.value.port }
-  if (transport.Type === 'tcp_tls') transport.TLS = { Enabled: true, CAFile: tlsCaFile.value, CertFile: tlsCertFile.value, KeyFile: tlsKeyFile.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value, AcceptInvalidCerts: tlsAcceptInvalidCerts.value }
+  if (transport.Type === 'tcp_tls') transport.TLS = { Version: tlsVersion.value, Enabled: true, CAFile: tlsCaFile.value, CertFile: tlsCertFile.value, KeyFile: tlsKeyFile.value, PKCS12File: tlsPkcs12File.value, PKCS12Password: tlsPkcs12Password.value, VerifyServerName: tlsVerifyServerName.value, AcceptInvalidCerts: tlsAcceptInvalidCerts.value }
   const settings: masterstate.Settings = { Transport: transport, SlaveID: form.value.slave_id, TimeoutMS: form.value.timeout_ms,
     Requests: communication.value.requests, Reconnect: { ...communication.value.reconnect, MaxAttempts: communication.value.reconnect.MaxAttempts || undefined },
     Socks5: usesNetwork && useSocks5.value ? { Host: socks5Host.value.trim(), Port: socks5Port.value, Username: socks5Username.value, Password: socks5Password.value } : undefined }
@@ -172,11 +178,12 @@ async function submit() {
 
 <template>
   <Teleport to="body">
-    <div v-if="show" class="modal-backdrop" @click.self="close">
+    <div v-if="show" class="modal-backdrop" @pointerdown.self.left="close">
       <div v-modal="close" class="modal-box" aria-labelledby="connection-dialog-title" :aria-busy="busy">
         <div id="connection-dialog-title" class="modal-title">{{ t(connectionId ? 'parity.connectionSettings' : 'toolbar.newConnection') }}</div>
         <p v-if="connectionId" class="form-hint">{{ t('dialog.editConnectionHint') }}</p>
-        <form @submit.prevent="submit">
+        <form class="modal-form" @submit.prevent="submit">
+        <div class="modal-scroll">
         <fieldset class="modal-body" :disabled="busy || loadFailed">
           <label class="form-label">
             {{ t('dialog.transport') }}
@@ -224,6 +231,19 @@ async function submit() {
               <input type="checkbox" v-model="useTls" /> {{ t('dialog.enableTls') }}
             </label>
             <template v-if="useTls">
+              <label class="form-label">
+                {{ t('dialog.tlsVersion') }}
+                <select id="tls-version" v-model="tlsVersion" class="form-input" aria-describedby="tls-version-hint">
+                  <option value="">{{ t('dialog.tlsVersionAuto') }}</option>
+                  <option value="1.2">TLS 1.2</option>
+                  <option value="1.3">TLS 1.3</option>
+                </select>
+              </label>
+              <div id="tls-version-hint" class="form-hint">{{ t('dialog.tlsVersionHint') }}</div>
+              <label class="form-label checkbox-label">
+                <input id="tls-verify-server-name" type="checkbox" v-model="tlsVerifyServerName" :disabled="tlsAcceptInvalidCerts" :aria-describedby="tlsAcceptInvalidCerts ? 'tls-compatibility-hint' : 'tls-server-name-hint'" /> {{ t('dialog.verifyServerName') }}
+              </label>
+              <div v-if="!tlsAcceptInvalidCerts" id="tls-server-name-hint" class="form-hint">{{ t('dialog.verifyServerNameHint') }}</div>
               <label class="form-label checkbox-label">
                 <input type="checkbox" v-model="tlsAcceptInvalidCerts" aria-describedby="tls-compatibility-hint" /> {{ t('dialog.acceptInvalidCerts') }}
               </label>
@@ -298,7 +318,7 @@ async function submit() {
             </label>
           </template>
           <label class="form-label">
-            {{ t('dialog.slaveId') }}
+            {{ t('dialog.defaultSlaveId') }}
             <input v-model.number="form.slave_id" class="form-input" type="number" min="1" max="247" />
           </label>
           <label class="form-label">
@@ -308,6 +328,7 @@ async function submit() {
           <div id="communication-timeout-hint" class="form-hint timeout-hint">{{ t('dialog.communicationTimeoutHint') }}</div>
           <CommunicationSettings v-model="communication" />
         </fieldset>
+        </div>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" :disabled="busy" @click="close">{{ t('common.cancel') }}</button>
@@ -320,13 +341,16 @@ async function submit() {
 </template>
 
 <style scoped>
+.modal-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
+.modal-form { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-.modal-title { font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
-.modal-body { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.form-error { color: var(--c-red); white-space: pre-wrap; overflow-wrap: anywhere; }
+.modal-box { box-sizing: border-box; background: var(--c-base); border: 1px solid var(--c-surface1); border-radius: 8px; padding: 20px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.modal-title { flex-shrink: 0;  font-size: 15px; font-weight: 600; color: var(--c-text); margin-bottom: 16px; }
+.modal-body {  border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.form-error { flex-shrink: 0; max-height: 20vh; overflow: auto;  color: var(--c-red); white-space: pre-wrap; overflow-wrap: anywhere; }
 button:disabled { opacity: 0.4; cursor: default; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.modal-footer { flex-shrink: 0;  display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .form-label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-subtext0); }
 .checkbox-label { flex-direction: row; align-items: center; }
 .form-hint { margin-top: -6px; color: var(--c-subtext0); font-size: 11px; line-height: 1.4; }

@@ -20,11 +20,15 @@ export {
   swapBytes16,
   toFloat32,
   float32ToU16Pair,
+  encodeRegisterWrite,
+  registerWriteOrders,
+  registerWriteWidth,
   use16BitFormat,
   use32BitFormat,
   use64BitFormat,
 } from './composables/useValueFormat'
 export type { ByteOrder } from './composables/useValueFormat'
+export type { RegisterWriteType } from './composables/useValueFormat'
 
 // Address formatting
 export { formatAddress } from './composables/useAddressFormat'

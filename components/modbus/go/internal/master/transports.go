@@ -52,20 +52,63 @@ func mapConnectError(err error) *Error {
 	return errTransport(err.Error())
 }
 
-func (t *tcpTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
-	tid := uint16(t.tid.Add(1) & 0xFFFF)
-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
-	if err := mbap.WriteFrame(t.conn, tid, slaveID, reqPDU); err != nil {
-		return nil, errTransport(fmt.Sprintf("TCP write: %v", err))
+func beginExchange(ctx context.Context, conn net.Conn, timeout time.Duration) (func(), error) {
+	if ctx.Err() != nil {
+		return nil, errCancelled()
 	}
-	header, resp, err := mbap.ReadFrame(t.conn)
+	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return nil, errTransport(err.Error())
+	}
+	finished := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { _ = conn.SetDeadline(time.Now()); close(finished) })
+	return func() {
+		if !stop() {
+			<-finished
+		}
+		_ = conn.SetDeadline(time.Time{})
+	}, nil
+}
+
+func exchangeMBAP(ctx context.Context, conn net.Conn, tid uint16, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
+	cleanup, err := beginExchange(ctx, conn, timeout)
 	if err != nil {
-		return nil, errTransport(fmt.Sprintf("TCP read: %v", err))
+		return nil, err
 	}
-	if header.TransactionID != tid || header.UnitID != slaveID || header.ProtocolID != 0 {
-		return nil, errTransport("MBAP response identity mismatch")
+	defer cleanup()
+	if err := mbap.WriteFrame(conn, tid, slaveID, request); err != nil {
+		return nil, streamError(ctx, err)
 	}
-	return resp, nil
+	for {
+		header, response, err := mbap.ReadFrame(conn)
+		if err != nil {
+			return nil, streamError(ctx, err)
+		}
+		// A response to an earlier timed-out/cancelled request may arrive late.
+		if header.TransactionID != tid {
+			continue
+		}
+		if header.UnitID != slaveID || header.ProtocolID != 0 {
+			return nil, errTransport("MBAP response identity mismatch")
+		}
+		return response, nil
+	}
+}
+
+func streamError(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return errCancelled()
+	}
+	if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+		return errTimeout(err.Error())
+	}
+	return errTransport(err.Error())
+}
+
+func (t *tcpTransport) exchange(slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
+	return t.exchangeContext(context.Background(), slaveID, request, timeout)
+}
+func (t *tcpTransport) exchangeContext(ctx context.Context, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
+	return exchangeMBAP(ctx, t.conn, uint16(t.tid.Add(1)), slaveID, request, timeout)
 }
 
 func (t *tcpTransport) close() error { return t.conn.Close() }
@@ -79,11 +122,22 @@ type tlsTransport struct {
 	tid  atomic.Uint32
 }
 
-// BuildClientTLSConfig mirrors tls_master.rs's connect_tls config build:
-// optional CA, optional client identity (PKCS#12 or PEM), optional skip-verify.
-// serverName is the verification hostname (the dial host).
+// BuildClientTLSConfig loads the optional CA and client identity (PKCS#12 or
+// PEM). Certificate chains are verified unless AcceptInvalidCerts is set;
+// matching the dial host against the server certificate is a separate opt-in.
+// serverName is also used for SNI when certificate verification is enabled.
 func BuildClientTLSConfig(cfg TLSConfig, serverName string) (*tls.Config, error) {
 	out := &tls.Config{MinVersion: tls.VersionTLS12}
+	switch cfg.Version {
+	case "", "auto":
+	case "1.2":
+		out.MaxVersion = tls.VersionTLS12
+	case "1.3":
+		out.MinVersion = tls.VersionTLS13
+		out.MaxVersion = tls.VersionTLS13
+	default:
+		return nil, errTransport(fmt.Sprintf("Unsupported TLS version: %q", cfg.Version))
+	}
 	if cfg.AcceptInvalidCerts {
 		out.InsecureSkipVerify = true
 	} else {
@@ -99,6 +153,31 @@ func BuildClientTLSConfig(cfg TLSConfig, serverName string) (*tls.Config, error)
 			return nil, &Error{Kind: "certificate", Msg: "CA file contains no certificates"}
 		}
 		out.RootCAs = pool
+	}
+	if !cfg.AcceptInvalidCerts && !cfg.VerifyServerName {
+		// crypto/tls cannot disable only name matching. Replace its built-in
+		// verification with the same chain, time and server-usage checks, leaving
+		// DNSName empty. VerifyConnection also runs for resumed connections.
+		out.InsecureSkipVerify = true
+		roots := out.RootCAs // nil retains the operating system's trusted roots.
+		out.VerifyConnection = func(state tls.ConnectionState) error {
+			if len(state.PeerCertificates) == 0 {
+				return fmt.Errorf("tls: server did not provide a certificate")
+			}
+			intermediates := x509.NewCertPool()
+			for _, cert := range state.PeerCertificates[1:] {
+				intermediates.AddCert(cert)
+			}
+			_, err := state.PeerCertificates[0].Verify(x509.VerifyOptions{
+				Roots:         roots,
+				Intermediates: intermediates,
+				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			})
+			if err != nil {
+				return &tls.CertificateVerificationError{UnverifiedCertificates: state.PeerCertificates, Err: err}
+			}
+			return nil
+		}
 	}
 	if cfg.PKCS12File != "" {
 		p12Bytes, err := os.ReadFile(cfg.PKCS12File)
@@ -143,20 +222,11 @@ func newTLSTransport(ctx context.Context, host string, port uint16, cfg TLSConfi
 	return &tlsTransport{conn: conn}, nil
 }
 
-func (t *tlsTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
-	tid := uint16(t.tid.Add(1) & 0xFFFF)
-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
-	if err := mbap.WriteFrame(t.conn, tid, slaveID, reqPDU); err != nil {
-		return nil, errTransport(fmt.Sprintf("TLS write: %v", err))
-	}
-	header, resp, err := mbap.ReadFrame(t.conn)
-	if err != nil {
-		return nil, errTransport(fmt.Sprintf("TLS read: %v", err))
-	}
-	if header.TransactionID != tid || header.UnitID != slaveID || header.ProtocolID != 0 {
-		return nil, errTransport("MBAP response identity mismatch")
-	}
-	return resp, nil
+func (t *tlsTransport) exchange(slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
+	return t.exchangeContext(context.Background(), slaveID, request, timeout)
+}
+func (t *tlsTransport) exchangeContext(ctx context.Context, slaveID uint8, request []byte, timeout time.Duration) ([]byte, error) {
+	return exchangeMBAP(ctx, t.conn, uint16(t.tid.Add(1)), slaveID, request, timeout)
 }
 
 func (t *tlsTransport) close() error { return t.conn.Close() }
@@ -232,11 +302,17 @@ func (t *serialTransport) writeFrame(slaveID uint8, pduBytes []byte) error {
 // readFrame reads one response frame with an overall deadline, mirroring
 // rtu_master.rs / ascii_master.rs: accumulate until the frame validates.
 func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byte, error) {
+	return t.readFrameContext(context.Background(), slaveID, timeout)
+}
+func (t *serialTransport) readFrameContext(ctx context.Context, slaveID uint8, timeout time.Duration) ([]byte, error) {
 	deadline := time.Now().Add(timeout)
 	var acc []byte
 	buf := make([]byte, 512)
 
 	for {
+		if ctx.Err() != nil {
+			return nil, errCancelled()
+		}
 		remain := time.Until(deadline)
 		if remain <= 0 {
 			if len(acc) == 0 {
@@ -244,7 +320,7 @@ func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byt
 			}
 			break
 		}
-		_ = t.port.SetReadTimeout(remain)
+		_ = t.port.SetReadTimeout(min(remain, 50*time.Millisecond))
 		n, err := t.port.Read(buf)
 		if err != nil {
 			return nil, errTransport(fmt.Sprintf("read error: %v", err))
@@ -295,6 +371,9 @@ func (t *serialTransport) readFrame(slaveID uint8, timeout time.Duration) ([]byt
 }
 
 func (t *serialTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+	return t.exchangeContext(context.Background(), slaveID, reqPDU, timeout)
+}
+func (t *serialTransport) exchangeContext(ctx context.Context, slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
 	if err := t.writeFrame(slaveID, reqPDU); err != nil {
 		return nil, errTransport(fmt.Sprintf("write error: %v", err))
 	}
@@ -302,7 +381,7 @@ func (t *serialTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Du
 		// Wait interframe delay before listening for a response (rtu_master.rs).
 		time.Sleep(t.interframe)
 	}
-	return t.readFrame(slaveID, timeout)
+	return t.readFrameContext(ctx, slaveID, timeout)
 }
 
 func (t *serialTransport) close() error { return t.port.Close() }
@@ -327,8 +406,15 @@ func newRTUTCPTransportContext(ctx context.Context, host string, port uint16, pr
 }
 
 func (t *rtuTCPTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+	return t.exchangeContext(context.Background(), slaveID, reqPDU, timeout)
+}
+func (t *rtuTCPTransport) exchangeContext(ctx context.Context, slaveID uint8, reqPDU []byte, timeout time.Duration) ([]byte, error) {
+	cleanup, err := beginExchange(ctx, t.conn, timeout)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
 	req := encodeRTUFrame(slaveID, reqPDU)
-	_ = t.conn.SetDeadline(time.Now().Add(timeout))
 	if _, err := t.conn.Write(req); err != nil {
 		return nil, errTransport(fmt.Sprintf("write error: %v", err))
 	}
@@ -350,7 +436,7 @@ func (t *rtuTCPTransport) exchange(slaveID uint8, reqPDU []byte, timeout time.Du
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() && len(acc) > 0 {
 				break
 			}
-			return nil, errTransport(fmt.Sprintf("read error: %v", err))
+			return nil, streamError(ctx, err)
 		}
 		if n == 0 {
 			break
