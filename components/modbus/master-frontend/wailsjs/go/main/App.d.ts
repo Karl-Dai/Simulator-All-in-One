@@ -13,6 +13,8 @@ export function CancelScan(arg1:string,arg2:string):Promise<void>;
 
 export function ClearLogs(arg1:string):Promise<void>;
 
+export function ConfirmConfigurationClose():Promise<void>;
+
 export function Connect(arg1:string):Promise<void>;
 
 export function ConvertPLCToModbus(arg1:string):Promise<main.PLCAddress>;
@@ -22,6 +24,8 @@ export function CreateConnection(arg1:masterstate.Settings):Promise<masterstate.
 export function DeleteConnection(arg1:string):Promise<void>;
 
 export function Disconnect(arg1:string):Promise<void>;
+
+export function EnableConfigurationClose():Promise<void>;
 
 export function ExportLogsCSV(arg1:string):Promise<string>;
 
@@ -39,6 +43,8 @@ export function ListScanGroups(arg1:string):Promise<Array<masterstate.ScanGroup>
 
 export function ListSerialPorts():Promise<Array<string>>;
 
+export function LoadPreferences(arg1:Record<string, any>):Promise<Record<string, any>>;
+
 export function LoadProject(arg1:string):Promise<number>;
 
 export function Logs(arg1:string):Promise<Array<masterstate.LogEntry>>;
@@ -52,6 +58,8 @@ export function RefreshScanGroup(arg1:string,arg2:string):Promise<masterstate.Re
 export function RemoveScanGroup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveFileDialog(arg1:string,arg2:Array<main.FileFilter>):Promise<string>;
+
+export function SavePreferences(arg1:Record<string, any>):Promise<void>;
 
 export function SaveProject(arg1:string):Promise<void>;
 

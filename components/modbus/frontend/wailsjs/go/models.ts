@@ -1,5 +1,5 @@
 export namespace appstate {
-
+	
 	export interface RegisterRange {
 	    RegisterType: string;
 	    StartAddress: number;
@@ -51,7 +51,7 @@ export namespace appstate {
 	    Min: number;
 	    Max: number;
 	}
-
+	
 	export interface RegisterValueInfo {
 	    Address: number;
 	    Value: number;
@@ -85,7 +85,7 @@ export namespace appstate {
 }
 
 export namespace main {
-
+	
 	export interface ClientInfo {
 	    ID: number;
 	    PeerAddress: string;
@@ -142,8 +142,9 @@ export namespace main {
 }
 
 export namespace project {
-
+	
 	export interface ClientTLS {
+	    Version?: string;
 	    Enabled: boolean;
 	    CAFile?: string;
 	    CertFile?: string;
@@ -151,6 +152,7 @@ export namespace project {
 	    PKCS12File?: string;
 	    PKCS12Password?: string;
 	    AcceptInvalidCerts?: boolean;
+	    VerifyServerName?: boolean;
 	}
 	export interface DataSource {
 	    Type: string;
@@ -216,3 +218,14 @@ export namespace project {
 	}
 
 }
+
+export namespace suitehost {
+	
+	export interface AppearanceV1 {
+	    schemaVersion: number;
+	    theme: string;
+	    language: string;
+	}
+
+}
+

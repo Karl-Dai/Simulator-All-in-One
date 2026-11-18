@@ -16,11 +16,15 @@ export function ClearLogs(arg1:string):Promise<void>;
 
 export function ClearPointMutation(arg1:string,arg2:number,arg3:string,arg4:number):Promise<void>;
 
+export function ConfirmConfigurationClose():Promise<void>;
+
 export function ConvertPLCToModbus(arg1:string):Promise<main.PLCAddress>;
 
 export function CreateConnection(arg1:appstate.CreateConnectionRequest):Promise<main.ConnectionInfo>;
 
 export function DeleteConnection(arg1:string):Promise<void>;
+
+export function EnableConfigurationClose():Promise<void>;
 
 export function ExportLogsCSV(arg1:string):Promise<string>;
 
@@ -44,6 +48,8 @@ export function ListRegisters(arg1:string,arg2:number,arg3:string):Promise<Array
 
 export function ListSerialPorts():Promise<Array<string>>;
 
+export function LoadPreferences(arg1:Record<string, any>):Promise<Record<string, any>>;
+
 export function LoadProject(arg1:string):Promise<number>;
 
 export function Logs(arg1:string):Promise<Array<main.LogEntry>>;
@@ -63,6 +69,8 @@ export function RemoveDevice(arg1:string,arg2:number):Promise<void>;
 export function RemoveRegister(arg1:string,arg2:number,arg3:number,arg4:string):Promise<void>;
 
 export function SaveFileDialog(arg1:string,arg2:Array<main.FileFilter>):Promise<string>;
+
+export function SavePreferences(arg1:Record<string, any>):Promise<void>;
 
 export function SaveProject(arg1:string):Promise<void>;
 

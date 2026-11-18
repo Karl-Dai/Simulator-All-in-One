@@ -22,6 +22,10 @@ export function ClearLogs(arg1) {
   return window['go']['main']['App']['ClearLogs'](arg1);
 }
 
+export function ConfirmConfigurationClose() {
+  return window['go']['main']['App']['ConfirmConfigurationClose']();
+}
+
 export function Connect(arg1) {
   return window['go']['main']['App']['Connect'](arg1);
 }
@@ -40,6 +44,10 @@ export function DeleteConnection(arg1) {
 
 export function Disconnect(arg1) {
   return window['go']['main']['App']['Disconnect'](arg1);
+}
+
+export function EnableConfigurationClose() {
+  return window['go']['main']['App']['EnableConfigurationClose']();
 }
 
 export function ExportLogsCSV(arg1) {
@@ -74,6 +82,10 @@ export function ListSerialPorts() {
   return window['go']['main']['App']['ListSerialPorts']();
 }
 
+export function LoadPreferences(arg1) {
+  return window['go']['main']['App']['LoadPreferences'](arg1);
+}
+
 export function LoadProject(arg1) {
   return window['go']['main']['App']['LoadProject'](arg1);
 }
@@ -100,6 +112,10 @@ export function RemoveScanGroup(arg1, arg2) {
 
 export function SaveFileDialog(arg1, arg2) {
   return window['go']['main']['App']['SaveFileDialog'](arg1, arg2);
+}
+
+export function SavePreferences(arg1) {
+  return window['go']['main']['App']['SavePreferences'](arg1);
 }
 
 export function SaveProject(arg1) {
