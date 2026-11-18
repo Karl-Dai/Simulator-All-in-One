@@ -165,3 +165,16 @@ packaging/                                 保留打包逻辑，locks/ 副本退
 - SimLab 网站下载聚合改为套件 Release。
 - 独立版自动更新功能关闭或移除（随组件适配提交处理）。
 - 统一 Cargo workspace 的可行性，待组件稳定后另行评估。
+
+## 11. 实施记录（2026-11-18，迁移分支）
+
+与设计的偏差和补充决定：
+
+- 锁文件固定的 iec101 commit `1b1b1123` 与 iec102 commit `a0dacadc` 起初只存在于 `~/Developer/` 的本地开发仓库，各有 3 个提交未推送，已推送的套件 main 在 CI 上无法构建。经用户确认，两个组件仓库的 6 个提交已补推到 GitHub（`bdfd18a..1b1b112`、`cd4a6a3..a0dacadc`）。
+- `saio-shared` 的外观模块保留文件名 `simlab_preferences.rs`（设计稿写的是 `preferences.rs`），调用方模块路径不变。`pub(crate)` 改为 `pub`；文件内的 `crate::config_store` 引用和 `simlab-suite` feature 在 crate 内部解析，feature 由各应用的 `simlab-suite = ["saio-shared/simlab-suite"]` 传播。
+- `saio-shared` 依赖补齐 `sha2`、`log`、`tempfile`（原先由应用 crate 提供）。
+- 清单 `schemaVersion` 保持 1：启动器只读 `sourceCommit`、`version`、`sha256`，不读 `sourceVersion` 和补丁哈希，删除这两个字段后启动器无需改动。`sourceCommit` 记录 monorepo HEAD。
+- Windows 短路径方案改为 `CARGO_TARGET_DIR=D:/t`，`suite.py` 的 `payload_executable` 经 `cargo_target()` 读取产物；Windows 的 rust-cache 不缓存 target 目录。
+- `.components/` 忽略规则保留：旧克隆仍在磁盘上，其中 iec102 的未回收图标经逐字节比对与 `assets/roles/` 完全一致，属同步副本，可安全删除整个目录。
+- pmu 两个前端的 `tsconfig.node.json` 是 composite 项目（vue-tsc 2.x），需要 `rootDir` 指到仓库根并把输出重定向到 `node_modules/.tmp`；modbus/iec104/opcua 的 node 项目用 `noEmit`，无此问题。
+- iec101/102/104 上游 `.gitignore` 原本忽略 `Cargo.lock`，已移除该行，锁文件改为提交进组件目录。
