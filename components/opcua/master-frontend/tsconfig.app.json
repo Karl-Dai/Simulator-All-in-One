@@ -5,6 +5,7 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
+      "simlab-ui/*": ["../../../ui/*"],
       "@app/*": ["src/*"],
       "@shared/*": ["../shared-frontend/*"],
       "vue": ["node_modules/vue"],

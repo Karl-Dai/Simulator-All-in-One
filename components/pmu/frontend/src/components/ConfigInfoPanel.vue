@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import { useProtocol } from "../composables/useProtocol";
 import { useServerStatus } from "../composables/useServerStatus";
 import { useSessions } from "../composables/useSessions";

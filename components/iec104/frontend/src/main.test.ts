@@ -9,7 +9,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: async (command: string) => {
   if (command !== 'simlab_enable_configuration_close') throw new Error(`Unexpected command: ${command}`)
   state.order.push('close-enabled')
 } }))
-vi.mock('./simlab-ui/configPreferences', () => ({ installSuitePreferences: async () => {
+vi.mock('simlab-ui/configPreferences', () => ({ installSuitePreferences: async () => {
   state.order.push('preferences')
   state.loaded = true
   await new Promise<void>(resolve => { state.finish = resolve })

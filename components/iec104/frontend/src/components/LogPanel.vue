@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, inject, watch, nextTick, onMounted, onUnmounted, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { save } from '@tauri-apps/plugin-dialog'
 import type { LogEntry } from '../types'
 import { useI18n } from '@shared/i18n'

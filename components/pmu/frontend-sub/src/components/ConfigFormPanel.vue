@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, computed, ref, onMounted, watch } from "vue";
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import { load } from "@tauri-apps/plugin-store";
 import type { ConfigInput } from "../types";
 import { running, listenPorts } from "../composables/useSubEvents";

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch, onUnmounted } from "vue";
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import { running } from "../composables/useSubEvents";
 import { t } from "../i18n";
 import { useToast, toastError } from "../composables/useToast";

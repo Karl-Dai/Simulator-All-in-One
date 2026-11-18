@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { ref, watch, nextTick } from 'vue'
 import { useDialogState } from '../composables/useDialog'
 import { useI18n } from '../i18n'

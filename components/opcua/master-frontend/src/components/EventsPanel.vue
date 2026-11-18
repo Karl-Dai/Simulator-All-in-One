@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import SuiteIcon from '../simlab-ui/Icon.vue'
+import SuiteIcon from 'simlab-ui/Icon.vue'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
 import EmptyState from '@shared/components/EmptyState.vue'

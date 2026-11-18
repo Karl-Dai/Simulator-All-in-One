@@ -1,4 +1,4 @@
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import type { PmuEvent } from "../types";
 import { useSessions } from "./useSessions";
 import { useCommLog } from "./useCommLog";

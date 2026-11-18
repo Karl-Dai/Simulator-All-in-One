@@ -10,6 +10,7 @@ export function buildSharedAliases(hostImportMetaUrl: string) {
   const require = createRequire(hostImportMetaUrl)
   return {
     '@app': fileURLToPath(new URL('./src', hostImportMetaUrl)),
+    'simlab-ui': fileURLToPath(new URL('../../../../ui', import.meta.url)),
     '@shared': fileURLToPath(new URL('../shared-frontend', hostImportMetaUrl)),
     vue: require.resolve('vue'),
     '@tauri-apps/api/core': require.resolve('@tauri-apps/api/core'),

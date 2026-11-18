@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, computed, ref, watch, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import type { DataPointInfo } from '../types'

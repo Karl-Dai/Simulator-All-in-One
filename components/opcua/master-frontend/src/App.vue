@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { listen } from '@tauri-apps/api/event'
 import { useI18n } from '@shared/i18n'
 import Toolbar from './components/Toolbar.vue'

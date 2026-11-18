@@ -12,6 +12,9 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
+      "simlab-ui/*": ["./../../../ui/*"],
+      "vue": ["./node_modules/vue"],
+      "@tauri-apps/api/*": ["./node_modules/@tauri-apps/api/*"],
       "@/*": ["./src/*"]
     }
   },

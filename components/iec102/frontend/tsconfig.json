@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    "paths": {
+      "simlab-ui/*": ["./../../../ui/*"],
+      "vue": ["./node_modules/vue"],
+      "@tauri-apps/api/*": ["./node_modules/@tauri-apps/api/*"]
+    },
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
@@ -10,7 +15,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
     "noEmit": true,
     "verbatimModuleSyntax": true,

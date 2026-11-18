@@ -1,5 +1,5 @@
 import { nextTick, watch } from 'vue'
-import { registerConfigurationFlusher } from './simlab-ui/configClose'
+import { registerConfigurationFlusher } from 'simlab-ui/configClose'
 import type { StartConfig } from './types'
 
 const KEY = 'iec102.slave:form:v1'

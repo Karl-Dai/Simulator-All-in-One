@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '../i18n'
 
 type FileKind = 'certificate' | 'private-key'

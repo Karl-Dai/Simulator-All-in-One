@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import type { SubEvent, SubDataInfo } from "../types";
 import { useToast } from "./useToast";
 import { useEventLog } from "./useEventLog";

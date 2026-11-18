@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { dialogKey } from '@shared/composables/useDialog'

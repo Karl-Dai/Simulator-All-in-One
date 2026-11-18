@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { listen } from '@tauri-apps/api/event'
 import Toolbar from './components/Toolbar.vue'
 import AddressTree from './components/AddressTree.vue'

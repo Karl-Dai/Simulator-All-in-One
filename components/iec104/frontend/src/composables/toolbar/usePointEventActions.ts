@@ -1,4 +1,4 @@
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { runToolbarAction, type ToolbarActionContext } from './context'
 

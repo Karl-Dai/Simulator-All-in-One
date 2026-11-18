@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 import type { ClientConnectionInfo } from '../types'

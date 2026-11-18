@@ -1,8 +1,8 @@
-import { installConfigurationClose } from './simlab-ui/configClose'
+import { installConfigurationClose } from 'simlab-ui/configClose'
 async function bootstrap() {
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
     const { listen } = await import('@tauri-apps/api/event')
-    const { invoke } = await import('@app/simlab-ui/configInvoke')
+    const { invoke } = await import('simlab-ui/configInvoke')
     await installConfigurationClose(
       requested => listen('saio-before-close', requested),
       () => invoke('simlab_confirm_configuration_close'),
@@ -11,7 +11,7 @@ async function bootstrap() {
   }
 
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
-    const { installSuitePreferences } = await import('./simlab-ui/configPreferences')
+    const { installSuitePreferences } = await import('simlab-ui/configPreferences')
     await installSuitePreferences('opcua.server')
   }
   await import('./bootstrap')

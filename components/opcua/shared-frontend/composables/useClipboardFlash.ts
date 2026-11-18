@@ -1,5 +1,5 @@
 import { ref, onUnmounted } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '../i18n'
 
 export function useClipboardFlash(timeoutMs = 1500) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { invoke } from "./simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 import { getVersion } from "@tauri-apps/api/app";
 import { useToast } from "./composables/useToast";
 import ConfigInfoPanel from "./components/ConfigInfoPanel.vue";

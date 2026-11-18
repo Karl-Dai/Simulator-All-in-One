@@ -1,6 +1,6 @@
-import { installWailsConfigurationClose } from './simlab-ui/configClose'
+import { installWailsConfigurationClose } from 'simlab-ui/configClose'
 import { EventsOn } from '../wailsjs/runtime/runtime'
-import { installSuitePreferences } from './simlab-ui/configPreferences'
+import { installSuitePreferences } from 'simlab-ui/configPreferences'
 
 async function start() {
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') await installWailsConfigurationClose(EventsOn)

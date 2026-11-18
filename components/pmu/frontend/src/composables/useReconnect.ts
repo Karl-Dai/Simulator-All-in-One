@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { invoke } from "../simlab-ui/configInvoke";
+import { invoke } from "simlab-ui/configInvoke";
 
 export type ReconnectMode = "normal" | "skipCfg2";
 

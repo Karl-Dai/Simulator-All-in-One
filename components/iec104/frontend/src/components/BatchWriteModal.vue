@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { ref, computed, watch, inject, onUnmounted } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n, localizeCategoryLabel } from '@shared/i18n'

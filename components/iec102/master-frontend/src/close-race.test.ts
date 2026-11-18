@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, reactive } from 'vue'
 import { setPreferencesFlusher, watchPersistedForm } from './suite-persist'
-import { installSuitePreferences } from './simlab-ui/configPreferences'
-import { flushAllConfiguration, installConfigurationClose } from './simlab-ui/configClose'
+import { installSuitePreferences } from 'simlab-ui/configPreferences'
+import { flushAllConfiguration, installConfigurationClose } from 'simlab-ui/configClose'
 
 const ROLE = 'iec102.master'
 const KEY = 'iec102.master:form:v1'

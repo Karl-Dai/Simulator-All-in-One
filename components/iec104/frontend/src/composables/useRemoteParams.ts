@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import {
   type ProtocolTimingConfig,
   type RemoteOperationConfig,

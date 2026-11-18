@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SuiteIcon from '../simlab-ui/Icon.vue'
+import SuiteIcon from 'simlab-ui/Icon.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '@shared/i18n'
 import EmptyState from '@shared/components/EmptyState.vue'

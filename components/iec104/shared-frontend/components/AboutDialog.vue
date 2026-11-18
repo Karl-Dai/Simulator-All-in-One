@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { computed, ref, onMounted } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import { ABOUT_RELEASE_NOTES, APP_NAME, REPO_URL, RELEASES_URL, SIMLAB_URL } from '@app/releaseNotes'

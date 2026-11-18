@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 const status = ref<{enabled: boolean; error: string | null}>({enabled:false,error:null})
 let timer: ReturnType<typeof setInterval> | undefined
 async function refresh() {

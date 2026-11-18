@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject, computed, ref, watch, onBeforeUnmount, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import type { ReceivedDataPointInfo, ControlResult } from '../types'
 import { getControlConfig, asduHasTimestamp } from '../types'
 import QualityIndicator from '@shared/components/QualityIndicator.vue'

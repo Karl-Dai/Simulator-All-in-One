@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import StatusBadge from './simlab-ui/components/StatusBadge.vue'
-import ErrorNotice from './simlab-ui/components/ErrorNotice.vue'
+import StatusBadge from 'simlab-ui/components/StatusBadge.vue'
+import ErrorNotice from 'simlab-ui/components/ErrorNotice.vue'
 import { suiteAppearanceKey } from './suiteAppearance'
 import { ref, provide, inject, computed, onMounted, onUnmounted } from 'vue'
 import { EventsOn } from '../wailsjs/runtime/runtime'

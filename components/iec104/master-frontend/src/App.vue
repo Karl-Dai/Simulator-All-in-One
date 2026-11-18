@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import StatusBadge from './simlab-ui/components/StatusBadge.vue'
-import ErrorNotice from './simlab-ui/components/ErrorNotice.vue'
+import StatusBadge from 'simlab-ui/components/StatusBadge.vue'
+import ErrorNotice from 'simlab-ui/components/ErrorNotice.vue'
 import { suiteAppearanceKey } from './suiteAppearance'
 import { ref, shallowRef, computed, provide, inject, onMounted, onUnmounted, watch } from 'vue'
 import { listen } from '@tauri-apps/api/event'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import Toolbar from './components/Toolbar.vue'
 import ConnectionTree from './components/ConnectionTree.vue'
 import DataTable from './components/DataTable.vue'

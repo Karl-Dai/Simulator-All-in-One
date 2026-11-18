@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import SuiteIcon from '../simlab-ui/Icon.vue'
+import SuiteIcon from 'simlab-ui/Icon.vue'
 import { computed, ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '@shared/i18n'
 import { showAlert, showConfirm, showPrompt } from '@shared/composables/useDialog'

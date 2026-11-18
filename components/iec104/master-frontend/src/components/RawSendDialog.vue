@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { ref, watch, computed } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import type { RawSendResult } from '../types'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'

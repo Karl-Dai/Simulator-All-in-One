@@ -1,19 +1,19 @@
-import { installConfigurationClose } from './simlab-ui/configClose'
-import './simlab-ui/tokens.css'
-import './simlab-ui/components.css'
-import { invoke } from '@app/simlab-ui/configInvoke'
-import { parseAppearance } from './simlab-ui/contracts/appearance'
+import { installConfigurationClose } from 'simlab-ui/configClose'
+import 'simlab-ui/tokens.css'
+import 'simlab-ui/components.css'
+import { invoke } from 'simlab-ui/configInvoke'
+import { parseAppearance } from 'simlab-ui/contracts/appearance'
 import { createApp } from 'vue'
 import '@shared/styles/tokens.css'
 import '@shared/styles/base.css'
 import '@shared/styles/transitions.css'
 import '@shared/styles/toolbar.css'
-import { installSuitePreferences } from './simlab-ui/configPreferences'
+import { installSuitePreferences } from 'simlab-ui/configPreferences'
 
 async function bootstrap() {
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
     const { listen } = await import('@tauri-apps/api/event')
-    const { invoke } = await import('@app/simlab-ui/configInvoke')
+    const { invoke } = await import('simlab-ui/configInvoke')
     await installConfigurationClose(
       requested => listen('saio-before-close', requested),
       () => invoke('simlab_confirm_configuration_close'),

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
-import SuiteIcon from '../simlab-ui/Icon.vue'
+import { vModal } from "simlab-ui/modal"
+import SuiteIcon from 'simlab-ui/Icon.vue'
 import { ref, watch } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert, showConfirm } from '@shared/composables/useDialog'
 import type { CertRole, CertSummaryDto } from '../types'

@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef, type InjectionKey } from 'vue'
 import { useI18n } from 'shared-frontend'
-import { startAppearanceSync } from './simlab-ui/appearance'
-import type { AppearanceReader } from './simlab-ui/contracts/appearance'
+import { startAppearanceSync } from 'simlab-ui/appearance'
+import type { AppearanceReader } from 'simlab-ui/contracts/appearance'
 
 let activeSession: { dispose(): void } | null = null
 

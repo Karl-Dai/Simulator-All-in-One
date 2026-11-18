@@ -1,10 +1,10 @@
-import { installConfigurationClose } from './simlab-ui/configClose'
-import { installSuitePreferences } from './simlab-ui/configPreferences'
+import { installConfigurationClose } from 'simlab-ui/configClose'
+import { installSuitePreferences } from 'simlab-ui/configPreferences'
 
 async function start() {
   if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
     const { listen } = await import('@tauri-apps/api/event')
-    const { invoke } = await import('./simlab-ui/configInvoke')
+    const { invoke } = await import('simlab-ui/configInvoke')
     await installConfigurationClose(
       requested => listen('saio-before-close', requested),
       () => invoke('simlab_confirm_configuration_close'),

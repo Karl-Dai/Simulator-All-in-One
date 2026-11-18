@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, inject, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert, showConfirm as ShowConfirm, showPrompt as ShowPrompt } from '@shared/composables/useDialog'
 import type { ServerInfo, StationInfo } from '../types'

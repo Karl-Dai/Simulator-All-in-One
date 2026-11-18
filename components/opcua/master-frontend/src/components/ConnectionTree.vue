@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import SuiteIcon from '../simlab-ui/Icon.vue'
+import SuiteIcon from 'simlab-ui/Icon.vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showConfirm } from '@shared/composables/useDialog'
 import { nodeIcon } from '../domain'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 

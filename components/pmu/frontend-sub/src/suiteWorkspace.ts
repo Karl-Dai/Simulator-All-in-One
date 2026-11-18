@@ -1,5 +1,5 @@
-import { registerConfigurationFlusher } from './simlab-ui/configClose'
-import { invoke } from './simlab-ui/configInvoke'
+import { registerConfigurationFlusher } from 'simlab-ui/configClose'
+import { invoke } from 'simlab-ui/configInvoke'
 const suite = import.meta.env.VITE_SIMLAB_SUITE === '1'
 type Document = Record<string, unknown>
 const drafts = new Map<string, Document>()

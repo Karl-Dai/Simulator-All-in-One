@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { vModal } from "@app/simlab-ui/modal"
+import { vModal } from "simlab-ui/modal"
 import { ref, watch, computed } from 'vue'
-import { invoke } from '@app/simlab-ui/configInvoke'
+import { invoke } from 'simlab-ui/configInvoke'
 import type { ParsedFrame, ParsedObject } from '../types/frame'
 import { useI18n } from '../i18n'
 
