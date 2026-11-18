@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "crates/opcuasim-core",
+    "crates/opcuaserver-app",
+    "crates/opcuamaster-app",
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+log = "0.4"
+env_logger = "0.11"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

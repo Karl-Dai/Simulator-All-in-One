@@ -1,0 +1,12 @@
+target/
+node_modules/
+dist/
+.DS_Store
+*.log
+pki/
+pki-server*/
+.codegraph/
+.codex/
+.omo/
+.opencode/
+openspec/
