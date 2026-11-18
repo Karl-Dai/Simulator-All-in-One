@@ -1,0 +1,775 @@
+<script setup lang="ts">
+import { ref, inject, watch, onMounted, onUnmounted, computed, shallowRef, nextTick, type Ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import type { ReceivedDataPointInfo, IncrementalDataResponse, CommandType, ControlResult, ChangedCategoriesMap, CategoryCountsMap } from '../types'
+import { getControlConfig, asduHasTimestamp } from '../types'
+import ControlDialog from './ControlDialog.vue'
+import AppInput from '@shared/components/ui/AppInput.vue'
+import QualityIndicator from '@shared/components/QualityIndicator.vue'
+import QualityLegend from '@shared/components/QualityLegend.vue'
+import DoublePointLegend from '@shared/components/DoublePointLegend.vue'
+import EmptyState from '@shared/components/EmptyState.vue'
+import MultiSelectActions from '@shared/components/MultiSelectActions.vue'
+import { useI18n, localizeCategoryLabel } from '@shared/i18n'
+import { formatDataPointValue, normalizeDoublePointCode } from '@shared/utils/dataPointValue'
+import { formatAsduTypeWithId } from '@shared/utils/asduType'
+
+const { t } = useI18n()
+
+const emit = defineEmits<{
+  (e: 'point-select', points: ReceivedDataPointInfo[]): void
+}>()
+
+const selectedConnectionId = inject<Ref<string | null>>('selectedConnectionId')!
+const selectedCA = inject<Ref<number | null>>('selectedCA')!
+const selectedCategory = inject<Ref<string | null>>('selectedCategory')!
+const dataRefreshKey = inject<Ref<number>>('dataRefreshKey')!
+const changedCategories = inject<Ref<ChangedCategoriesMap>>('changedCategories')!
+const categoryCounts = inject<Ref<CategoryCountsMap>>('categoryCounts')!
+
+// Composite key: same IOA can carry different ASDU types AND can collide
+// across CAs on the same connection. Including CA prevents distinct
+// stations' identical IOAs from clobbering each other in the local cache.
+const pointKey = (p: { ioa: number; asdu_type: string; common_address: number }) =>
+  `${p.common_address}|${p.ioa}|${p.asdu_type}`
+
+// === Core data: plain JS Map (not reactive) + shallow ref for display array ===
+let dataMap = new Map<string, ReceivedDataPointInfo>()
+const displayPoints = shallowRef<ReceivedDataPointInfo[]>([])
+let lastSeq = 0
+let currentConnId: string | null = null
+// A workspaceEpoch remount can happen while an IPC request is in flight. Keep
+// both an instance lifetime flag and monotonically increasing generations so
+// stale requests cannot mutate injected parent maps or restart a zombie poll.
+let disposed = false
+let workspaceGeneration = 0
+let requestGeneration = 0
+let fetchInFlightWorkspace: number | null = null
+let fetchPendingWorkspace: number | null = null
+
+// === UI state ===
+const selectedKeys = ref<Set<string>>(new Set())
+const multiSelectMode = ref(false)
+const lastClickedIndex = ref(-1)
+const searchFilter = ref('')
+const changedKeys = ref<Set<string>>(new Set())
+const changeTimers = new Map<string, number>()
+
+// === Virtual scroll ===
+const ROW_HEIGHT = 36
+const OVERSCAN = 10
+const scrollTop = ref(0)
+const containerHeight = ref(400)
+const scrollContainer = ref<HTMLElement | null>(null)
+
+let pollTimer: number | null = null
+
+// === Rebuild display array from dataMap + update category counts ===
+function updateDisplay() {
+  const arr = Array.from(dataMap.values())
+  arr.sort((a, b) => {
+    if (a.common_address !== b.common_address) return a.common_address - b.common_address
+    return a.ioa - b.ioa
+  })
+  displayPoints.value = arr
+  if (!currentConnId) return
+  // Compute per-CA per-category counts so the tree can show "CA 1 → 单点
+  // (123)" instead of summing across stations.
+  const byCa = new Map<number, Map<string, number>>()
+  for (const p of arr) {
+    let perCat = byCa.get(p.common_address)
+    if (!perCat) { perCat = new Map(); byCa.set(p.common_address, perCat) }
+    perCat.set(p.category, (perCat.get(p.category) || 0) + 1)
+  }
+  const next = new Map(categoryCounts.value)
+  next.set(currentConnId, byCa)
+  categoryCounts.value = next
+}
+
+// === Fetch: always merge, never replace ===
+function isWorkspaceCurrent(connId: string, generation: number): boolean {
+  return !disposed
+    && generation === workspaceGeneration
+    && currentConnId === connId
+    && selectedConnectionId.value === connId
+}
+
+function isRequestCurrent(connId: string, workspace: number, request: number): boolean {
+  return isWorkspaceCurrent(connId, workspace) && request === requestGeneration
+}
+
+async function fetchData(workspace = workspaceGeneration) {
+  const connId = selectedConnectionId.value
+  if (!connId || !isWorkspaceCurrent(connId, workspace)) return
+  // Poll ticks and manual refreshes share one request per workspace. Remember
+  // one missed trigger instead of stacking calls; otherwise a backend slower
+  // than the 1s poll cadence would continuously invalidate every response.
+  if (fetchInFlightWorkspace === workspace) {
+    fetchPendingWorkspace = workspace
+    return
+  }
+  fetchInFlightWorkspace = workspace
+  const request = ++requestGeneration
+  const sinceSeq = lastSeq
+  try {
+    const resp = await invoke<IncrementalDataResponse>('get_received_data_since', {
+      id: connId,
+      sinceSeq,
+    })
+    if (!isRequestCurrent(connId, workspace, request)) return
+    if (resp.points.length > 0) {
+      // 按 CA 分组记录本批次有变化的 category，否则 CA=1 收到一条变位会让
+      // CA=2/3 同名 category 节点也跟着 flash 黄。
+      const catsByCa = new Map<number, Set<string>>()
+      for (const p of resp.points) {
+        const k = pointKey(p)
+        const old = dataMap.get(k)
+        if (!old || old.value !== p.value) {
+          markChanged(k)
+          let s = catsByCa.get(p.common_address)
+          if (!s) { s = new Set(); catsByCa.set(p.common_address, s) }
+          s.add(p.category)
+        }
+        dataMap.set(k, p)
+      }
+      updateDisplay()
+      if (catsByCa.size > 0 && currentConnId) {
+        const existing = changedCategories.value.get(currentConnId) ?? new Map<number, Set<string>>()
+        const merged = new Map(existing)
+        for (const [ca, cats] of catsByCa) {
+          const prev = merged.get(ca) ?? new Set<string>()
+          const ns = new Set(prev)
+          for (const c of cats) ns.add(c)
+          merged.set(ca, ns)
+        }
+        const nextMap = new Map(changedCategories.value)
+        nextMap.set(currentConnId, merged)
+        changedCategories.value = nextMap
+      }
+    }
+    lastSeq = resp.seq
+  } catch (e) {
+    if (isRequestCurrent(connId, workspace, request)) {
+      console.warn('fetchData error:', e)
+    }
+  } finally {
+    if (fetchInFlightWorkspace === workspace) fetchInFlightWorkspace = null
+    if (fetchPendingWorkspace === workspace) {
+      fetchPendingWorkspace = null
+      if (isWorkspaceCurrent(connId, workspace)) void fetchData(workspace)
+    }
+  }
+}
+
+function markChanged(key: string) {
+  changedKeys.value.add(key)
+  const prev = changeTimers.get(key)
+  if (prev) clearTimeout(prev)
+  changeTimers.set(key, window.setTimeout(() => {
+    changedKeys.value.delete(key)
+    changeTimers.delete(key)
+  }, 3000))
+}
+
+// === Poll control ===
+function startPoll(connId: string, generation: number) {
+  if (!isWorkspaceCurrent(connId, generation)) return
+  stopPoll()
+  pollTimer = window.setInterval(() => {
+    if (!isWorkspaceCurrent(connId, generation)) {
+      stopPoll()
+      return
+    }
+    void fetchData(generation)
+  }, 1000)
+}
+
+function stopPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+}
+
+// === Only reset when connection truly changes ===
+function initConnection(connId: string) {
+  const generation = ++workspaceGeneration
+  requestGeneration++
+  fetchPendingWorkspace = null
+  stopPoll()
+  dataMap = new Map()
+  displayPoints.value = []
+  lastSeq = 0
+  changedKeys.value.clear()
+  for (const t of changeTimers.values()) clearTimeout(t)
+  changeTimers.clear()
+  selectedKeys.value = new Set()
+  multiSelectMode.value = false
+  emit('point-select', [])
+  currentConnId = connId
+  void fetchData(generation).finally(() => startPoll(connId, generation))
+}
+
+onMounted(() => {
+  if (selectedConnectionId.value) {
+    initConnection(selectedConnectionId.value)
+  }
+})
+
+onUnmounted(() => {
+  disposed = true
+  workspaceGeneration++
+  requestGeneration++
+  fetchPendingWorkspace = null
+  stopPoll()
+  for (const t of changeTimers.values()) clearTimeout(t)
+  changeTimers.clear()
+})
+
+watch(selectedConnectionId, (newId) => {
+  if (newId === currentConnId) return
+  if (!newId) {
+    workspaceGeneration++
+    requestGeneration++
+    fetchPendingWorkspace = null
+    stopPoll()
+    currentConnId = null
+    dataMap = new Map()
+    displayPoints.value = []
+    lastSeq = 0
+    changedKeys.value.clear()
+    for (const t of changeTimers.values()) clearTimeout(t)
+    changeTimers.clear()
+    selectedKeys.value = new Set()
+    multiSelectMode.value = false
+    emit('point-select', [])
+    return
+  }
+  initConnection(newId)
+})
+
+// GI / counter read just triggers an extra fetch — no reset
+watch(dataRefreshKey, () => { void fetchData(workspaceGeneration) })
+
+// 切换 CA/分类/搜索 → 列表内容整体替换,必须把滚动归零。否则在大列表(如 CA1
+// 单点 5278 条)滚到下方后切到小列表(CA2 单点 21 条),残留的 scrollTop 让
+// visibleStart 越过新列表末尾,slice 返回空 → 表格全空白(计数却仍显示 21)。
+watch([selectedCA, selectedCategory, searchFilter], () => {
+  scrollTop.value = 0
+  nextTick(() => { if (scrollContainer.value) scrollContainer.value.scrollTop = 0 })
+})
+
+watch([selectedCA, selectedCategory], () => {
+  multiSelectMode.value = false
+  clearSelection()
+})
+
+// Apply the structural CA/category scope independently from the search query.
+// This lets the count read "visible / category total" only while searching,
+// instead of treating a selected category itself as a search filter.
+const scopedPoints = computed(() => {
+  let pts = displayPoints.value
+  // selectedCA === null → show every station (legacy single-CA behaviour
+  // and "click connection node directly" both end up here).
+  if (selectedCA.value !== null) {
+    pts = pts.filter(p => p.common_address === selectedCA.value)
+  }
+  if (selectedCategory.value) {
+    pts = pts.filter(p => p.category === selectedCategory.value)
+  }
+  return pts
+})
+
+// === Filtered + virtual scroll ===
+const filteredPoints = computed(() => {
+  let pts = scopedPoints.value
+  if (searchFilter.value) {
+    const q = searchFilter.value.toLowerCase()
+    pts = pts.filter(p =>
+      p.ioa.toString().includes(q) ||
+      p.asdu_type.toLowerCase().includes(q) ||
+      p.value.toLowerCase().includes(q)
+    )
+  }
+  return pts
+})
+
+const totalHeight = computed(() => filteredPoints.value.length * ROW_HEIGHT)
+const visibleStart = computed(() => Math.max(0, Math.floor(scrollTop.value / ROW_HEIGHT) - OVERSCAN))
+const visibleEnd = computed(() => {
+  const count = Math.ceil(containerHeight.value / ROW_HEIGHT) + OVERSCAN * 2
+  return Math.min(filteredPoints.value.length, visibleStart.value + count)
+})
+const visibleRows = computed(() => filteredPoints.value.slice(visibleStart.value, visibleEnd.value))
+const offsetY = computed(() => visibleStart.value * ROW_HEIGHT)
+
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement
+  scrollTop.value = el.scrollTop
+  containerHeight.value = el.clientHeight
+}
+
+// === Row interaction ===
+function handleRowClick(localIdx: number, event: MouseEvent) {
+  const globalIdx = visibleStart.value + localIdx
+  const point = filteredPoints.value[globalIdx]
+  if (!point) return
+  const k = pointKey(point)
+  if (!multiSelectMode.value) {
+    selectedKeys.value = new Set([k])
+  } else if (event.shiftKey && lastClickedIndex.value >= 0) {
+    const s = new Set(selectedKeys.value)
+    const a = Math.min(lastClickedIndex.value, globalIdx)
+    const b = Math.max(lastClickedIndex.value, globalIdx)
+    for (let i = a; i <= b; i++) {
+      const p = filteredPoints.value[i]
+      if (p) s.add(pointKey(p))
+    }
+    selectedKeys.value = s
+  } else {
+    const s = new Set(selectedKeys.value)
+    s.has(k) ? s.delete(k) : s.add(k)
+    selectedKeys.value = s
+  }
+  lastClickedIndex.value = globalIdx
+  emitSelectedPoints()
+}
+
+function emitSelectedPoints() {
+  const selected = Array.from(selectedKeys.value).map(key => dataMap.get(key)!).filter(Boolean)
+  emit('point-select', selected)
+}
+
+function togglePointSelection(point: ReceivedDataPointInfo) {
+  const key = pointKey(point)
+  const next = new Set(selectedKeys.value)
+  next.has(key) ? next.delete(key) : next.add(key)
+  selectedKeys.value = next
+  lastClickedIndex.value = filteredPoints.value.indexOf(point)
+  emitSelectedPoints()
+}
+
+function selectFilteredPoints() {
+  selectedKeys.value = new Set(filteredPoints.value.map(pointKey))
+  lastClickedIndex.value = filteredPoints.value.length - 1
+  emitSelectedPoints()
+}
+
+const filteredSelectionCount = computed(() =>
+  filteredPoints.value.reduce(
+    (count, point) => count + Number(selectedKeys.value.has(pointKey(point))),
+    0,
+  ),
+)
+const allFilteredSelected = computed(() =>
+  filteredPoints.value.length > 0
+  && filteredSelectionCount.value === filteredPoints.value.length,
+)
+const someFilteredSelected = computed(() =>
+  filteredSelectionCount.value > 0 && !allFilteredSelected.value,
+)
+
+function toggleFilteredSelection() {
+  const next = new Set(selectedKeys.value)
+  for (const point of filteredPoints.value) {
+    const key = pointKey(point)
+    if (allFilteredSelected.value) next.delete(key)
+    else next.add(key)
+  }
+  selectedKeys.value = next
+  lastClickedIndex.value = next.size > 0
+    ? filteredPoints.value.findIndex(point => next.has(pointKey(point)))
+    : -1
+  emitSelectedPoints()
+}
+
+function invertFilteredSelection() {
+  const next = new Set(selectedKeys.value)
+  for (const point of filteredPoints.value) {
+    const key = pointKey(point)
+    next.has(key) ? next.delete(key) : next.add(key)
+  }
+  selectedKeys.value = next
+  emitSelectedPoints()
+}
+
+function clearSelection() {
+  selectedKeys.value = new Set()
+  lastClickedIndex.value = -1
+  emitSelectedPoints()
+}
+
+const selectedCount = computed(() => selectedKeys.value.size)
+
+const categoryTitle = computed(() =>
+  selectedCategory.value ? localizeCategoryLabel(selectedCategory.value) : t('table.allData')
+)
+const filteredCount = computed(() => filteredPoints.value.length)
+const pointCountLabel = computed(() => {
+  const suffix = t('table.countSuffix')
+  const total = scopedPoints.value.length
+  if (!searchFilter.value.trim()) return `${total}${suffix ? ' ' + suffix : ''}`
+  return `${filteredCount.value} / ${total}${suffix ? ' ' + suffix : ''}`
+})
+
+// === Right-click context menu ===
+const contextMenu = ref<{ visible: boolean; x: number; y: number; point: ReceivedDataPointInfo | null }>({
+  visible: false, x: 0, y: 0, point: null
+})
+
+const ctxControlConfig = computed(() => {
+  if (!contextMenu.value.point) return null
+  return getControlConfig(contextMenu.value.point.category)
+})
+
+function handleRowContextMenu(localIdx: number, event: MouseEvent) {
+  event.preventDefault()
+  const globalIdx = visibleStart.value + localIdx
+  const point = filteredPoints.value[globalIdx]
+  if (!point) return
+  contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, point }
+}
+
+function hideContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function enterMultiSelect() {
+  const point = contextMenu.value.point
+  multiSelectMode.value = true
+  if (point) {
+    selectedKeys.value = new Set([pointKey(point)])
+    lastClickedIndex.value = filteredPoints.value.indexOf(point)
+    emitSelectedPoints()
+  }
+  hideContextMenu()
+}
+
+function exitMultiSelect() {
+  multiSelectMode.value = false
+  clearSelection()
+  hideContextMenu()
+}
+
+async function ctxSendCommand(value: string, selectMode: boolean = false) {
+  const point = contextMenu.value.point
+  if (!point || !selectedConnectionId.value || !ctxControlConfig.value) return
+  hideContextMenu()
+  try {
+    // The point now carries its own CA (the station that sent it), so the
+    // control command targets the correct station even in multi-CA setups.
+    await invoke<ControlResult>('send_control_command', {
+      request: {
+        connection_id: selectedConnectionId.value,
+        ioa: point.ioa,
+        common_address: point.common_address,
+        command_type: ctxControlConfig.value.commandType,
+        value: value,
+        select: selectMode,
+      }
+    })
+  } catch (e) {
+    console.warn('Control command failed:', e)
+  }
+}
+
+function ctxCopy(text: string) {
+  navigator.clipboard.writeText(text)
+  hideContextMenu()
+}
+
+// ControlDialog state (for free-control entry)
+const showControlDialog = ref(false)
+const controlDialogIoa = ref<number | null>(null)
+const controlDialogCA = ref<number>(1)
+const controlDialogType = ref<CommandType | null>(null)
+
+function ctxOpenControlDialog() {
+  const point = contextMenu.value.point
+  if (!point) return
+  controlDialogIoa.value = point.ioa
+  controlDialogCA.value = point.common_address
+  const config = ctxControlConfig.value
+  controlDialogType.value = config?.commandType ?? null
+  hideContextMenu()
+  showControlDialog.value = true
+}
+
+// Helper: check if option matches current value for marking
+// optValue is the string from CONTROL_CONFIG options; cv is the point's value string
+function isCtxActiveOption(optValue: string): boolean {
+  const point = contextMenu.value.point
+  const cv = point?.value?.toLowerCase() ?? ''
+  // Single point: value='true' => 'on', value='false' => 'off'
+  if (optValue === 'true') return cv === 'on'
+  if (optValue === 'false') return cv === 'off'
+  // Double point: compare normalized protocol codes while retaining support
+  // for values produced by older localized backends.
+  const isDoublePoint = point?.category === 'double_point'
+    || point?.asdu_type.startsWith('M_DP_')
+    || point?.asdu_type.startsWith('C_DC_')
+  if (isDoublePoint && (optValue === '0' || optValue === '1' || optValue === '2' || optValue === '3')) {
+    return normalizeDoublePointCode(cv) === optValue
+  }
+  return false
+}
+</script>
+
+<template>
+  <div class="data-table-container" @click="hideContextMenu">
+    <EmptyState
+      v-if="!selectedConnectionId"
+      :title="t('table.chooseConnection')"
+      :hint="t('table.chooseConnectionHint')"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 7h14M5 12h14M5 17h14" />
+        <circle cx="3" cy="7" r="1" />
+        <circle cx="3" cy="12" r="1" />
+        <circle cx="3" cy="17" r="1" />
+      </svg>
+    </EmptyState>
+    <template v-else>
+      <div class="table-header">
+        <span class="header-title">{{ categoryTitle }}</span>
+        <AppInput v-model="searchFilter" class="search-input" :placeholder="t('table.searchPlaceholder')" />
+        <MultiSelectActions
+          v-if="multiSelectMode"
+          :total="filteredPoints.length"
+          :selected-count="selectedCount"
+          @select-all="selectFilteredPoints"
+          @invert="invertFilteredSelection"
+          @clear="clearSelection"
+          @exit="exitMultiSelect"
+        />
+        <span class="point-count">{{ pointCountLabel }}</span>
+      </div>
+
+      <EmptyState
+        v-if="filteredPoints.length === 0"
+        :title="t('table.noData')"
+        :hint="t('table.noDataHint')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="1.5" />
+          <path d="M3 10h18M3 15h18M11 4v16" />
+        </svg>
+      </EmptyState>
+
+      <div v-else ref="scrollContainer" class="table-scroll" @scroll="onScroll">
+        <!-- Fixed header -->
+        <table class="table">
+          <thead>
+            <tr>
+              <th v-if="multiSelectMode" class="col-select">
+                <input
+                  class="select-all-checkbox"
+                  type="checkbox"
+                  :checked="allFilteredSelected"
+                  :indeterminate="someFilteredSelected"
+                  :aria-label="t('table.selectFiltered')"
+                  :title="t('table.selectFiltered')"
+                  @click.stop
+                  @change="toggleFilteredSelection"
+                />
+              </th>
+              <th class="col-ioa">IOA</th>
+              <th class="col-type">{{ t('table.type') }}</th>
+              <th class="col-value"><span class="th-value">{{ t('table.value') }}<DoublePointLegend /></span></th>
+              <th class="col-quality"><span class="th-quality">{{ t('table.quality') }}<QualityLegend /></span></th>
+              <th class="col-timestamp">{{ t('table.timestamp') }}</th>
+            </tr>
+          </thead>
+        </table>
+        <!-- Virtual scroll body -->
+        <div v-if="filteredPoints.length > 0" :style="{ height: totalHeight + 'px', position: 'relative' }">
+          <table class="table table-body" :style="{ transform: `translateY(${offsetY}px)` }">
+            <tbody>
+              <tr
+                v-for="(point, i) in visibleRows"
+                :key="pointKey(point)"
+                :class="{ selected: selectedKeys.has(pointKey(point)) }"
+                @click="handleRowClick(i, $event)"
+                @contextmenu="handleRowContextMenu(i, $event)"
+              >
+                <td v-if="multiSelectMode" class="col-select">
+                  <input
+                    type="checkbox"
+                    :checked="selectedKeys.has(pointKey(point))"
+                    :aria-label="`${point.ioa} ${point.asdu_type}`"
+                    @click.stop="togglePointSelection(point)"
+                  />
+                </td>
+                <td class="col-ioa">{{ point.ioa }}</td>
+                <td class="col-type">{{ formatAsduTypeWithId(point.asdu_type, point.asdu_type_id) }}</td>
+                <td :class="['col-value', { 'value-highlight': changedKeys.has(pointKey(point)) }]"><span class="value-text">{{ formatDataPointValue(point, t) }}</span></td>
+                <td class="col-quality">
+                  <QualityIndicator
+                    :quality="{ ov: point.quality_ov, bl: point.quality_bl, sb: point.quality_sb, nt: point.quality_nt, iv: point.quality_iv }"
+                    :show-ov="point.asdu_type.startsWith('M_ME')"
+                    :show-help="false"
+                    compact
+                  />
+                </td>
+                <td class="col-timestamp">{{ asduHasTimestamp(point.asdu_type) ? (point.timestamp ?? '-') : '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <!-- Right-click context menu -->
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }" @click.stop>
+      <div class="ctx-item" @click="multiSelectMode ? exitMultiSelect() : enterMultiSelect()">
+        {{ multiSelectMode ? t('table.exitMultiSelect') : t('table.enterMultiSelect') }}
+      </div>
+      <div class="ctx-divider"></div>
+      <template v-if="ctxControlConfig && ctxControlConfig.options">
+        <!-- Direct execute options for discrete types -->
+        <div
+          v-for="opt in ctxControlConfig.options"
+          :key="opt.value"
+          :class="['ctx-item', { 'ctx-active': isCtxActiveOption(opt.value) }]"
+          @click="ctxSendCommand(opt.value)"
+        >
+          {{ isCtxActiveOption(opt.value) ? '&#9679; ' : '&#9675; ' }}{{ opt.label }}
+        </div>
+        <div class="ctx-divider"></div>
+        <!-- SbO options for discrete types -->
+        <div
+          v-for="opt in ctxControlConfig.options"
+          :key="'sbo-' + opt.value"
+          class="ctx-item ctx-sub"
+          @click="ctxSendCommand(opt.value, true)"
+        >
+          SbO: {{ opt.label }}
+        </div>
+        <div class="ctx-divider"></div>
+      </template>
+      <template v-else-if="ctxControlConfig">
+        <!-- Setpoint types: open dialog -->
+        <div class="ctx-item" @click="ctxOpenControlDialog">{{ t('table.setpoint') }}</div>
+        <div class="ctx-divider"></div>
+      </template>
+      <!-- Copy actions (always available) -->
+      <div class="ctx-item" @click="ctxCopy(String(contextMenu.point?.ioa ?? ''))">{{ t('table.copyIoa') }}</div>
+      <div class="ctx-item" @click="ctxCopy(contextMenu.point?.value ?? '')">{{ t('table.copyValue') }}</div>
+      <template v-if="ctxControlConfig">
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" @click="ctxOpenControlDialog">{{ t('table.freeControl') }}</div>
+      </template>
+    </div>
+
+    <!-- ControlDialog for free control / setpoint entry. Stays open after a
+         successful send so the user can iterate; close via the dialog's
+         own button or backdrop click. -->
+    <ControlDialog
+      :visible="showControlDialog"
+      :connection-id="selectedConnectionId"
+      :common-address="controlDialogCA"
+      :prefill-ioa="controlDialogIoa"
+      :prefill-command-type="controlDialogType"
+      @close="showControlDialog = false"
+    />
+  </div>
+</template>
+
+<style scoped>
+.data-table-container { display: flex; flex-direction: column; height: 100%; }
+
+.table-header {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; background: var(--bg-panel);
+}
+.header-title { font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+/* AppInput 自带主题化外观，这里只保留在工具条中的布局约束。 */
+.search-input { flex: 1; max-width: 200px; margin-left: auto; }
+.point-count { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+.table-scroll { flex: 1; overflow-y: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.table thead { position: sticky; top: 0; z-index: 2; }
+.table th {
+  background: var(--bg-panel); color: var(--text-muted); font-weight: 500;
+  padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle);
+}
+.table-body { position: absolute; top: 0; left: 0; width: 100%; }
+.table tbody tr { cursor: pointer; height: 36px; }
+.table tbody tr:hover { background: var(--bg-hover); }
+/* 选中行：accent 左竖条 + 轻量着色，不再整行反色。 */
+.table tbody tr.selected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.table tbody tr.selected:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.table td {
+  height: 36px; padding: 2px 10px; border-bottom: 1px solid var(--border-subtle); box-sizing: border-box;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.col-select {
+  width: 36px;
+  padding-right: 0 !important;
+  padding-left: 8px !important;
+  text-align: center;
+}
+.col-select input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.col-ioa { font-family: var(--font-mono); width: 80px; color: var(--accent); text-align: right; }
+.col-type { font-family: var(--font-mono); width: 210px; }
+.col-value { font-family: var(--font-mono); text-align: right; transition: color 0.3s; }
+.col-value.value-highlight .value-text { color: var(--c-peach); font-weight: 700; }
+.table tbody tr.selected .col-value.value-highlight .value-text {
+  color: var(--c-peach);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.col-quality { width: 96px; font-weight: 600; font-size: 11px; }
+.th-value, .th-quality { display: inline-flex; align-items: center; gap: 4px; }
+.col-quality.quality-ok { color: var(--success); }
+.col-quality.quality-iv { color: var(--danger); }
+.col-timestamp { font-family: var(--font-mono); width: 120px; color: var(--text-muted); }
+
+/* Context menu */
+.context-menu {
+  position: fixed;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px 0;
+  z-index: var(--z-dropdown);
+  min-width: 150px;
+  box-shadow: var(--shadow-lg);
+}
+
+.ctx-item {
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.ctx-item:hover {
+  background: var(--bg-hover);
+}
+
+.ctx-active {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ctx-sub {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ctx-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+</style>

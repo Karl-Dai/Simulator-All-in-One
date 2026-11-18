@@ -1,0 +1,656 @@
+<script setup lang="ts">
+import { computed, ref, inject, watch, onMounted, onUnmounted, type Ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import type { ConnectionInfo, ChangedCategoriesMap, CategoryCountsMap } from '../types'
+import { useI18n } from '@shared/i18n'
+import { dialogKey, showAlert, showConfirm } from '@shared/composables/useDialog'
+import AppButton from '@shared/components/ui/AppButton.vue'
+
+const { t } = useI18n()
+const dialogs = inject(dialogKey, { showAlert, showConfirm })
+
+const emit = defineEmits<{
+  (e: 'connection-select', id: string, state: string): void
+  (e: 'connection-deleted', id: string): void
+  // ca === null means "all CAs combined" (matches the connection-level
+  // category click); otherwise it's the specific CA the user picked.
+  (e: 'category-select', connectionId: string, category: string, ca: number | null): void
+}>()
+
+const treeRefreshKey = inject<Ref<number>>('treeRefreshKey')!
+const refreshTree = inject<() => void>('refreshTree')!
+// Provided by Toolbar: opens the new-connection dialog in edit mode for the
+// given connection id. Optional — if Toolbar isn't mounted (shouldn't happen
+// in this app), the menu item just no-ops.
+const openEditConnection = inject<((connId: string) => void) | null>('openEditConnection', null)
+const changedCategories = inject<Ref<ChangedCategoriesMap>>('changedCategories')!
+const sharedCategoryCounts = inject<Ref<CategoryCountsMap>>('categoryCounts')!
+let disposed = false
+let loadGeneration = 0
+
+// Flash key 用真实 (connId, ca, category) 三元组。single-CA 视图也能拿到唯一
+// CA (`conn.info.common_addresses[0]`),所以不需要 wildcard sentinel。
+const flashingCategories = ref<Set<string>>(new Set())
+const flashTimers = new Map<string, number>()
+const flashKey = (connId: string, ca: number, cat: string) => `${connId}|${ca}|${cat}`
+
+watch(changedCategories, (map) => {
+  if (disposed || map.size === 0) return
+  for (const [connId, byCa] of map) {
+    for (const [ca, cats] of byCa) {
+      for (const cat of cats) {
+        const key = flashKey(connId, ca, cat)
+        flashingCategories.value.add(key)
+        const prev = flashTimers.get(key)
+        if (prev) clearTimeout(prev)
+        flashTimers.set(key, window.setTimeout(() => {
+          if (disposed) return
+          flashingCategories.value.delete(key)
+          flashTimers.delete(key)
+        }, 3000))
+      }
+    }
+  }
+  changedCategories.value = new Map()
+})
+
+onUnmounted(() => {
+  disposed = true
+  loadGeneration++
+  for (const t of flashTimers.values()) clearTimeout(t)
+  flashTimers.clear()
+})
+
+const DATA_CATEGORIES = [
+  'single_point',
+  'double_point',
+  'step_position',
+  'bitstring',
+  'normalized_measured',
+  'scaled_measured',
+  'float_measured',
+  'integrated_totals',
+].map(key => ({ key }))
+
+// 每个监视方向 category 对应的 ASDU TypeId: 无时标 · CP24 时标 · CP56 时标
+// 与 crates/iec104sim-core/src/types.rs::AsduTypeId::category 一致, 与子站树展示对齐
+const CATEGORY_TYPEIDS: Record<string, string> = {
+  single_point: '1 · 2 · 30',
+  double_point: '3 · 4 · 31',
+  step_position: '5 · 6 · 32',
+  bitstring: '7 · 33',
+  normalized_measured: '9 · 10 · 21 · 34',
+  scaled_measured: '11 · 12 · 35',
+  float_measured: '13 · 14 · 36',
+  integrated_totals: '15 · 37',
+}
+
+interface TreeConnection {
+  info: ConnectionInfo
+  expanded: boolean
+  // Per-CA expanded state. Keyed by CA value.
+  caExpanded: Record<number, boolean>
+}
+
+const connections = ref<TreeConnection[]>([])
+const batchMode = ref(false)
+const deleteBusy = ref(false)
+const deleting = ref(false)
+const deleteProgress = ref({ completed: 0, total: 0 })
+const checkedIds = ref(new Set<string>())
+const batchTargets = computed(() => connections.value.filter(conn => checkedIds.value.has(conn.info.id)))
+const allChecked = computed(() => connections.value.length > 0 && batchTargets.value.length === connections.value.length)
+const someChecked = computed(() => batchTargets.value.length > 0 && !allChecked.value)
+const hasExpanded = computed(() => connections.value.some(conn => conn.expanded))
+const hasCollapsed = computed(() => connections.value.some(conn => !conn.expanded || conn.info.common_addresses.some(ca => !conn.caExpanded[ca])))
+
+function toggleChecked(id: string) {
+  if (deleteBusy.value) return
+  if (checkedIds.value.has(id)) checkedIds.value.delete(id)
+  else checkedIds.value.add(id)
+}
+
+function toggleAll() {
+  if (deleteBusy.value) return
+  checkedIds.value = allChecked.value ? new Set() : new Set(connections.value.map(conn => conn.info.id))
+}
+
+function toggleBatchMode() {
+  if (deleteBusy.value) return
+  batchMode.value = !batchMode.value
+  checkedIds.value.clear()
+  hideContextMenu()
+}
+
+function setAllExpanded(expanded: boolean) {
+  for (const conn of connections.value) {
+    conn.expanded = expanded
+    for (const ca of conn.info.common_addresses) conn.caExpanded[ca] = expanded
+  }
+  hideContextMenu()
+}
+// Selected node id is one of:
+//   "<connId>"                     — the connection node itself
+//   "<connId>:ca:<ca>"             — a specific CA group node
+//   "<connId>:ca:<ca>:<catKey>"    — a category under a specific CA
+//   "<connId>:<catKey>"            — a category under "all CAs" (single-CA case)
+const selectedNodeId = ref<string | null>(null)
+
+const contextMenu = ref<{ visible: boolean; x: number; y: number; connId: string }>({
+  visible: false, x: 0, y: 0, connId: ''
+})
+
+// Look up a count for a specific (conn, ca, category) bucket. ca=null sums
+// across every CA (used when the connection has only one CA configured and
+// the tree is rendered flat).
+function countFor(connId: string, label: string, ca: number | null): number {
+  const byCa = sharedCategoryCounts.value.get(connId)
+  if (!byCa) return 0
+  if (ca !== null) {
+    return byCa.get(ca)?.get(label) ?? 0
+  }
+  let total = 0
+  for (const m of byCa.values()) total += m.get(label) ?? 0
+  return total
+}
+
+// Should we render per-CA sub-nodes for this connection? Yes if the user
+// configured multiple CAs (`common_addresses.length > 1`); otherwise the
+// classic flat tree is friendlier.
+function isMultiCA(conn: TreeConnection): boolean {
+  return conn.info.common_addresses.length > 1
+}
+
+async function loadTree() {
+  const generation = ++loadGeneration
+  try {
+    const conns = await invoke<ConnectionInfo[]>('list_connections')
+    if (disposed || generation !== loadGeneration) return
+    const activeIds = new Set(conns.map(c => c.id))
+    const newTree: TreeConnection[] = []
+    for (const conn of conns) {
+      const existing = connections.value.find(c => c.info.id === conn.id)
+      // 合并 caExpanded:保留用户对旧 CA 的展开/折叠状态,
+      // 把广播 GI debouncer 新学到的 CA 默认 expanded=true。
+      // 直接用 `existing?.caExpanded ?? ...` 会让新 CA 永远拿不到 key,
+      // 模板 `v-if="caExpanded[ca]"` 拒绝渲染子分类,导致用户感觉"CA 节点不出现"。
+      const mergedCaExpanded: Record<number, boolean> = { ...(existing?.caExpanded ?? {}) }
+      for (const ca of conn.common_addresses) {
+        if (!(ca in mergedCaExpanded)) mergedCaExpanded[ca] = true
+      }
+      newTree.push({
+        info: conn,
+        expanded: existing?.expanded ?? true,
+        caExpanded: mergedCaExpanded,
+      })
+    }
+    connections.value = newTree
+    checkedIds.value = new Set([...checkedIds.value].filter(id => activeIds.has(id)))
+
+    const staleCounts = [...sharedCategoryCounts.value.keys()].filter(k => !activeIds.has(k))
+    if (staleCounts.length > 0) {
+      const next = new Map(sharedCategoryCounts.value)
+      for (const id of staleCounts) next.delete(id)
+      sharedCategoryCounts.value = next
+    }
+    const staleFlash = [...changedCategories.value.keys()].filter(k => !activeIds.has(k))
+    if (staleFlash.length > 0) {
+      const next = new Map(changedCategories.value)
+      for (const id of staleFlash) next.delete(id)
+      changedCategories.value = next
+    }
+  } catch (_e) {
+    // Ignore errors on load
+  }
+}
+
+watch(treeRefreshKey, loadTree)
+onMounted(loadTree)
+
+function selectConnection(conn: TreeConnection) {
+  if (batchMode.value) { toggleChecked(conn.info.id); return }
+  selectedNodeId.value = conn.info.id
+  emit('connection-select', conn.info.id, conn.info.state)
+}
+
+function selectCategory(conn: TreeConnection, cat: { key: string }, ca: number | null) {
+  const id = ca === null
+    ? `${conn.info.id}:${cat.key}`
+    : `${conn.info.id}:ca:${ca}:${cat.key}`
+  selectedNodeId.value = id
+  emit('category-select', conn.info.id, cat.key, ca)
+}
+
+function toggleExpand(conn: TreeConnection) {
+  conn.expanded = !conn.expanded
+}
+
+function toggleCAExpand(conn: TreeConnection, ca: number) {
+  conn.caExpanded[ca] = !conn.caExpanded[ca]
+}
+
+function showContextMenu(e: MouseEvent, connId: string) {
+  e.preventDefault()
+  if (batchMode.value || deleteBusy.value) return
+  contextMenu.value = { visible: true, x: e.clientX, y: e.clientY, connId }
+}
+
+function hideContextMenu() {
+  contextMenu.value.visible = false
+}
+
+async function ctxDeleteConnection() {
+  const conn = connections.value.find(conn => conn.info.id === contextMenu.value.connId)
+  hideContextMenu()
+  if (conn) await deleteConnections([conn], false)
+}
+
+async function deleteBatch() {
+  await deleteConnections(batchTargets.value, true)
+}
+
+async function deleteConnections(targets: TreeConnection[], batch: boolean) {
+  if (deleteBusy.value || targets.length === 0) return
+  // Snapshot the targets before confirmation or a tree refresh can change them.
+  const snapshot = targets.map(conn => ({ id: conn.info.id, label: `${conn.info.target_address}:${conn.info.port}` }))
+  deleteBusy.value = true
+  hideContextMenu()
+  try {
+    const message = batch
+      ? t('tree.confirmBatchDelete', { n: snapshot.length }) + '\n\n' + snapshot.map(conn => conn.label).join('\n')
+      : t('tree.confirmDeleteConnection', { connection: snapshot[0].label })
+    if (!(await dialogs.showConfirm(message)) || disposed) return
+    deleting.value = true
+    deleteProgress.value = { completed: 0, total: snapshot.length }
+    const failures: string[] = []
+    let deleted = 0
+    for (const target of snapshot) {
+      // Loading a different workspace unmounts the tree; stop using old IDs.
+      if (disposed) return
+      try {
+        await invoke('delete_connection', { id: target.id })
+        if (disposed) return
+        deleted++
+        loadGeneration++
+        connections.value = connections.value.filter(conn => conn.info.id !== target.id)
+        checkedIds.value.delete(target.id)
+        if (selectedNodeId.value === target.id || selectedNodeId.value?.startsWith(`${target.id}:`)) {
+          selectedNodeId.value = null
+        }
+        emit('connection-deleted', target.id)
+      } catch (error) {
+        failures.push(`${target.label}: ${String(error)}`)
+      } finally {
+        deleteProgress.value.completed++
+      }
+    }
+    if (disposed) return
+    await loadTree()
+    if (disposed) return
+    refreshTree()
+    deleting.value = false
+    if (batch || failures.length) {
+      await dialogs.showAlert(t('tree.batchDeleteResult', { deleted, failed: failures.length }) + (failures.length ? '\n\n' + failures.join('\n') : ''))
+    }
+    if (!disposed && batch && !failures.length) {
+      batchMode.value = false
+      checkedIds.value.clear()
+    }
+  } finally {
+    deleting.value = false
+    deleteBusy.value = false
+  }
+}
+
+function ctxEditConnection() {
+  const id = contextMenu.value.connId
+  hideContextMenu()
+  openEditConnection?.(id)
+}
+
+function stateClass(state: string): string {
+  const s = state.toLowerCase()
+  if (s === 'connected') return 'connected'
+  if (s.includes('error')) return 'error'
+  return 'disconnected'
+}
+</script>
+
+<template>
+  <div class="tree-container" @click="hideContextMenu">
+    <div class="tree-header">
+      <div class="tree-header-title">
+        <span>{{ t('tree.title') }}</span>
+        <AppButton v-if="connections.length || batchMode" size="sm" variant="ghost" :disabled="deleteBusy" :aria-pressed="batchMode" @click="toggleBatchMode">
+          {{ batchMode ? t('tree.batchCancel') : t('tree.batchManage') }}
+        </AppButton>
+      </div>
+      <div class="tree-actions">
+        <AppButton size="sm" variant="ghost" :disabled="!hasExpanded" @click="setAllExpanded(false)">{{ t('tree.collapseAll') }}</AppButton>
+        <AppButton size="sm" variant="ghost" :disabled="!hasCollapsed" @click="setAllExpanded(true)">{{ t('tree.expandAll') }}</AppButton>
+      </div>
+      <div v-if="batchMode" class="batch-actions">
+        <label><input type="checkbox" :checked="allChecked" :indeterminate="someChecked" :disabled="deleteBusy || !connections.length" @change="toggleAll" />{{ t('tree.selectAll') }}</label>
+        <AppButton size="sm" variant="ghost" class="batch-delete" :aria-busy="deleting" :disabled="deleteBusy || !batchTargets.length" @click="deleteBatch">
+          {{ deleting ? t('tree.batchDeleting', deleteProgress) : t('tree.deleteSelected', { n: batchTargets.length }) }}
+        </AppButton>
+      </div>
+    </div>
+
+    <div v-if="connections.length === 0" class="tree-empty">
+      {{ t('tree.noConnections') }}
+    </div>
+
+    <div v-for="conn in connections" :key="conn.info.id" class="tree-node-group">
+      <!-- Connection node -->
+      <div
+        :class="['tree-node', { selected: batchMode ? checkedIds.has(conn.info.id) : selectedNodeId === conn.info.id }]"
+        @click="selectConnection(conn)"
+        @contextmenu="showContextMenu($event, conn.info.id)"
+      >
+        <button v-if="!batchMode" type="button" class="node-expand" :aria-label="t(conn.expanded ? 'tree.collapseConnection' : 'tree.expandConnection', { connection: `${conn.info.target_address}:${conn.info.port}` })" :aria-expanded="conn.expanded" @click.stop="toggleExpand(conn)">
+          {{ conn.expanded ? '▼' : '▶' }}
+        </button>
+        <input v-if="batchMode" type="checkbox" :aria-label="`${conn.info.target_address}:${conn.info.port}`" :checked="checkedIds.has(conn.info.id)" :disabled="deleteBusy" @click.stop @change="toggleChecked(conn.info.id)" />
+        <span :class="['node-status', stateClass(conn.info.state)]"></span>
+        <span class="node-label" :title="`${conn.info.target_address}:${conn.info.port}`">{{ conn.info.target_address }}:{{ conn.info.port }}</span>
+        <span v-if="conn.info.use_tls || conn.info.use_socks5" class="node-features">
+          <button
+            v-if="conn.info.use_tls"
+            type="button"
+            class="feature-badge tls"
+            :disabled="batchMode || deleteBusy"
+            :title="t('tree.editConnection')"
+            @click.stop="openEditConnection?.(conn.info.id)"
+          >TLS</button>
+          <button
+            v-if="conn.info.use_socks5"
+            type="button"
+            class="feature-badge socks"
+            :disabled="batchMode || deleteBusy"
+            :title="t('tree.editConnection')"
+            @click.stop="openEditConnection?.(conn.info.id)"
+          >S5</button>
+        </span>
+        <span class="node-ca">CA:{{ conn.info.common_addresses.join(',') }}</span>
+      </div>
+
+      <!-- Children -->
+      <div v-if="conn.expanded && !batchMode" class="tree-children">
+
+        <!-- Multi-CA: connection -> CA -> category -->
+        <template v-if="isMultiCA(conn)">
+          <div v-for="ca in conn.info.common_addresses" :key="ca" class="ca-group">
+            <div
+              :class="['tree-node', 'ca-node', { selected: selectedNodeId === `${conn.info.id}:ca:${ca}` }]"
+              @click="toggleCAExpand(conn, ca)"
+            >
+              <span class="node-expand">{{ conn.caExpanded[ca] ? '▼' : '▶' }}</span>
+              <span class="ca-badge">CA {{ ca }}</span>
+            </div>
+            <div v-if="conn.caExpanded[ca]" class="ca-children">
+              <div
+                v-for="cat in DATA_CATEGORIES"
+                :key="`${ca}-${cat.key}`"
+                :class="['tree-node', 'tree-child', 'tree-grand', {
+                  selected: selectedNodeId === `${conn.info.id}:ca:${ca}:${cat.key}`,
+                  'cat-flash': flashingCategories.has(flashKey(conn.info.id, ca, cat.key)),
+                }]"
+                @click="selectCategory(conn, cat, ca)"
+              >
+                <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
+                <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
+                <span class="node-count" v-if="countFor(conn.info.id, cat.key, ca) > 0">
+                  {{ countFor(conn.info.id, cat.key, ca) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Single-CA: classic flat tree (counts summed across all CAs, which
+             in this case is just the one configured CA). -->
+        <template v-else>
+          <div
+            v-for="cat in DATA_CATEGORIES"
+            :key="cat.key"
+            :class="['tree-node', 'tree-child', {
+              selected: selectedNodeId === `${conn.info.id}:${cat.key}`,
+              'cat-flash': flashingCategories.has(flashKey(conn.info.id, conn.info.common_addresses[0], cat.key)),
+            }]"
+            @click="selectCategory(conn, cat, null)"
+          >
+            <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
+            <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
+            <span class="node-count" v-if="countFor(conn.info.id, cat.key, null) > 0">
+              {{ countFor(conn.info.id, cat.key, null) }}
+            </span>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div v-if="contextMenu.visible" class="context-menu" :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }">
+      <button type="button" class="ctx-item" @click="ctxEditConnection">{{ t('tree.editConnection') }}</button>
+      <button type="button" class="ctx-item danger" @click="ctxDeleteConnection">{{ t('tree.deleteConnection') }}</button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.tree-container {
+  padding: 4px 0;
+  font-size: 12px;
+  user-select: none;
+}
+
+.tree-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tree-header-title, .tree-actions, .batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.tree-header-title { justify-content: space-between; }
+.tree-actions, .batch-actions { margin-top: 6px; }
+.batch-actions { justify-content: space-between; }
+.batch-actions label { display: inline-flex; align-items: center; gap: 4px; color: var(--text-primary); }
+.batch-actions .batch-delete { color: var(--danger); }
+.tree-header button:focus-visible, .node-expand:focus-visible, input[type="checkbox"]:focus-visible, .ctx-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
+
+.tree-empty {
+  padding: 24px 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin: 1px 4px;
+}
+
+.tree-node:hover {
+  background: var(--bg-hover);
+}
+
+/* 选中项：accent 左竖条 + 轻量着色（与 DataTable 选中行同语言）。 */
+.tree-node.selected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tree-node.selected .node-ca,
+.tree-node.selected .node-count,
+.tree-node.selected .ca-badge {
+  color: var(--text-secondary);
+}
+
+.tree-child {
+  padding-left: 28px;
+}
+
+.tree-grand {
+  padding-left: 48px;
+}
+
+.ca-node {
+  padding-left: 18px;
+  font-weight: 500;
+}
+
+.ca-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--c-surface0);
+  color: var(--c-mauve);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.node-expand {
+  font-size: 8px;
+  width: 12px;
+  text-align: center;
+  color: var(--text-muted);
+}
+button.node-expand { background: transparent; border: 0; padding: 3px 0; flex-shrink: 0; cursor: pointer; }
+
+.node-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.node-status.connected { background: var(--success); }
+.node-status.disconnected { background: var(--text-disabled); }
+.node-status.error { background: var(--danger); }
+
+/* 运行中的连接：状态点呼吸光圈，prefers-reduced-motion 下保持静态。 */
+.node-status.connected {
+  animation: status-breathe 2.4s var(--ease-out) infinite;
+}
+@keyframes status-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+  60% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node-status.connected { animation: none; }
+}
+
+.node-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-ca {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.node-features {
+  display: inline-flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.feature-badge {
+  min-width: 23px;
+  padding: 1px 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  font: 600 9px/1.25 var(--font-mono);
+  cursor: pointer;
+}
+
+.feature-badge.tls { color: var(--info); }
+.feature-badge.socks { color: var(--c-mauve); }
+.feature-badge:hover,
+.feature-badge:focus-visible {
+  border-color: currentColor;
+  outline: none;
+}
+.feature-badge:disabled { opacity: 0.45; cursor: default; }
+
+.node-typeid {
+  margin-left: auto;
+  margin-right: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--info);
+  letter-spacing: 0.3px;
+  opacity: 0.85;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.node-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-raised);
+  padding: 0 5px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.context-menu {
+  position: fixed;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px 0;
+  z-index: var(--z-dropdown);
+  min-width: 120px;
+  box-shadow: var(--shadow-lg);
+}
+
+.ctx-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  font-family: inherit;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ctx-item:hover {
+  background: var(--bg-hover);
+}
+
+.ctx-item.danger {
+  color: var(--danger);
+}
+
+.cat-flash {
+  background: color-mix(in srgb, var(--c-peach) 20%, transparent) !important;
+}
+
+.cat-flash .node-label {
+  color: var(--c-peach);
+  font-weight: 600;
+}
+</style>

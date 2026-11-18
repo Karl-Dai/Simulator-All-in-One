@@ -1,0 +1,33 @@
+[package]
+name = "iec104sim-core"
+version = "1.3.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2.0"
+uuid = { version = "1", features = ["v4", "serde"] }
+log = "0.4"
+rand = "0.8"
+native-tls = "0.2"
+tokio-native-tls = "0.3.1"
+rsa = { version = "0.9", default-features = false, features = ["std", "pem"] }
+rustls = { version = "0.23.39", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pemfile = "2.2"
+# Legacy X.509 v1 identities: rustls slave validation and custom-CA master TLS.
+# Static linking also covers packaged desktop apps.
+openssl = { version = "0.10.76", features = ["vendored"] }
+rustls-native-certs = "0.8"
+x509-cert = { version = "0.2", default-features = false }
+webpki = { package = "rustls-webpki", version = "0.103.13", default-features = false, features = ["ring", "std"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+rcgen = "0.13"
+tempfile = "3"
+libc = "0.2"
+chrono = "0.4"
+native-tls = "0.2"

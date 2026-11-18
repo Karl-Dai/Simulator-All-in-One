@@ -1,0 +1,458 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v* tag to build and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate tag and release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid stable release tag: $RELEASE_TAG"
+            exit 1
+          fi
+          if [ "$GITHUB_SHA" != "$(git rev-list -n 1 "$RELEASE_TAG")" ]; then
+            echo "::error::Workflow ref $GITHUB_SHA does not match $RELEASE_TAG"
+            exit 1
+          fi
+          node scripts/prepare-release.mjs verify "$RELEASE_TAG"
+
+  build-slave:
+    needs: validate-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_target: aarch64-apple-darwin
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust_target: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ''
+            rust_target: ''
+          - platform: windows-latest
+            args: ''
+            rust_target: ''
+            win_arch: x64
+          - platform: windows-latest
+            args: '--target aarch64-pc-windows-msvc'
+            rust_target: aarch64-pc-windows-msvc
+            win_arch: arm64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            if sudo timeout --kill-after=15s 180s env DEBIAN_FRONTEND=noninteractive \
+              apt-get update --error-on=any -o Acquire::Retries=3 \
+                -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30; then
+              break
+            fi
+            if [ "$i" -eq 3 ]; then
+              echo "::error::apt-get update failed after 3 attempts"
+              exit 1
+            fi
+            echo "apt-get update attempt $i failed; retrying in 10s..."
+            sleep 10
+          done
+          sudo timeout --kill-after=15s 300s env DEBIAN_FRONTEND=noninteractive \
+            apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './crates/iec104sim-app -> ../../target'
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: crates/iec104sim-app
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: '${{ env.RELEASE_TAG }}'
+          releaseBody: 'See the assets below to download the installers for your platform.'
+          # Keep the release a draft during the build: GitHub's
+          # `releases/latest` skips drafts, so existing users' update checks
+          # keep hitting the previous *complete* release. publish-manifest
+          # clears the draft flag once installers + manifest + body are all in.
+          releaseDraft: true
+          prerelease: false
+          # The project ships its own latest-slave/master.json via
+          # gen-update-manifest; tauri-action's latest.json is unused. Being a
+          # single shared filename, every parallel matrix job clobbers it —
+          # the source of the flaky "delete-a-release-asset" 404 race. Skip it.
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
+
+      # tauri-action 自身上传 bundle 无重试: 10 个 matrix job 并发上传到同一
+      # (draft) release 时,部分 PUT 输给 GitHub API race (delete-a-release-asset
+      # 404) 而静默丢失 —— v1.11.2 只上了 25/52。这里兜底重传本 job 产出的全部
+      # bundle: gh release upload --clobber + 5 次重试,幂等补齐 tauri-action 漏掉
+      # 的。各 job 的 bundle 文件名互不相同,不会互相 clobber。bash 3.2 兼容
+      # (macOS runner),故用 while-read 而非 mapfile。
+      - name: Re-upload bundles with retry (Slave)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            BUNDLE_DIR="target/${{ matrix.rust_target }}/release/bundle"
+          else
+            BUNDLE_DIR="target/release/bundle"
+          fi
+          if [ ! -d "$BUNDLE_DIR" ]; then
+            echo "::warning::bundle dir $BUNDLE_DIR not found — skipping bundle re-upload"
+            exit 0
+          fi
+          upload_one() {
+            for attempt in 1 2 3 4 5; do
+              if gh release upload "$RELEASE_TAG" "$1" --clobber; then return 0; fi
+              echo "::warning::upload $(basename "$1") attempt $attempt failed, retrying in 15s"
+              sleep 15
+            done
+            return 1
+          }
+          case "${{ matrix.rust_target }}" in
+            aarch64-apple-darwin) ARCH=aarch64 ;;
+            x86_64-apple-darwin) ARCH=x64 ;;
+            *) ARCH="" ;;
+          esac
+          fail=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            name="$(basename "$f")"
+            # macOS updater bundle sits on disk as <productName>.app.tar.gz (no
+            # arch); tauri-action uploads it arch-suffixed. Match that name so we
+            # don't create an unsuffixed duplicate asset.
+            case "$name" in
+              *.app.tar.gz|*.app.tar.gz.sig)
+                if [ -n "$ARCH" ]; then
+                  base="${name%%.app.tar.gz*}"; rest="${name#"$base"}"
+                  cp "$f" "$(dirname "$f")/${base}_${ARCH}${rest}"
+                  f="$(dirname "$f")/${base}_${ARCH}${rest}"
+                fi ;;
+            esac
+            upload_one "$f" || { echo "::error::failed to upload $(basename "$f")"; fail=1; }
+          done < <(find "$BUNDLE_DIR" -type f \( \
+            -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \
+            -o -name '*-setup.exe' -o -name '*-setup.exe.sig' \
+            -o -name '*.msi' -o -name '*.msi.sig' \
+            -o -name '*.AppImage' -o -name '*.AppImage.sig' \
+            -o -name '*.deb' -o -name '*.deb.sig' \
+            -o -name '*.rpm' -o -name '*.rpm.sig' \) )
+          exit $fail
+
+      # always() 让本步骤即使 tauri-action 因为 GitHub API 上传 race
+      # (Not Found / delete-a-release-asset) 失败也继续: 此时 cargo 产物已
+      # 经编译完成,便携 exe 仍可上传; job 整体状态仍会 failure 不掩盖问题。
+      - name: Upload Windows portable exe (Slave)
+        if: always() && matrix.platform == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          ARCH="${{ matrix.win_arch }}"
+          # cargo 产物名是 crate name (iec104sim-app.exe), 不是 Tauri productName。
+          # productName 仅出现在 bundle/nsis/ 与 bundle/msi/ 下的安装包文件名里。
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            SRC="target/${{ matrix.rust_target }}/release/iec104sim-app.exe"
+          else
+            SRC="target/release/iec104sim-app.exe"
+          fi
+          if [ ! -f "$SRC" ]; then
+            echo "::warning::cargo binary $SRC not found — skipping portable upload"
+            exit 0
+          fi
+          DEST="IEC104Slave_${VERSION}_${ARCH}-portable.exe"
+          cp "$SRC" "$DEST"
+          # `gh release upload --clobber` races against parallel matrix jobs
+          # (404 "delete-a-release-asset"); retry before failing the build.
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" "$DEST" --clobber; then exit 0; fi
+            echo "::warning::release upload attempt $attempt failed, retrying in 10s"
+            sleep 10
+          done
+          echo "::error::release upload failed after 5 attempts"; exit 1
+
+  build-master:
+    needs: validate-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+            rust_target: aarch64-apple-darwin
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+            rust_target: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            args: ''
+            rust_target: ''
+          - platform: windows-latest
+            args: ''
+            rust_target: ''
+            win_arch: x64
+          - platform: windows-latest
+            args: '--target aarch64-pc-windows-msvc'
+            rust_target: aarch64-pc-windows-msvc
+            win_arch: arm64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            if sudo timeout --kill-after=15s 180s env DEBIAN_FRONTEND=noninteractive \
+              apt-get update --error-on=any -o Acquire::Retries=3 \
+                -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30; then
+              break
+            fi
+            if [ "$i" -eq 3 ]; then
+              echo "::error::apt-get update failed after 3 attempts"
+              exit 1
+            fi
+            echo "apt-get update attempt $i failed; retrying in 10s..."
+            sleep 10
+          done
+          sudo timeout --kill-after=15s 300s env DEBIAN_FRONTEND=noninteractive \
+            apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './crates/iec104master-app -> ../../target'
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: master-frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: master-frontend
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: crates/iec104master-app
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: '${{ env.RELEASE_TAG }}'
+          releaseBody: 'See the assets below to download the installers for your platform.'
+          # Keep the release a draft during the build: GitHub's
+          # `releases/latest` skips drafts, so existing users' update checks
+          # keep hitting the previous *complete* release. publish-manifest
+          # clears the draft flag once installers + manifest + body are all in.
+          releaseDraft: true
+          prerelease: false
+          # The project ships its own latest-slave/master.json via
+          # gen-update-manifest; tauri-action's latest.json is unused. Being a
+          # single shared filename, every parallel matrix job clobbers it —
+          # the source of the flaky "delete-a-release-asset" 404 race. Skip it.
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
+
+      # tauri-action bundle 上传无重试,并发竞态会丢包 (见 Slave 同名步骤注释)。
+      # 兜底重传本 job 全部 bundle: --clobber + 5 次重试,幂等补齐。
+      - name: Re-upload bundles with retry (Master)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            BUNDLE_DIR="target/${{ matrix.rust_target }}/release/bundle"
+          else
+            BUNDLE_DIR="target/release/bundle"
+          fi
+          if [ ! -d "$BUNDLE_DIR" ]; then
+            echo "::warning::bundle dir $BUNDLE_DIR not found — skipping bundle re-upload"
+            exit 0
+          fi
+          upload_one() {
+            for attempt in 1 2 3 4 5; do
+              if gh release upload "$RELEASE_TAG" "$1" --clobber; then return 0; fi
+              echo "::warning::upload $(basename "$1") attempt $attempt failed, retrying in 15s"
+              sleep 15
+            done
+            return 1
+          }
+          case "${{ matrix.rust_target }}" in
+            aarch64-apple-darwin) ARCH=aarch64 ;;
+            x86_64-apple-darwin) ARCH=x64 ;;
+            *) ARCH="" ;;
+          esac
+          fail=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            name="$(basename "$f")"
+            # macOS updater bundle sits on disk as <productName>.app.tar.gz (no
+            # arch); tauri-action uploads it arch-suffixed. Match that name so we
+            # don't create an unsuffixed duplicate asset.
+            case "$name" in
+              *.app.tar.gz|*.app.tar.gz.sig)
+                if [ -n "$ARCH" ]; then
+                  base="${name%%.app.tar.gz*}"; rest="${name#"$base"}"
+                  cp "$f" "$(dirname "$f")/${base}_${ARCH}${rest}"
+                  f="$(dirname "$f")/${base}_${ARCH}${rest}"
+                fi ;;
+            esac
+            upload_one "$f" || { echo "::error::failed to upload $(basename "$f")"; fail=1; }
+          done < <(find "$BUNDLE_DIR" -type f \( \
+            -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \
+            -o -name '*-setup.exe' -o -name '*-setup.exe.sig' \
+            -o -name '*.msi' -o -name '*.msi.sig' \
+            -o -name '*.AppImage' -o -name '*.AppImage.sig' \
+            -o -name '*.deb' -o -name '*.deb.sig' \
+            -o -name '*.rpm' -o -name '*.rpm.sig' \) )
+          exit $fail
+
+      # always() 让本步骤即使 tauri-action 失败也继续 (同 Slave 注释)。
+      - name: Upload Windows portable exe (Master)
+        if: always() && matrix.platform == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          ARCH="${{ matrix.win_arch }}"
+          # cargo 产物名是 crate name (iec104master-app.exe), 不是 Tauri productName。
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            SRC="target/${{ matrix.rust_target }}/release/iec104master-app.exe"
+          else
+            SRC="target/release/iec104master-app.exe"
+          fi
+          if [ ! -f "$SRC" ]; then
+            echo "::warning::cargo binary $SRC not found — skipping portable upload"
+            exit 0
+          fi
+          DEST="IEC104Master_${VERSION}_${ARCH}-portable.exe"
+          cp "$SRC" "$DEST"
+          # `gh release upload --clobber` races against parallel matrix jobs
+          # (404 "delete-a-release-asset"); retry before failing the build.
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" "$DEST" --clobber; then exit 0; fi
+            echo "::warning::release upload attempt $attempt failed, retrying in 10s"
+            sleep 10
+          done
+          echo "::error::release upload failed after 5 attempts"; exit 1
+
+  publish-manifest:
+    needs: [build-slave, build-master]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Un-draft first: this job only runs once every build succeeded, so the
+      # release is now complete enough to go live. Publishing here (rather than
+      # last) lets the manifest scripts run against a normal published release
+      # — `releases/tags/<tag>` and public asset URLs all work. The residual
+      # window where `releases/latest` lacks the update manifest shrinks from
+      # the whole ~10-minute build to the few seconds of manifest generation.
+      - name: Publish release (clear draft flag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
+      - name: Install script deps
+        working-directory: scripts
+        run: npm install --no-audit --no-fund
+      - name: Generate manifests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/gen-update-manifest.mjs "$RELEASE_TAG"
+      - name: Upload manifests to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            # 上传 gen-update-manifest 实际产出的全部清单(cn0 + 兜底 + 任何 cnN 变体);
+            # 用 glob 与 MANIFEST_VARIANTS 解耦,增删镜像变体无需再动本 workflow。
+            if gh release upload "$RELEASE_TAG" \
+              latest-slave*.json \
+              latest-master*.json \
+              --clobber; then exit 0; fi
+            echo "::warning::manifest upload attempt $attempt failed, retrying in 10s"
+            sleep 10
+          done
+          echo "::error::manifest upload failed after 5 attempts"; exit 1
+
+      - name: Render rich release body from CHANGELOG
+        run: node scripts/build-release-notes.mjs "$RELEASE_TAG"
+
+      - name: Replace release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --notes-file RELEASE_BODY.md

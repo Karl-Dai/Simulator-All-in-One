@@ -1,0 +1,12 @@
+{
+  "name": "iec104sim-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0",
+    "vitest": "^4.1.5"
+  }
+}
