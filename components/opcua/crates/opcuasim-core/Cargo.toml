@@ -3,6 +3,9 @@ name = "opcuasim-core"
 version = "0.6.0"
 edition = "2021"
 
+[features]
+simlab-suite = []
+
 [dependencies]
 async-opcua-client = "0.18"
 async-opcua-core = "0.18"

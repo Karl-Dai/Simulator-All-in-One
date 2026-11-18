@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
@@ -90,8 +91,8 @@ async function onAddNode() {
 
 async function onSave() {
   const path = await save({
-    defaultPath: 'server.opcuaproj',
-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
+    defaultPath: import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'server.saioproj' : 'server.opcuaproj',
+    filters: [{ name: 'SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj'] : ['opcuaproj'] }],
   })
   if (!path) return
   try {
@@ -106,7 +107,7 @@ async function onLoad() {
   const selected = await open({
     multiple: false,
     directory: false,
-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
+    filters: [{ name: 'OPC UA / SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'opcuaproj', 'json'] : ['opcuaproj'] }],
   })
   const path = Array.isArray(selected) ? selected[0] : selected
   if (!path) return
@@ -133,9 +134,9 @@ async function onLoad() {
           class="toolbar-btn btn-start"
           :disabled="running || starting"
           @click="onStart"
-        >▶ {{ t('toolbar.start') }}</button>
+        ><SuiteIcon name="play" /> {{ t('toolbar.start') }}</button>
         <button class="toolbar-btn btn-stop" :disabled="!running" @click="onStop">
-          ■ {{ t('toolbar.stop') }}
+          <SuiteIcon name="stop" /> {{ t('toolbar.stop') }}
         </button>
         <span class="tb-divider" />
         <span class="tb-label">{{ t('toolbar.endpoint') }}</span>
@@ -204,6 +205,7 @@ async function onLoad() {
 }
 
 .tb-row {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   min-height: 34px;
@@ -212,6 +214,7 @@ async function onLoad() {
 }
 
 .tb-row + .tb-row {
+  flex-wrap: wrap;
   border-top: 1px solid var(--c-surface0);
 }
 
@@ -221,11 +224,11 @@ async function onLoad() {
   display: flex;
   align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
 }
 
 .tb-aside {
+  margin-left: auto;
   flex: none;
   display: flex;
   align-items: center;

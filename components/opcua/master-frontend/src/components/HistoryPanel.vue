@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
 import EmptyState from '@shared/components/EmptyState.vue'
@@ -114,12 +115,12 @@ watch([mode], () => {
       :title="t('history.emptyTitle')"
       :hint="t('history.emptyHint')"
     >
-      <span>📈</span>
+      <span><SuiteIcon name="chart" /></span>
     </EmptyState>
 
     <div v-else class="history-body">
       <div class="head">
-        <span class="head-title">📈 {{ historyTarget.display_name }}</span>
+        <span class="head-title"><SuiteIcon name="chart" /> {{ historyTarget.display_name }}</span>
         <span class="head-node mono">{{ historyTarget.node_id }}</span>
       </div>
 
@@ -158,7 +159,7 @@ watch([mode], () => {
           <span class="ctl-label">{{ t('history.maxValues') }}</span>
           <input v-model.number="maxValues" class="ctl-input num" type="number" min="10" max="50000" />
           <button class="refresh-btn" :disabled="loading || !isRangeValid()" @click="load">
-            {{ loading ? t('history.loading') : `🔄 ${t('history.refresh')}` }}
+            <SuiteIcon name="refresh" />{{ loading ? t('history.loading') : t('history.refresh') }}
           </button>
         </div>
       </div>

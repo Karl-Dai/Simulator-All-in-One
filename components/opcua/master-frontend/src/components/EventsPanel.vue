@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
 import EmptyState from '@shared/components/EmptyState.vue'
@@ -94,7 +95,7 @@ onUnmounted(() => {
 <template>
   <div class="events-panel">
     <div class="head">
-      <span class="head-title">🔔 {{ t('events.title') }}</span>
+      <span class="head-title"><SuiteIcon name="bell" /> {{ t('events.title') }}</span>
       <span class="head-count">{{ t('events.count', { count: items.length }) }}</span>
     </div>
 
@@ -113,13 +114,13 @@ onUnmounted(() => {
         class="action-btn"
         :disabled="!eventsConnId || !sourceNodeId.trim() || subscribed || subscribeInFlight"
         @click="onSubscribe"
-      >{{ subscribed ? `✓ ${t('events.subscribed')}` : `📡 ${t('events.subscribe')}` }}</button>
+      ><SuiteIcon name="signal" />{{ subscribed ? t('events.subscribed') : t('events.subscribe') }}</button>
       <button class="action-btn" :disabled="!subscribed" @click="onUnsubscribe">{{ t('events.unsubscribe') }}</button>
       <button class="action-btn" :disabled="items.length === 0" @click="onClear">{{ t('events.clear') }}</button>
     </div>
 
     <EmptyState v-if="items.length === 0" :title="t('events.emptyTitle')" :hint="t('events.emptyHint')">
-      <span>🔔</span>
+      <span><SuiteIcon name="bell" /></span>
     </EmptyState>
 
     <div v-else class="table-scroll">

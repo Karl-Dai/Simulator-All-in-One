@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { ref } from 'vue'
 import { useI18n } from '@shared/i18n'
 import { showConfirm } from '@shared/composables/useDialog'
@@ -60,7 +61,7 @@ async function removeSelected() {
       :title="t('nodeTable.emptyTitle')"
       :hint="t('nodeTable.emptyHint')"
     >
-      <span>📊</span>
+      <span><SuiteIcon name="node" /></span>
     </EmptyState>
 
     <div v-else class="table-scroll">
@@ -101,7 +102,7 @@ async function removeSelected() {
             </td>
             <td class="col-actions" @click.stop>
               <button class="row-action" :title="t('nodeTable.remove')" @click="removeOne(node.node_id)">
-                🗑
+                <SuiteIcon name="trash" />
               </button>
             </td>
           </tr>

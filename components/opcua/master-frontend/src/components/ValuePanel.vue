@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
 import EmptyState from '@shared/components/EmptyState.vue'
@@ -118,7 +119,7 @@ async function onWrite() {
       :title="t('valuePanel.emptyTitle')"
       :hint="t('valuePanel.emptyHint')"
     >
-      <span>👈</span>
+      <span><SuiteIcon name="pointer" /></span>
     </EmptyState>
 
     <div v-else class="panel-scroll">
@@ -145,7 +146,7 @@ async function onWrite() {
       <div class="section">
         <div class="section-label">{{ t('valuePanel.actions') }}</div>
         <button class="action-btn" :disabled="reading" @click="onRead">
-          {{ reading ? t('common.loading') : `⟳ ${t('valuePanel.read')}` }}
+          <SuiteIcon name="refresh" />{{ reading ? t('common.loading') : t('valuePanel.read') }}
         </button>
       </div>
 

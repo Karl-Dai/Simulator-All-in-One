@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, reactive } from 'vue'
 import { useI18n } from '@shared/i18n'
 import { showConfirm, showPrompt } from '@shared/composables/useDialog'
@@ -100,7 +101,7 @@ function onRemove(child: AddressChild) {
     <div class="tree-sep" />
 
     <EmptyState v-if="isEmpty" compact :title="t('addressTree.emptyTitle')" :hint="t('addressTree.emptyHint')">
-      <span>🗂</span>
+      <span><SuiteIcon name="folder" /></span>
     </EmptyState>
 
     <div v-else class="tree-scroll">
@@ -110,7 +111,7 @@ function onRemove(child: AddressChild) {
           :class="{ open: expanded.has(ROOT_ID) }"
           @click="toggleFolder(ROOT_ID)"
         >▸</button>
-        <span class="label folder">📁 Objects</span>
+        <span class="label folder"><SuiteIcon name="folder" /> Objects</span>
         <button class="action" title="+" @click="addSubfolder(ROOT_ID)">＋</button>
       </div>
 
@@ -135,7 +136,7 @@ function onRemove(child: AddressChild) {
             :class="row.child.kind"
             :title="row.child.node_id"
             @click="onLabelClick(row.child)"
-          >{{ row.child.kind === 'folder' ? '📁' : '📊' }} {{ row.child.display_name }}</span>
+          ><SuiteIcon :name="row.child.kind === 'folder' ? 'folder' : 'node'" /> {{ row.child.display_name }}</span>
 
           <button
             v-if="row.child.kind === 'folder'"
@@ -147,7 +148,7 @@ function onRemove(child: AddressChild) {
             class="action danger"
             :title="row.child.kind === 'folder' ? t('addressTree.deleteFolder') : t('addressTree.deleteNode')"
             @click="onRemove(row.child)"
-          >🗑</button>
+          ><SuiteIcon name="trash" /></button>
         </div>
       </template>
     </div>

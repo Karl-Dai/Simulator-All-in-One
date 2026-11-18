@@ -9,6 +9,7 @@ import { useClipboardFlash } from '../composables/useClipboardFlash'
 const { t, locale } = useI18n()
 const { flash, copy, openOrCopy } = useClipboardFlash()
 const version = ref('')
+const versionLabel = computed(() => `${import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'SAIO ' : ''}v${version.value}`)
 const documentationUrl = computed(() =>
   documentationUrlForLocale(REPO_URL, locale.value),
 )
@@ -24,9 +25,9 @@ onMounted(async () => {
       v-if="version"
       type="button"
       class="version-text"
-      :title="`v${version} · ${t('about.copiedSuffix')}`"
-      @click="copy(`v${version}`)"
-    >v{{ version }}</button>
+      :title="`${versionLabel} · ${t('about.copiedSuffix')}`"
+      @click="copy(versionLabel)"
+    >{{ versionLabel }}</button>
     <button
       type="button"
       class="github-link"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, reactive, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showConfirm } from '@shared/composables/useDialog'
 import { nodeIcon } from '../domain'
@@ -349,7 +350,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
           <template v-if="conn.state === 'Connected'">
             <div class="section-row" @click="toggleBrowseOpen(conn.id)">
               <span class="toggle" :class="{ open: stateFor(conn.id).browseOpen }">▸</span>
-              <span class="section-label">🌲 {{ t('tree.browse') }}</span>
+              <span class="section-label"><SuiteIcon name="folder" /> {{ t('tree.browse') }}</span>
             </div>
 
             <div v-if="stateFor(conn.id).browseOpen" class="browse-controls">
@@ -420,7 +421,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
                       class="row-action"
                       :title="t('tree.viewHistory')"
                       @click="openHistory(conn.id, row.nodeId, row.item.display_name)"
-                    >📈</button>
+                    ><SuiteIcon name="chart" /></button>
                     <button
                       v-if="row.item.node_class === 'Method'"
                       class="row-action"
@@ -446,7 +447,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
           <template v-if="selectedConnectionId === conn.id">
             <div class="section-row">
               <span class="section-spacer" />
-              <span class="section-label">📡 {{ t('tree.monitored') }} ({{ subNodes.length }})</span>
+              <span class="section-label"><SuiteIcon name="signal" /> {{ t('tree.monitored') }} ({{ subNodes.length }})</span>
             </div>
             <div v-for="row in subNodes" :key="row.node_id" class="leaf-row" @click="selectNode(row.node_id)">
               <span class="leaf-id mono">{{ row.node_id }}</span>
@@ -454,7 +455,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
 
             <div class="section-row">
               <span class="section-spacer" />
-              <span class="section-label">⏱ {{ t('tree.polling') }} ({{ pollNodes.length }})</span>
+              <span class="section-label"><SuiteIcon name="clock" /> {{ t('tree.polling') }} ({{ pollNodes.length }})</span>
             </div>
             <div v-for="row in pollNodes" :key="row.node_id" class="leaf-row" @click="selectNode(row.node_id)">
               <span class="leaf-id mono">{{ row.node_id }}</span>
@@ -477,7 +478,7 @@ function selectConnectionNode(conn: ConnectionInfo) {
         <div class="group-row">
           <button class="toggle" :class="{ open: expandedGroups.has(group.id) }" @click="toggleGroup(group.id)">▸</button>
           <span class="group-label" @click="toggleGroup(group.id)">· {{ group.name }} ({{ group.node_ids.length }})</span>
-          <button class="group-del" :title="t('common.delete')" @click="onDeleteGroup(group.id)">🗑</button>
+          <button class="group-del" :title="t('common.delete')" @click="onDeleteGroup(group.id)"><SuiteIcon name="trash" /></button>
         </div>
         <div v-if="expandedGroups.has(group.id)" class="group-children">
           <div v-for="nodeId in group.node_ids" :key="nodeId" class="leaf-row" @click="selectNode(nodeId)">

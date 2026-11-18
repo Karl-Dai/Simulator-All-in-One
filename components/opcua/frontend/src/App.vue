@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { listen } from '@tauri-apps/api/event'
 import Toolbar from './components/Toolbar.vue'
 import AddressTree from './components/AddressTree.vue'
@@ -202,7 +202,7 @@ body {
 
 .app-layout {
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(240px, 320px);
   grid-template-rows: auto 1fr 28px;
   grid-template-areas:
     'toolbar toolbar toolbar'
@@ -243,5 +243,14 @@ body {
   background: var(--c-base);
   border-top: 1px solid var(--c-surface0);
   overflow: hidden;
+}
+@media (max-width: 900px) {
+  .app-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+    grid-template-rows: auto minmax(280px, 1fr) 220px 28px;
+    grid-template-areas: 'toolbar toolbar' 'tree content' 'property property' 'status status';
+    overflow-y: auto;
+  }
+  .property-area { border-left: 0; border-top: 1px solid var(--c-surface0); }
 }
 </style>

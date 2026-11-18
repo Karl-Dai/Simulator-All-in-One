@@ -9,6 +9,7 @@ use opcuasim_core::subscription::SubscriptionManager;
 use serde::{Deserialize, Serialize};
 
 /// Per-connection runtime state. Mirrors the legacy egui `ConnectionEntry`.
+#[derive(Clone)]
 pub struct ConnectionEntry {
     /// Editable display name, independent of the live connection configuration.
     pub name: String,
@@ -29,9 +30,12 @@ pub struct ConnectionEntry {
 /// before the first `.await` and never hold a `std::sync` guard across it.
 #[derive(Default)]
 pub struct AppState {
+    #[cfg(feature = "simlab-suite")]
+    pub suite_storage: crate::suite_storage::SuiteStorage,
     pub connections: RwLock<HashMap<String, ConnectionEntry>>,
     pub groups: RwLock<Vec<NodeGroup>>,
     pub persistence: std::sync::Mutex<crate::project::Persistence>,
+    pub config_mutation: std::sync::Mutex<()>,
 }
 
 impl AppState {

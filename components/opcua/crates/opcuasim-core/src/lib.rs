@@ -15,6 +15,8 @@ pub mod polling;
 pub mod reconnect;
 pub mod server;
 pub mod subscription; // OPC UA server simulation module
+#[cfg(feature = "simlab-suite")]
+pub mod suite;
 pub mod values;
 
 /// Re-export the OPC UA Session type for downstream crates.

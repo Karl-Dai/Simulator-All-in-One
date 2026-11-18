@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "18ceeeaccf0535201e37c88c69a259eaa0d304c34f7e76b2955aa082f816586e",
+  "files": {
+    "Icon.vue": "63b367bde91d698b33ccfaec4b2c50153bcd766daab7fa78493222f7082de39f",
+    "appearance.ts": "acf4b372e02c2676d0f9de047eea9f22d8c88e1ecc04af014035bccb8767ef1c",
+    "components/ErrorNotice.vue": "3a89fbe2dd3f98467f483a3ed97c8cbd39c0f36d99c767ae131af3a843ddbe33",
+    "components/StatusBadge.vue": "276c25b6a213afad92af098299c93efa83f69f9e3c3d452ffaad46d439227732",
+    "components.css": "974a5febd9fdfca3fa1c915c49d137697a66ebb8d249e520de367d71959c3a7e",
+    "configClose.ts": "428e0055f37542fab0f6fdd796a9a407a7aa639f58810d8cb45c9afeb6eb4366",
+    "configInvoke.ts": "90e363cafc18dffd05d1e194aff02e032217cb4489f2456ad56f2408380144dd",
+    "configPreferences.ts": "3433ae48999c0357577975d1a8e19203abfa5a5e1b3503b2360c3e59de2dbb5b",
+    "contracts/appearance-cases.json": "da93d291e590e11b3888801f47a5ef477258021de91b949c302ff185780d38f8",
+    "contracts/appearance.ts": "55ad2ca4461d8e1197bfe9ddfcced01ded4ea836a93b9d0f1860cfb2017bd144",
+    "modal.ts": "edd8e6f6df802f1697ee710c0f7ade1954a99ca848da81d1ef545fb332d76b32",
+    "theme.ts": "366fa8ca2fbb8d7f550ae81ac43e448b0f720de0e36a2a06d49ee8e027b3b4b1",
+    "tokens.css": "88683597fbabfd1157e883df269e413088d4d89df77a54a25bfc10f56b8490a0"
+  }
+}

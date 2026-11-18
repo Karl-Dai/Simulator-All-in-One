@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'
 import { useServerContext } from '../inject'
@@ -90,7 +91,7 @@ async function saveConfig() {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="dialog-backdrop dialog-blur" @mousedown.self="emit('close')">
+      <div v-if="visible" v-modal="() => emit('close')" class="dialog-backdrop dialog-blur" @mousedown.self="emit('close')">
         <div class="config-dialog" role="dialog" aria-modal="true">
           <div class="dialog-header">
             <span class="dialog-title">{{ t('config.title') }}</span>

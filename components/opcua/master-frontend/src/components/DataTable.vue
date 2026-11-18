@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from '@shared/i18n'
 import { showConfirm } from '@shared/composables/useDialog'
@@ -120,10 +121,10 @@ function onHistory(row: MonitoredRow) {
       :title="t('valuePanel.emptyTitle')"
       :hint="t('dataTable.emptyHint')"
     >
-      <span>📡</span>
+      <span><SuiteIcon name="signal" /></span>
     </EmptyState>
     <EmptyState v-else-if="rows.length === 0" :title="t('dataTable.emptyTitle')" :hint="t('dataTable.emptyHint')">
-      <span>🌲</span>
+      <span><SuiteIcon name="folder" /></span>
     </EmptyState>
 
     <div v-else class="table-scroll">
@@ -166,9 +167,9 @@ function onHistory(row: MonitoredRow) {
             <td>{{ row.access_mode }} · {{ Math.round(row.interval_ms) }}ms</td>
             <td class="col-actions" @click.stop>
               <button class="row-action" :title="t('tree.viewHistory')" @click="onHistory(row)">
-                📈
+                <SuiteIcon name="chart" />
               </button>
-              <button class="row-action" :title="t('dataTable.remove')" @click="removeOne(row.node_id)">🗑</button>
+              <button class="row-action" :title="t('dataTable.remove')" @click="removeOne(row.node_id)"><SuiteIcon name="trash" /></button>
             </td>
           </tr>
         </tbody>

@@ -12,7 +12,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2.5.6", features = [] }
 
+[features]
+simlab-suite = ["opcuasim-core/simlab-suite"]
+
 [dependencies]
+rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
+sha2 = "0.10"
+tempfile = "3"
 opcuasim-core = { path = "../opcuasim-core" }
 async-opcua-types = "0.18"
 serde_json = "1.0"

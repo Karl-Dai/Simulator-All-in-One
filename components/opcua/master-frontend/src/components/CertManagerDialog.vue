@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import { showAlert, showConfirm } from '@shared/composables/useDialog'
 import type { CertRole, CertSummaryDto } from '../types'
@@ -78,7 +80,7 @@ const selectedDetail = (): CertSummaryDto | null =>
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="dialog-backdrop dialog-blur" @mousedown.self="emit('close')">
+      <div v-if="visible" v-modal="() => emit('close')" class="dialog-backdrop dialog-blur" @mousedown.self="emit('close')">
         <div class="cert-dialog" role="dialog" aria-modal="true">
           <div class="dialog-header">
             <span class="dialog-title">{{ t('cert.title') }}</span>
@@ -98,7 +100,7 @@ const selectedDetail = (): CertSummaryDto | null =>
                     :class="['cert-item', { selected: selectedPath === c.path }]"
                     @click="selectedPath = c.path"
                   >
-                    <span class="cert-name">📄 {{ c.subject_cn }}</span>
+                    <span class="cert-name"><SuiteIcon name="file" /> {{ c.subject_cn }}</span>
                   </div>
                   <div v-if="trusted.length === 0" class="pane-empty">{{ t('common.loading') }}</div>
                 </div>
@@ -112,7 +114,7 @@ const selectedDetail = (): CertSummaryDto | null =>
                     :class="['cert-item', { selected: selectedPath === c.path }]"
                     @click="selectedPath = c.path"
                   >
-                    <span class="cert-name">📄 {{ c.subject_cn }}</span>
+                    <span class="cert-name"><SuiteIcon name="file" /> {{ c.subject_cn }}</span>
                   </div>
                   <div v-if="rejected.length === 0" class="pane-empty">{{ t('common.loading') }}</div>
                 </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { save } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '@shared/i18n'
 import { showAlert } from '@shared/composables/useDialog'

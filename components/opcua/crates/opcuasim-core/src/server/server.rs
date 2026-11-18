@@ -127,21 +127,24 @@ fn build_server(
         EventsHistoryNodeManager::new(inmem)
     };
 
+    #[cfg(feature = "simlab-suite")]
+    let pki_dir = crate::suite::role_dir("opcua-server")
+        .map_err(|e| OpcUaSimError::ConnectionFailed(format!("SimLab PKI path: {e}")))?
+        .join(format!("pki-server-{}", config.port));
+    #[cfg(not(feature = "simlab-suite"))]
+    let pki_dir = dirs::config_dir()
+        .map(|d| {
+            d.join("OPCUASim")
+                .join(format!("pki-server-{}", config.port))
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from(format!("./pki-server-{}", config.port)));
+
     let mut builder = ServerBuilder::new()
         .application_name(&config.name)
         .application_uri(&config.application_uri)
         .product_uri("urn:opcuasim")
         .create_sample_keypair(true)
-        .pki_dir(
-            dirs::config_dir()
-                .map(|d| {
-                    d.join("OPCUASim")
-                        .join(format!("pki-server-{}", config.port))
-                })
-                .unwrap_or_else(|| {
-                    std::path::PathBuf::from(format!("./pki-server-{}", config.port))
-                }),
-        )
+        .pki_dir(pki_dir)
         .host(&config.host)
         .port(config.port)
         .trust_client_certs(config.trust_client_certs)

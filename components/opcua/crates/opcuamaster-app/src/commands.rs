@@ -410,21 +410,24 @@ async fn add_monitored_core(
         .partition(|n| matches!(n.access_mode, AccessMode::Subscription { .. }));
 
     {
-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
-        let entry = conns.get_mut(conn_id).ok_or("Connection not found")?;
-        let ids: Vec<_> = sub_nodes
-            .iter()
-            .chain(&poll_nodes)
-            .map(|n| &n.node_id)
-            .collect();
-        entry
-            .pending_subscriptions
-            .retain(|n| !ids.contains(&&n.node_id));
-        entry.pending_polling.retain(|n| !ids.contains(&&n.node_id));
-        entry.pending_subscriptions.extend(sub_nodes.clone());
-        entry.pending_polling.extend(poll_nodes.clone());
+        let mutation = state.begin_config_mutation()?;
+        {
+            let mut conns = state.connections.write().map_err(|e| e.to_string())?;
+            let entry = conns.get_mut(conn_id).ok_or("Connection not found")?;
+            let ids: Vec<_> = sub_nodes
+                .iter()
+                .chain(&poll_nodes)
+                .map(|n| &n.node_id)
+                .collect();
+            entry
+                .pending_subscriptions
+                .retain(|n| !ids.contains(&&n.node_id));
+            entry.pending_polling.retain(|n| !ids.contains(&&n.node_id));
+            entry.pending_subscriptions.extend(sub_nodes.clone());
+            entry.pending_polling.extend(poll_nodes.clone());
+        }
+        mutation.commit()?;
     }
-    state.autosave()?;
 
     let (sub_mgr, poll_mgr, session_holder) = {
         let conns = state.connections.read().map_err(|e| e.to_string())?;
@@ -605,6 +608,7 @@ pub(crate) fn create_connection_impl(
     state: &AppState,
     request: CreateConnectionRequest,
 ) -> Result<ConnectionInfo, String> {
+    let mutation = state.begin_config_mutation()?;
     let id = Uuid::new_v4().to_string();
     let config = ConnectionConfig {
         id: id.clone(),
@@ -633,7 +637,7 @@ pub(crate) fn create_connection_impl(
         );
     }
 
-    state.autosave()?;
+    mutation.commit()?;
     Ok(ConnectionInfo {
         id,
         name: config.name,
@@ -646,7 +650,7 @@ pub(crate) fn create_connection_impl(
 }
 
 #[tauri::command]
-pub fn create_connection(
+pub async fn create_connection(
     state: State<'_, AppState>,
     request: CreateConnectionRequest,
 ) -> Result<ConnectionInfo, String> {
@@ -851,23 +855,20 @@ pub(crate) async fn delete_connection_impl(
     state: &AppState,
     connection_id: &str,
 ) -> Result<(), String> {
-    let (conn_arc, poll_mgr) = {
-        let conns = state.connections.read().map_err(|e| e.to_string())?;
-        let entry = conns.get(connection_id).ok_or("Connection not found")?;
-        (entry.connection.clone(), entry.polling_mgr.clone())
+    let removed = {
+        let mutation = state.begin_config_mutation()?;
+        let removed = state
+            .connections
+            .write()
+            .map_err(|e| e.to_string())?
+            .remove(connection_id)
+            .ok_or("Connection not found")?;
+        mutation.commit()?;
+        removed
     };
-
-    // Best-effort teardown: disconnect() cancels the reconnect loop and clears
-    // the session, so the detached reconnect/polling tasks cannot keep the
-    // connection alive after the map entry is removed.
-    let _ = conn_arc.disconnect().await;
-    poll_mgr.stop_all().await;
-
-    {
-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
-        conns.remove(connection_id).ok_or("Connection not found")?;
-    }
-    state.autosave()
+    let _ = removed.connection.disconnect().await;
+    removed.polling_mgr.stop_all().await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -883,6 +884,7 @@ pub(crate) fn rename_connection_impl(
     connection_id: &str,
     name: &str,
 ) -> Result<(), String> {
+    let mutation = state.begin_config_mutation()?;
     let name = name.trim();
     if name.is_empty() {
         return Err("Connection name cannot be empty".into());
@@ -893,11 +895,11 @@ pub(crate) fn rename_connection_impl(
         .ok_or_else(|| "Connection not found".to_string())?;
     entry.name = name.to_string();
     drop(conns);
-    state.autosave()
+    mutation.commit()
 }
 
 #[tauri::command]
-pub fn rename_connection(
+pub async fn rename_connection(
     state: State<'_, AppState>,
     connection_id: String,
     name: String,
@@ -1167,17 +1169,21 @@ async fn remove_monitored_nodes_impl(
     node_ids: &[String],
 ) -> Result<(), String> {
     let (sub_mgr, poll_mgr) = {
-        let mut conns = state.connections.write().map_err(|e| e.to_string())?;
-        let entry = conns.get_mut(connection_id).ok_or("Connection not found")?;
-        entry
-            .pending_subscriptions
-            .retain(|n| !node_ids.contains(&n.node_id));
-        entry
-            .pending_polling
-            .retain(|n| !node_ids.contains(&n.node_id));
-        (entry.subscription_mgr.clone(), entry.polling_mgr.clone())
+        let mutation = state.begin_config_mutation()?;
+        let managers = {
+            let mut conns = state.connections.write().map_err(|e| e.to_string())?;
+            let entry = conns.get_mut(connection_id).ok_or("Connection not found")?;
+            entry
+                .pending_subscriptions
+                .retain(|n| !node_ids.contains(&n.node_id));
+            entry
+                .pending_polling
+                .retain(|n| !node_ids.contains(&n.node_id));
+            (entry.subscription_mgr.clone(), entry.polling_mgr.clone())
+        };
+        mutation.commit()?;
+        managers
     };
-    state.autosave()?;
 
     sub_mgr
         .remove_nodes(node_ids)
@@ -1520,20 +1526,29 @@ pub async fn call_method(
 // Certificates
 // ---------------------------------------------------------------------------
 
-const PKI_DIR: &str = "./pki";
+fn master_pki_dir() -> Result<std::path::PathBuf, String> {
+    #[cfg(feature = "simlab-suite")]
+    {
+        opcuasim_core::suite::master_pki_dir().map_err(|e| e.to_string())
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        Ok(std::path::PathBuf::from("./pki"))
+    }
+}
 
 #[tauri::command]
 pub fn list_certificates(role: CertRoleDto) -> Result<Vec<CertSummaryDto>, String> {
-    let pki = std::path::Path::new(PKI_DIR);
+    let pki = master_pki_dir()?;
     let list =
-        cert_manager::list_certificates(pki, role_to_core(role)).map_err(|e| e.to_string())?;
+        cert_manager::list_certificates(&pki, role_to_core(role)).map_err(|e| e.to_string())?;
     Ok(list.into_iter().map(cert_summary_to_dto).collect())
 }
 
 #[tauri::command]
 pub fn move_certificate(path: String, to_role: CertRoleDto) -> Result<(), String> {
-    let pki = std::path::Path::new(PKI_DIR);
-    cert_manager::move_certificate(pki, std::path::Path::new(&path), role_to_core(to_role))
+    let pki = master_pki_dir()?;
+    cert_manager::move_certificate(&pki, std::path::Path::new(&path), role_to_core(to_role))
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -1548,11 +1563,12 @@ pub fn delete_certificate(path: String) -> Result<(), String> {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn create_group(state: State<'_, AppState>, name: String) -> Result<Vec<NodeGroupDto>, String> {
+pub async fn create_group(state: State<'_, AppState>, name: String) -> Result<Vec<NodeGroupDto>, String> {
     create_group_impl(state.inner(), name)
 }
 
 fn create_group_impl(state: &AppState, name: String) -> Result<Vec<NodeGroupDto>, String> {
+    let mutation = state.begin_config_mutation()?;
     let id = Uuid::new_v4().to_string();
     {
         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
@@ -1562,26 +1578,27 @@ fn create_group_impl(state: &AppState, name: String) -> Result<Vec<NodeGroupDto>
             node_ids: Vec::new(),
         });
     }
-    state.autosave()?;
+    mutation.commit()?;
     list_groups_impl(state)
 }
 
 #[tauri::command]
-pub fn delete_group(state: State<'_, AppState>, id: String) -> Result<Vec<NodeGroupDto>, String> {
+pub async fn delete_group(state: State<'_, AppState>, id: String) -> Result<Vec<NodeGroupDto>, String> {
     delete_group_impl(state.inner(), &id)
 }
 
 fn delete_group_impl(state: &AppState, id: &str) -> Result<Vec<NodeGroupDto>, String> {
+    let mutation = state.begin_config_mutation()?;
     {
         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
         groups.retain(|g| g.id != id);
     }
-    state.autosave()?;
+    mutation.commit()?;
     list_groups_impl(state)
 }
 
 #[tauri::command]
-pub fn add_to_group(
+pub async fn add_to_group(
     state: State<'_, AppState>,
     group_id: String,
     node_ids: Vec<String>,
@@ -1594,6 +1611,7 @@ fn add_to_group_impl(
     group_id: &str,
     node_ids: Vec<String>,
 ) -> Result<Vec<NodeGroupDto>, String> {
+    let mutation = state.begin_config_mutation()?;
     {
         let mut groups = state.groups.write().map_err(|e| e.to_string())?;
         let group = groups
@@ -1606,7 +1624,7 @@ fn add_to_group_impl(
             }
         }
     }
-    state.autosave()?;
+    mutation.commit()?;
     list_groups_impl(state)
 }
 
@@ -1637,21 +1655,25 @@ pub async fn load_project(state: State<'_, AppState>, path: String) -> Result<()
 }
 
 async fn load_project_impl(state: &AppState, path: &str) -> Result<(), String> {
-    // Validate before changing or disconnecting the current workspace.
     let project = crate::project::read(std::path::Path::new(path))?;
-    let runtimes: Vec<_> = {
-        let conns = state.connections.read().map_err(|e| e.to_string())?;
-        conns
+    let runtimes = {
+        let mutation = state.begin_config_mutation()?;
+        let runtimes: Vec<_> = state
+            .connections
+            .read()
+            .map_err(|e| e.to_string())?
             .values()
             .map(|entry| (entry.connection.clone(), entry.polling_mgr.clone()))
-            .collect()
+            .collect();
+        crate::project::apply(state, project)?;
+        mutation.commit()?;
+        runtimes
     };
     for (connection, polling) in runtimes {
         let _ = connection.disconnect().await;
         polling.stop_all().await;
     }
-    crate::project::apply(state, project)?;
-    state.autosave()
+    Ok(())
 }
 
 #[tauri::command]
@@ -2281,5 +2303,152 @@ mod tests {
             panic!("master e2e scenario failed: {e}");
         }
         stop_result.expect("server stop");
+    }
+}
+
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_load_preferences(
+    state: State<'_, AppState>,
+    legacy: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    state.suite_storage.load_preferences(legacy)
+}
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_save_preferences(
+    state: State<'_, AppState>,
+    values: serde_json::Value,
+) -> Result<(), String> {
+    state.suite_storage.save_preferences(values)
+}
+
+#[cfg(all(test, feature = "simlab-suite"))]
+mod suite_persistence_tests {
+    use super::*;
+    fn request(name: &str) -> CreateConnectionRequest {
+        CreateConnectionRequest {
+            name: name.into(),
+            endpoint_url: "opc.tcp://localhost:4840".into(),
+            security_policy: "None".into(),
+            security_mode: "None".into(),
+            auth: AuthRequest::Anonymous,
+            timeout_ms: 5000,
+        }
+    }
+    fn initialize(state: &AppState, root: &std::path::Path) {
+        state
+            .initialize_suite_persistence(root, &root.join("opcua-master/last-session.opcuaproj"))
+            .unwrap();
+    }
+    #[tokio::test]
+    async fn sqlite_workspace_mutations_restore_offline_and_preserve_deletions() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = AppState::new();
+        initialize(&state, dir.path());
+        let connection = create_connection_impl(&state, request("Original")).unwrap();
+        rename_connection_impl(&state, &connection.id, "Saved").unwrap();
+        let restored = AppState::new();
+        initialize(&restored, dir.path());
+        let list = list_connections_impl(&restored).await.unwrap();
+        assert_eq!(list[0].name, "Saved");
+        assert_eq!(list[0].state, "Disconnected");
+        delete_connection_impl(&restored, &connection.id)
+            .await
+            .unwrap();
+        let empty = AppState::new();
+        initialize(&empty, dir.path());
+        assert!(list_connections_impl(&empty).await.unwrap().is_empty());
+        assert!(dir.path().join("saio.db").is_file());
+        assert!(!dir
+            .path()
+            .join("opcua-master/last-session.opcuaproj")
+            .exists());
+    }
+    #[tokio::test]
+    async fn stale_write_rolls_back_exact_connection_runtime_and_group_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = AppState::new();
+        initialize(&first, dir.path());
+        let connection = create_connection_impl(&first, request("Original")).unwrap();
+        let stale = AppState::new();
+        initialize(&stale, dir.path());
+        let runtime = stale.connections.read().unwrap()[&connection.id]
+            .connection
+            .clone();
+        rename_connection_impl(&first, &connection.id, "Newer").unwrap();
+        assert!(rename_connection_impl(&stale, &connection.id, "Stale").is_err());
+        assert_eq!(
+            stale.connections.read().unwrap()[&connection.id].name,
+            "Original"
+        );
+        assert!(Arc::ptr_eq(
+            &runtime,
+            &stale.connections.read().unwrap()[&connection.id].connection
+        ));
+        assert!(create_group_impl(&stale, "Unsaved".into()).is_err());
+        assert!(stale.groups.read().unwrap().is_empty());
+        assert!(delete_connection_impl(&stale, &connection.id)
+            .await
+            .is_err());
+        assert!(stale
+            .connections
+            .read()
+            .unwrap()
+            .contains_key(&connection.id));
+    }
+    #[tokio::test]
+    async fn legacy_migration_keeps_source_and_sqlite_project_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let legacy = dir.path().join("last-session.opcuaproj");
+        std::fs::write(&legacy, opcuasim_core::config::ProjectFile::new_master().to_json().unwrap()).unwrap();
+        let state = AppState::new();
+        state
+            .initialize_suite_persistence(dir.path(), &legacy)
+            .unwrap();
+        let connection = create_connection_impl(&state, request("Export")).unwrap();
+        let project = dir.path().join("copy.saioproj");
+        save_project_impl(&state, project.to_str().unwrap()).unwrap();
+        assert!(std::fs::read(&project)
+            .unwrap()
+            .starts_with(b"SQLite format 3\0"));
+        let target = tempfile::tempdir().unwrap();
+        let imported = AppState::new();
+        initialize(&imported, target.path());
+        load_project_impl(&imported, project.to_str().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            list_connections_impl(&imported).await.unwrap()[0].id,
+            connection.id
+        );
+        std::fs::write(&legacy, "{corrupt retained legacy").unwrap();
+        let restored = AppState::new();
+        state.suite_storage.status().unwrap();
+        restored
+            .initialize_suite_persistence(dir.path(), &legacy)
+            .unwrap();
+        assert_eq!(list_connections_impl(&restored).await.unwrap().len(), 1);
+        assert_eq!(
+            std::fs::read_to_string(legacy).unwrap(),
+            "{corrupt retained legacy"
+        );
+    }
+    #[test]
+    fn corrupt_restore_blocks_default_workspace_and_ui_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let legacy = dir.path().join("bad.opcuaproj");
+        std::fs::write(&legacy, "{bad").unwrap();
+        let state = AppState::new();
+        assert!(state
+            .initialize_suite_persistence(dir.path(), &legacy)
+            .is_err());
+        assert!(create_connection_impl(&state, request("Must not save")).is_err());
+        assert!(state
+            .suite_storage
+            .load_preferences(serde_json::json!({}))
+            .is_err());
+        assert!(state.connections.read().unwrap().is_empty());
+        assert_eq!(std::fs::read_to_string(legacy).unwrap(), "{bad");
     }
 }

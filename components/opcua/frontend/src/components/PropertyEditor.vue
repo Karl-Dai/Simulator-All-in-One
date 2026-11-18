@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '@shared/i18n'
 import EmptyState from '@shared/components/EmptyState.vue'
@@ -188,7 +189,7 @@ function onEuHigh(e: Event) {
       :title="t('propertyEditor.emptyTitle')"
       :hint="t('propertyEditor.emptyHint')"
     >
-      <span>👈</span>
+      <span><SuiteIcon name="pointer" /></span>
     </EmptyState>
 
     <div v-else class="panel-scroll">

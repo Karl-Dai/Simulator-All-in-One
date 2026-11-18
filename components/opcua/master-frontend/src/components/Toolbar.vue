@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import SuiteIcon from '../simlab-ui/Icon.vue'
 import { computed, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { useI18n } from '@shared/i18n'
 import { showAlert, showConfirm, showPrompt } from '@shared/composables/useDialog'
@@ -13,6 +14,7 @@ import { useMasterContext } from '../inject'
 import { useConnectionRename } from '../useConnectionRename'
 import type { ConnectionInfo, DiscoveredEndpointDto } from '../types'
 
+const suiteBuild = import.meta.env.VITE_SIMLAB_SUITE === '1'
 const { t } = useI18n()
 const { requestRename, renaming } = useConnectionRename()
 const {
@@ -92,8 +94,8 @@ async function onRefresh() {
 
 async function onSave() {
   const path = await save({
-    defaultPath: 'master.opcuaproj',
-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
+    defaultPath: import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'master.saioproj' : 'master.opcuaproj',
+    filters: [{ name: 'SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj'] : ['opcuaproj'] }],
   })
   if (!path) return
   try {
@@ -108,7 +110,7 @@ async function onLoad() {
   const selected = await open({
     multiple: false,
     directory: false,
-    filters: [{ name: 'OPC UA Project', extensions: ['opcuaproj'] }],
+    filters: [{ name: 'OPC UA / SAIO Project', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'opcuaproj', 'json'] : ['opcuaproj'] }],
   })
   const path = Array.isArray(selected) ? selected[0] : selected
   if (!path) return
@@ -183,28 +185,28 @@ function onCreated(conn: ConnectionInfo) {
           class="toolbar-btn btn-start"
           :disabled="!hasSelection || isConnected || isConnecting"
           @click="onConnect"
-        >▶ {{ t('toolbar.connect') }}</button>
+        ><SuiteIcon name="play" /> {{ t('toolbar.connect') }}</button>
         <button class="toolbar-btn btn-stop" :disabled="!isConnected" @click="onDisconnect">
-          ■ {{ t('toolbar.disconnect') }}
+          <SuiteIcon name="stop" /> {{ t('toolbar.disconnect') }}
         </button>
         <button class="toolbar-btn btn-close" :disabled="!hasSelection" @click="onDelete">
-          🗑 {{ t('toolbar.deleteConnection') }}
+          <SuiteIcon name="trash" /> {{ t('toolbar.deleteConnection') }}
         </button>
 
         <span class="toolbar-divider" />
 
-        <button class="toolbar-btn" @click="onRefresh">⟳ {{ t('toolbar.refresh') }}</button>
+        <button class="toolbar-btn" @click="onRefresh"><SuiteIcon name="refresh" /> {{ t('toolbar.refresh') }}</button>
         <button class="toolbar-btn" @click="onLoad">{{ t('toolbar.openProject') }}</button>
         <button class="toolbar-btn" @click="onSave">{{ t('toolbar.saveProject') }}</button>
 
         <span class="toolbar-divider" />
 
-        <button class="toolbar-btn" @click="onDiscover">🔍 {{ t('toolbar.discover') }}</button>
-        <button class="toolbar-btn" @click="onNewGroup">➕ {{ t('toolbar.newGroup') }}</button>
-        <button class="toolbar-btn" @click="certVisible = true">🔐 {{ t('toolbar.certManager') }}</button>
+        <button class="toolbar-btn" @click="onDiscover"><SuiteIcon name="search" /> {{ t('toolbar.discover') }}</button>
+        <button class="toolbar-btn" @click="onNewGroup"><SuiteIcon name="plus" /> {{ t('toolbar.newGroup') }}</button>
+        <button class="toolbar-btn" @click="certVisible = true"><SuiteIcon name="lock" /> {{ t('toolbar.certManager') }}</button>
       </div>
       <div class="toolbar-aside">
-        <UpdateControl />
+        <UpdateControl v-if="!suiteBuild" />
         <span
           class="persistence-status"
           :class="{ 'persistence-error': persistenceStatus.error }"

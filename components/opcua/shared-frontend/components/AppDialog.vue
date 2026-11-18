@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, watch, nextTick } from 'vue'
 import { useDialogState } from '../composables/useDialog'
 import { useI18n } from '../i18n'
@@ -25,19 +26,18 @@ function handleConfirm() {
   }
 }
 
-function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    handleConfirm()
-  } else if (e.key === 'Escape') {
-    dialogCancel()
-  }
+function confirmFromInput(event: KeyboardEvent) {
+  if (event.isComposing || event.keyCode === 229) return
+  event.preventDefault()
+  event.stopPropagation()
+  handleConfirm()
 }
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="state.visible" class="dialog-backdrop dialog-blur" @mousedown.self="dialogCancel" @keydown="handleKeydown">
+    <div v-if="state.visible" v-modal="dialogCancel" class="dialog-backdrop dialog-blur" @mousedown.self="dialogCancel">
       <div class="dialog" :class="{ 'dialog--alert': state.mode === 'alert' }" role="dialog" aria-modal="true">
         <div class="dialog-header">
           <span class="dialog-title">{{ state.title }}</span>
@@ -50,8 +50,7 @@ function handleKeydown(e: KeyboardEvent) {
             v-model="inputValue"
             class="dialog-input"
             type="text"
-            @keydown.enter="handleConfirm"
-            @keydown.escape="dialogCancel"
+            @keydown.enter="confirmFromInput"
           />
         </div>
         <div class="dialog-footer">
@@ -99,6 +98,7 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 .dialog-header {
+  flex-shrink: 0;
   padding: 16px 20px 0;
 }
 
@@ -111,6 +111,7 @@ function handleKeydown(e: KeyboardEvent) {
 .dialog-body {
   padding: 12px 20px 16px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .dialog-message {
@@ -142,6 +143,8 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 .dialog-footer {
+  flex-shrink: 0;
+  flex-wrap: wrap;
   display: flex;
   justify-content: flex-end;
   gap: 8px;

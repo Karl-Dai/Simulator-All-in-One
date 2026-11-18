@@ -14,7 +14,10 @@ use serde::{Deserialize, Serialize};
 /// mutations never need to hold a guard across an `.await` point — the data is
 /// cloned out first and the async work runs afterwards.
 pub struct AppState {
+    #[cfg(feature = "simlab-suite")]
+    pub suite_storage: crate::suite_storage::SuiteStorage,
     pub server: Arc<OpcUaServer>,
+    pub config_mutation: std::sync::Mutex<()>,
     pub config: RwLock<ServerConfig>,
     pub folders: RwLock<Vec<ServerFolder>>,
     pub nodes: RwLock<Vec<ServerNode>>,
@@ -23,7 +26,10 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "simlab-suite")]
+            suite_storage: crate::suite_storage::SuiteStorage::default(),
             server: Arc::new(OpcUaServer::new()),
+            config_mutation: std::sync::Mutex::new(()),
             config: RwLock::new(ServerConfig::default()),
             folders: RwLock::new(Vec::new()),
             nodes: RwLock::new(Vec::new()),

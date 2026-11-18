@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { listen } from '@tauri-apps/api/event'
 import { useI18n } from '@shared/i18n'
 import Toolbar from './components/Toolbar.vue'
@@ -371,7 +371,7 @@ const context: MasterContext = {
 provide(masterContextKey, context)
 
 // Log panel expands to a fixed height in the grid.
-const gridRows = computed(() => (logExpanded.value ? '42px 1fr 280px' : '42px 1fr 32px'))
+const gridRows = computed(() => `${viewportWidth.value <= 900 ? 'auto minmax(280px, 1fr) 220px' : '42px minmax(0, 1fr)'} ${logExpanded.value ? '280px' : '32px'}`)
 </script>
 
 <template>
@@ -577,5 +577,14 @@ body {
 .tab-body > * {
   flex: 1;
   min-height: 0;
+}
+@media (max-width: 900px) {
+  .app-layout {
+    grid-template-columns: 200px 8px minmax(0, 1fr) !important;
+    grid-template-areas: 'toolbar toolbar toolbar' 'tree tree-resizer content' 'panel panel panel' 'log log log';
+    overflow-y: auto;
+  }
+  .panel-area { border-left: 0; border-top: 1px solid var(--c-surface0); }
+  .tab-bar { flex-wrap: wrap; height: auto; min-height: 34px; }
 }
 </style>

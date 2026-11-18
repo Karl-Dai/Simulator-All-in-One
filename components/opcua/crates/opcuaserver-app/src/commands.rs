@@ -1,5 +1,5 @@
 use opcuasim_core::server::models::{
-    DataType, ServerConfig, ServerFolder, ServerNode, ServerProjectFile, SimulationMode,
+    DataType, ServerConfig, ServerFolder, ServerNode, SimulationMode,
 };
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, State};
@@ -189,6 +189,10 @@ pub(crate) async fn add_folder_impl(
         browse_name: None,
         parent_id: request.parent_id,
     };
+    crate::project::mutate(state, |project| {
+        project.folders.push(folder.clone());
+        Ok(())
+    })?;
     if let Some(nm) = state.server.node_manager().await {
         let ns = state.server.namespace_index().await;
         let custom_types = state.server.custom_types().await;
@@ -201,7 +205,6 @@ pub(crate) async fn add_folder_impl(
             &custom_types,
         );
     }
-    state.folders.write().unwrap().push(folder);
     Ok(build_address_space(state))
 }
 
@@ -228,6 +231,10 @@ pub(crate) async fn add_node_impl(
         eu_range_low: request.eu_range_low,
         eu_range_high: request.eu_range_high,
     };
+    crate::project::mutate(state, |project| {
+        project.nodes.push(node.clone());
+        Ok(())
+    })?;
     if let Some(nm) = state.server.node_manager().await {
         let ns = state.server.namespace_index().await;
         let custom_types = state.server.custom_types().await;
@@ -239,7 +246,6 @@ pub(crate) async fn add_node_impl(
             &custom_types,
         );
     }
-    state.nodes.write().unwrap().push(node);
     Ok(build_address_space(state))
 }
 
@@ -256,21 +262,20 @@ pub async fn remove_node(
     state: State<'_, AppState>,
     node_id: String,
 ) -> Result<AddressSpace, String> {
+    crate::project::mutate(state.inner(), |project| {
+        project
+            .folders
+            .retain(|f| f.node_id != node_id && f.parent_id != node_id);
+        project
+            .nodes
+            .retain(|n| n.node_id != node_id && n.parent_id != node_id);
+        Ok(())
+    })?;
     if let Some(nm) = state.server.node_manager().await {
         let ns = state.server.namespace_index().await;
         let mut addr = nm.address_space().write();
         opcuasim_core::server::address_space::remove_node(&mut addr, ns, &node_id);
     }
-    state
-        .folders
-        .write()
-        .unwrap()
-        .retain(|f| f.node_id != node_id && f.parent_id != node_id);
-    state
-        .nodes
-        .write()
-        .unwrap()
-        .retain(|n| n.node_id != node_id && n.parent_id != node_id);
     Ok(build_address_space(state.inner()))
 }
 
@@ -279,9 +284,12 @@ pub async fn update_node(
     state: State<'_, AppState>,
     request: UpdateNodeRequest,
 ) -> Result<AddressSpace, String> {
-    {
-        let mut nodes = state.nodes.write().unwrap();
-        let Some(n) = nodes.iter_mut().find(|n| n.node_id == request.node_id) else {
+    crate::project::mutate(state.inner(), |project| {
+        let Some(n) = project
+            .nodes
+            .iter_mut()
+            .find(|n| n.node_id == request.node_id)
+        else {
             return Err(format!("节点 {} 未找到", request.node_id));
         };
         if let Some(display_name) = request.display_name {
@@ -302,7 +310,8 @@ pub async fn update_node(
         if let Some(high) = request.eu_range_high {
             n.eu_range_high = high;
         }
-    }
+        Ok(())
+    })?;
     Ok(build_address_space(state.inner()))
 }
 
@@ -311,7 +320,10 @@ pub async fn update_config(
     state: State<'_, AppState>,
     config: ServerConfig,
 ) -> Result<ServerConfig, String> {
-    *state.config.write().unwrap() = config.clone();
+    crate::project::mutate(state.inner(), |project| {
+        project.server_config = config.clone();
+        Ok(())
+    })?;
     Ok(config)
 }
 
@@ -321,15 +333,7 @@ pub async fn update_config(
 
 #[tauri::command]
 pub async fn save_project(state: State<'_, AppState>, path: String) -> Result<(), String> {
-    let project = ServerProjectFile {
-        project_type: "OpcUaServer".into(),
-        version: "0.1.0".into(),
-        server_config: state.config.read().unwrap().clone(),
-        folders: state.folders.read().unwrap().clone(),
-        nodes: state.nodes.read().unwrap().clone(),
-    };
-    let json = serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())
+    crate::project::save(state.inner(), std::path::Path::new(&path))
 }
 
 #[tauri::command]
@@ -338,12 +342,35 @@ pub async fn load_project(
     app_handle: AppHandle,
     path: String,
 ) -> Result<(), String> {
-    let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let project: ServerProjectFile = serde_json::from_str(&json).map_err(|e| e.to_string())?;
-    *state.config.write().unwrap() = project.server_config;
-    *state.folders.write().unwrap() = project.folders;
-    *state.nodes.write().unwrap() = project.nodes;
+    crate::project::load(state.inner(), std::path::Path::new(&path))?;
+    // An imported project is configuration only; its listener remains stopped.
+    #[cfg(feature = "simlab-suite")]
+    state.server.stop().await.map_err(|e| e.to_string())?;
     emit_server_state(&app_handle, state.inner()).await
+}
+
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_load_preferences(
+    state: State<'_, AppState>,
+    legacy: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    state.suite_storage.load_preferences(legacy)
+}
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_save_preferences(
+    state: State<'_, AppState>,
+    values: serde_json::Value,
+) -> Result<(), String> {
+    state.suite_storage.save_preferences(values)
+}
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub fn get_persistence_status(
+    state: State<'_, AppState>,
+) -> Result<crate::suite_storage::PersistenceStatus, String> {
+    state.suite_storage.status()
 }
 
 // ---------------------------------------------------------------------------

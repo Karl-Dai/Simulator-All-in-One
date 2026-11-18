@@ -179,7 +179,7 @@ impl OpcUaConnection {
         info!("Connecting to OPC UA server: {}", self.config.endpoint_url);
 
         // Build client
-        let mut client = ClientBuilder::new()
+        let builder = ClientBuilder::new()
             .application_name("OPCUAMaster")
             .application_uri("urn:OPCUAMaster")
             .create_sample_keypair(true)
@@ -195,7 +195,13 @@ impl OpcUaConnection {
             .max_message_size(128 * 1024 * 1024) // 128MB
             .max_chunk_size(65535)
             .max_incoming_chunk_size(65535 * 4)
-            .max_chunk_count(1024)
+            .max_chunk_count(1024);
+        #[cfg(feature = "simlab-suite")]
+        let builder = builder.pki_dir(
+            crate::suite::master_pki_dir()
+                .map_err(|e| OpcUaSimError::ConnectionFailed(format!("SimLab PKI path: {e}")))?,
+        );
+        let mut client = builder
             .client()
             .map_err(|errs| OpcUaSimError::ConnectionFailed(errs.join("; ")))?;
 
