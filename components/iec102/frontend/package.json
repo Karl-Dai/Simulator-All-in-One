@@ -1,0 +1,24 @@
+{
+  "name": "iec102-slave-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5184",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "vue": "^3.5.30"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "typescript": "~5.9.0",
+    "vite": "^7.1.0",
+    "vue-tsc": "^3.1.0",
+    "vitest": "^5.0.5",
+    "jsdom": "^26.0.0"
+  }
+}

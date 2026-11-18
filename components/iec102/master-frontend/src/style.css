@@ -1,0 +1,441 @@
+:root {
+  --bg: #11171c;
+  --panel: #182027;
+  --panel-2: #1f2933;
+  --border: #2a3540;
+  --text: #d7e0e7;
+  --muted: #7f8c96;
+  --accent: #3f9b86;
+  --accent-hover: #4db39c;
+  --ok: #4caf7d;
+  --err: #e05d5d;
+  --rx: #4a9fd8;
+  --info: #8a97a3;
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 800px;
+}
+
+/* 顶部状态条 */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-item .label {
+  color: var(--muted);
+}
+
+.status-item .value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.status-item .value.ok {
+  color: var(--ok);
+}
+
+.status-item .value.muted {
+  color: var(--muted);
+}
+
+.status-item .value.err {
+  color: var(--err);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 主体布局 */
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px;
+  min-height: 0;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.config {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.config h2:not(:first-child) {
+  margin-top: 16px;
+}
+
+/* 表单 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input,
+select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input:disabled,
+select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.seg {
+  display: flex;
+  gap: 6px;
+}
+
+.seg button {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.seg button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.seg button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-error,
+.op-error {
+  color: var(--err);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* 按钮 */
+.btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* 操作区 */
+.ops {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ops .op-error {
+  margin: 0;
+  flex-basis: 100%;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ioa-input {
+  width: 90px;
+}
+
+/* 数据表格 */
+.data {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.table-wrap {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  z-index: 1;
+}
+
+tbody tr:hover {
+  background: var(--panel-2);
+}
+
+td.empty,
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px 10px;
+}
+
+/* 日志 */
+.logs {
+  height: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 16px 12px;
+}
+
+.logs-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.logs-head h2 {
+  margin: 0;
+}
+
+.chk {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chk input {
+  width: auto;
+}
+
+.logs-head .btn {
+  margin-left: auto;
+}
+
+.logs-body {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 12px;
+  min-height: 0;
+}
+
+.log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(42, 53, 64, 0.4);
+}
+
+.log-at {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.badge {
+  flex-shrink: 0;
+  width: 48px;
+  text-align: center;
+  border-radius: 3px;
+  padding: 1px 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.badge.tx {
+  background: rgba(76, 175, 125, 0.16);
+  color: var(--ok);
+}
+
+.badge.rx {
+  background: rgba(74, 159, 216, 0.16);
+  color: var(--rx);
+}
+
+.badge.info {
+  background: rgba(138, 151, 163, 0.16);
+  color: var(--info);
+}
+
+.badge.error {
+  background: rgba(224, 93, 93, 0.18);
+  color: var(--err);
+}
+
+.log-summary {
+  flex-shrink: 0;
+}
+
+.log-hex {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--muted);
+  word-break: break-all;
+  white-space: normal;
+}
