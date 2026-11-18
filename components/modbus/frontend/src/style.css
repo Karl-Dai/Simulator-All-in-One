@@ -1,0 +1,9 @@
+/* Slave shell follows the IEC104 simulator's shared desktop theme. */
+:root { color-scheme: dark; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+:root[data-theme='light'] { color-scheme: light; }
+button, input, select, textarea { font-family: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
+button:disabled { cursor: default; opacity: .45; }
+input, select, textarea { color: var(--c-text); background: var(--c-mantle); }
+.modal-box { max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); overflow-y: auto; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

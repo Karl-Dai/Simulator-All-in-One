@@ -1,0 +1,65 @@
+<script setup lang="ts">
+import { useI18n } from 'shared-frontend'
+import type { CommunicationOptions } from '../communication'
+
+const options = defineModel<CommunicationOptions>({ required: true })
+const { t } = useI18n()
+</script>
+
+<template>
+  <details class="communication-settings">
+    <summary>{{ t('dialog.communicationSettings') }}</summary>
+    <div class="settings-body">
+      <label>
+        {{ t('dialog.requestInterval') }}
+        <input v-model.number="options.requests.IntervalMS" type="number" min="0" max="60000" aria-describedby="request-interval-hint" />
+      </label>
+      <p id="request-interval-hint">{{ t('dialog.requestIntervalHint') }}</p>
+      <label>
+        {{ t('dialog.maxReadRegisters') }}
+        <input v-model.number="options.requests.MaxReadRegisters" type="number" min="1" max="125" aria-describedby="read-registers-hint" />
+      </label>
+      <p id="read-registers-hint">{{ t('dialog.maxReadRegistersHint') }}</p>
+      <label>
+        {{ t('dialog.maxReadBits') }}
+        <input v-model.number="options.requests.MaxReadBits" type="number" min="1" max="2000" aria-describedby="read-bits-hint" />
+      </label>
+      <p id="read-bits-hint">{{ t('dialog.maxReadBitsHint') }}</p>
+      <label class="checkbox-label">
+        <input v-model="options.reconnect.Enabled" type="checkbox" /> {{ t('dialog.autoReconnect') }}
+      </label>
+      <p>{{ t('dialog.autoReconnectHint') }}</p>
+      <template v-if="options.reconnect.Enabled">
+        <label>
+          {{ t('dialog.reconnectInitialDelay') }}
+          <input v-model.number="options.reconnect.InitialDelayMS" type="number" min="1" max="60000" />
+        </label>
+        <label>
+          {{ t('dialog.reconnectMaxDelay') }}
+          <input v-model.number="options.reconnect.MaxDelayMS" type="number" :min="options.reconnect.InitialDelayMS" max="600000" />
+        </label>
+        <label>
+          {{ t('dialog.reconnectBackoff') }}
+          <input v-model.number="options.reconnect.BackoffFactor" type="number" min="1" max="10" step="0.1" aria-describedby="reconnect-backoff-hint" />
+        </label>
+        <p id="reconnect-backoff-hint">{{ t('dialog.reconnectBackoffHint') }}</p>
+        <label>
+          {{ t('dialog.reconnectAttempts') }}
+          <input v-model.number="options.reconnect.MaxAttempts" type="number" min="0" max="10000" aria-describedby="reconnect-attempts-hint" />
+        </label>
+        <p id="reconnect-attempts-hint">{{ t('dialog.reconnectAttemptsHint') }}</p>
+      </template>
+    </div>
+  </details>
+</template>
+
+<style scoped>
+.communication-settings { border-top: 1px solid var(--c-surface1); padding-top: 12px; }
+summary { color: var(--c-text); font-size: 13px; cursor: pointer; }
+.settings-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; color: var(--c-subtext0); font-size: 12px; }
+input[type="number"] { min-width: 0; padding: 6px 10px; background: var(--c-control-bg); border: 1px solid var(--c-surface1); border-radius: 4px; color: var(--c-text); font-size: 13px; }
+input:focus-visible, summary:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 2px; }
+.checkbox-label { flex-direction: row; align-items: center; }
+p { margin: -6px 0 0; color: var(--c-subtext0); font-size: 12px; line-height: 1.5; }
+</style>

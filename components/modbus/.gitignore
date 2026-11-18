@@ -1,0 +1,66 @@
+# Rust
+target/
+Cargo.lock
+
+# Node.js
+node_modules/
+dist/
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# iCloud Drive duplicate suffix (e.g. "desktop-schema 2.json")
+* [0-9].json
+* [0-9].toml
+* [0-9].rs
+* [0-9].md
+
+# Brainstorming session artifacts (mockups, state)
+.superpowers/
+
+# Release pipeline local artifacts
+RELEASE_BODY.md
+latest-slave*.json
+latest-master*.json
+
+# Go desktop build outputs
+go/cmd/slavegui/build/*
+!go/cmd/slavegui/build/appicon.png
+!go/cmd/slavegui/build/darwin/
+go/cmd/slavegui/build/darwin/*
+!go/cmd/slavegui/build/darwin/Info.plist
+go/cmd/slavegui/assets/*
+!go/cmd/slavegui/assets/.gitkeep
+frontend/package.json.md5
+
+go/cmd/mastergui/build/*
+!go/cmd/mastergui/build/appicon.png
+!go/cmd/mastergui/build/darwin/
+go/cmd/mastergui/build/darwin/*
+!go/cmd/mastergui/build/darwin/Info.plist
+go/cmd/mastergui/assets/*
+!go/cmd/mastergui/assets/.gitkeep
+master-frontend/package.json.md5
+
+# Agent/tool session artifacts
+.omo/
+.opencode/
+.codegraph/
+.playwright-cli/
+.playwright-mcp/
+.claude/worktrees/
+output/

@@ -1,0 +1,253 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v* tag to build and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  WAILS_CLI_VERSION: v2.14.0
+
+jobs:
+  validate-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate tag and release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid stable release tag: $RELEASE_TAG"
+            exit 1
+          fi
+          if [ "$GITHUB_SHA" != "$(git rev-list -n 1 "$RELEASE_TAG")" ]; then
+            echo "::error::Workflow ref $GITHUB_SHA does not match $RELEASE_TAG"
+            exit 1
+          fi
+          node scripts/prepare-release.mjs verify "$RELEASE_TAG"
+
+  # Create the draft release up front so the parallel build jobs only upload
+  # assets and never race on release creation.
+  create-release:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; reusing it."
+          else
+            gh release create "$RELEASE_TAG" \
+              --draft \
+              --title "ModbusSim $RELEASE_TAG" \
+              --notes "See the assets below to download ModbusSlave and ModbusMaster for your platform."
+          fi
+
+  build:
+    name: Build ${{ matrix.app.role }} (${{ matrix.target.label }})
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - role: Slave
+            frontend: frontend
+            project: go/cmd/slavegui
+            product: ModbusSlave
+          - role: Master
+            frontend: master-frontend
+            project: go/cmd/mastergui
+            product: ModbusMaster
+        target:
+          - label: macOS Universal
+            platform: macos-latest
+            wails_platform: darwin/universal
+            suffix: macOS-universal
+            cgo: '1'
+          - label: Linux x64
+            platform: ubuntu-22.04
+            wails_platform: linux/amd64
+            suffix: linux-x64
+            cgo: '1'
+          - label: Windows x64
+            platform: windows-latest
+            wails_platform: windows/amd64
+            suffix: windows-x64
+            cgo: '0'
+          - label: Windows ARM64
+            platform: windows-latest
+            wails_platform: windows/arm64
+            suffix: windows-arm64
+            cgo: '0'
+    runs-on: ${{ matrix.target.platform }}
+    env:
+      CGO_ENABLED: ${{ matrix.target.cgo }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.target.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_CLI_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend dependencies
+        # Install only from the reviewed workspace lockfile; lifecycle scripts
+        # are unnecessary for the frontend build and remain disabled in CI.
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build frontend
+        working-directory: ${{ matrix.app.frontend }}
+        run: npm run build
+
+      # Wails' Darwin cgo code references UTType without declaring the
+      # framework, and the apps target macOS 13+; mirror go/scripts/*.sh.
+      - name: Configure macOS cgo flags
+        if: matrix.target.platform == 'macos-latest'
+        shell: bash
+        run: |
+          echo 'CGO_CFLAGS=-mmacosx-version-min=13.0' >> "$GITHUB_ENV"
+          echo 'CGO_LDFLAGS=-framework UniformTypeIdentifiers -mmacosx-version-min=13.0' >> "$GITHUB_ENV"
+
+      - name: Build ${{ matrix.app.product }} with Wails
+        working-directory: ${{ matrix.app.project }}
+        run: wails build -platform ${{ matrix.target.wails_platform }} -s
+
+      - name: Package and upload macOS app bundle
+        if: matrix.target.platform == 'macos-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          APP_DIR="${{ matrix.app.project }}/build/bin/${{ matrix.app.product }}.app"
+          [ -d "$APP_DIR" ] || { echo "::error::app bundle $APP_DIR not found"; exit 1; }
+          DEST="${{ matrix.app.product }}_${VERSION}_${{ matrix.target.suffix }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$DEST"
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" "$DEST" --clobber; then exit 0; fi
+            echo "::warning::upload attempt $attempt failed, retrying in 15s"
+            sleep 15
+          done
+          echo "::error::upload failed after 5 attempts"
+          exit 1
+
+      - name: Package and upload Linux binary
+        if: matrix.target.platform == 'ubuntu-22.04'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          BIN="${{ matrix.app.project }}/build/bin/${{ matrix.app.product }}"
+          [ -f "$BIN" ] || { echo "::error::binary $BIN not found"; exit 1; }
+          DEST="${{ matrix.app.product }}_${VERSION}_${{ matrix.target.suffix }}.tar.gz"
+          tar -C "$(dirname "$BIN")" -czf "$DEST" "$(basename "$BIN")"
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" "$DEST" --clobber; then exit 0; fi
+            echo "::warning::upload attempt $attempt failed, retrying in 15s"
+            sleep 15
+          done
+          echo "::error::upload failed after 5 attempts"
+          exit 1
+
+      - name: Package and upload Windows executable
+        if: matrix.target.platform == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG#v}"
+          BIN="${{ matrix.app.project }}/build/bin/${{ matrix.app.product }}.exe"
+          [ -f "$BIN" ] || { echo "::error::executable $BIN not found"; exit 1; }
+          DEST="${{ matrix.app.product }}_${VERSION}_${{ matrix.target.suffix }}.exe"
+          cp "$BIN" "$DEST"
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$RELEASE_TAG" "$DEST" --clobber; then exit 0; fi
+            echo "::warning::upload attempt $attempt failed, retrying in 15s"
+            sleep 15
+          done
+          echo "::error::upload failed after 5 attempts"
+          exit 1
+
+  publish-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate bundles and publish checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release-assets
+          gh release download "$RELEASE_TAG" --pattern 'Modbus*' --dir release-assets
+          node scripts/verify-release-artifacts.mjs "$RELEASE_TAG" release-assets
+          gh release upload "$RELEASE_TAG" release-assets/SHA256SUMS release-assets/release-manifest.json --clobber
+
+      # Draft releases are not returned by /releases/tags/<tag>. Resolve the
+      # numeric id from the authenticated list endpoint, then publish by id.
+      - name: Publish release (clear draft flag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.tag_name==\"$RELEASE_TAG\") | .id" | head -n 1)"
+          if [ -z "$release_id" ]; then
+            echo "::error::draft release for $RELEASE_TAG not found"
+            exit 1
+          fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false
+
+      - name: Render rich release body from CHANGELOG
+        run: node scripts/build-release-notes.mjs "$RELEASE_TAG"
+
+      - name: Replace release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$RELEASE_TAG" --notes-file RELEASE_BODY.md
