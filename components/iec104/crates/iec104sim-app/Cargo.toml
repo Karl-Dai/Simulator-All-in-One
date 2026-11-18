@@ -5,6 +5,10 @@ description = "IEC104Sim - IEC 60870-5-104 Slave Simulator"
 edition = "2021"
 rust-version = "1.77.2"
 
+[features]
+default = []
+simlab-suite = ["iec104sim-core/simlab-suite"]
+
 [lib]
 name = "iec104sim_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -13,6 +17,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
+rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
+sha2 = "0.10"
+tempfile = "3"
 iec104sim-core = { path = "../iec104sim-core" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }

@@ -1,4 +1,19 @@
 export type DictShape = {
+  suiteAppearance: {
+    managed: string
+    readFailed: string
+    repairHint: string
+    retry: string
+    details: string
+    close: string
+    selectedConnection: string
+    noConnection: string
+    connected: string
+    connecting: string
+    reconnecting: string
+    disconnected: string
+    unknown: string
+  }
   common: {
     confirm: string
     cancel: string
@@ -100,6 +115,7 @@ export type DictShape = {
     broadcastAddressInvalid: string
   }
   tree: {
+    pointCount: string;
     title: string
     noConnections: string
     deleteConnection: string
@@ -291,6 +307,15 @@ export type DictShape = {
     cot9: string
     cot10: string
     sending: string
+    waitingForConfirmation: string
+    selectConfirmed: string
+    executeConfirmed: string
+    deactivateConfirmed: string
+    sentUnconfirmed: string
+    resultUnconfirmed: string
+    confirmationDuration: string
+    sendDuration: string
+    elapsedDuration: string
     send: string
   }
   about: {
@@ -382,6 +407,21 @@ export type DictShape = {
 }
 
 const dict: DictShape = {
+  suiteAppearance: {
+    managed: '由套件设置管理',
+    readFailed: '无法读取套件外观设置，暂时保留当前主题和语言。',
+    repairHint: '可重试读取；若持续失败，请检查套件设置或修复完整套件。',
+    retry: '重试',
+    details: '处理建议',
+    close: '关闭',
+    selectedConnection: '当前连接状态',
+    noConnection: '未选择连接',
+    connected: '已连接',
+    connecting: '连接中',
+    reconnecting: '重新连接中',
+    disconnected: '未连接',
+    unknown: '状态：{state}',
+  },
   common: {
     confirm: '确认',
     cancel: '取消',
@@ -483,6 +523,7 @@ const dict: DictShape = {
     broadcastAddressInvalid: '请输入 1-4 位十六进制',
   },
   tree: {
+    pointCount: '{n} 个点',
     title: '连接列表',
     noConnections: '暂无连接',
     deleteConnection: '删除连接',
@@ -731,6 +772,15 @@ const dict: DictShape = {
     cot9: '9 - 停止激活确认',
     cot10: '10 - 激活终止',
     sending: '发送中...',
+    waitingForConfirmation: '等待确认…',
+    selectConfirmed: '选择已确认',
+    executeConfirmed: '执行已确认',
+    deactivateConfirmed: '停止激活已确认',
+    sentUnconfirmed: '已发送，未等待确认',
+    resultUnconfirmed: '尚未核实确认结果',
+    confirmationDuration: '确认耗时 {ms} 毫秒',
+    sendDuration: '发送耗时 {ms} 毫秒',
+    elapsedDuration: '耗时 {ms} 毫秒',
     send: '发送',
   },
   about: {

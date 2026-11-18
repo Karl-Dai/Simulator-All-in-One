@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { inject, ref, computed, watch, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert, showConfirm as ShowConfirm } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
@@ -271,7 +272,9 @@ async function createConnection() {
   const previousId = editingConnId.value
   saving.value = true
   try {
-    const info = await invoke<ConnectionInfo>('create_connection', {
+    const atomicEdit = import.meta.env.VITE_SIMLAB_SUITE === '1' && previousId !== null
+    const info = await invoke<ConnectionInfo>(atomicEdit ? 'replace_connection' : 'create_connection', {
+      ...(atomicEdit ? { id: previousId } : {}),
       request: {
         target_address: form.value.target_address,
         port: form.value.port,
@@ -306,7 +309,7 @@ async function createConnection() {
       }
     })
     if (previousId !== null) {
-      try {
+      if (!atomicEdit) try {
         await invoke('delete_connection', { id: previousId })
       } catch (error) {
         // The old connection remains authoritative if retirement fails.
@@ -395,12 +398,12 @@ defineExpose({ openEditConnection, openNew })
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur" @mousedown.self="close">
+    <div v-if="visible" v-modal="close" class="modal-backdrop dialog-blur" @mousedown.self="close">
       <div class="modal-box">
         <div class="modal-title">
           {{ editingConnId ? t('newConn.editTitle') : t('newConn.title') }}
         </div>
-        <fieldset class="modal-body" :disabled="saving">
+        <div class="modal-body"><fieldset class="modal-fields" :disabled="saving">
           <label class="form-label">
             {{ t('newConn.targetAddress') }}
             <AppInput v-model="form.target_address" placeholder="127.0.0.1" />
@@ -522,7 +525,7 @@ defineExpose({ openEditConnection, openNew })
             />
             <AppCheckbox v-model="form.accept_invalid_certs" :label="t('newConn.acceptInvalidCerts')" />
           </template>
-        </fieldset>
+        </fieldset></div>
         <div class="modal-footer">
           <AppButton :disabled="saving" @click="close">{{ t('common.cancel') }}</AppButton>
           <!-- .btn-primary 类保留给 newConnectionSocks5.spec 的按钮选择器。 -->
@@ -549,7 +552,9 @@ defineExpose({ openEditConnection, openNew })
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: 20px;
-  min-width: 340px;
+  width: min(640px, calc(100vw - 32px));
+  min-width: 0;
+  overflow: hidden;
   max-height: 86vh;
   display: flex;
   flex-direction: column;
@@ -566,12 +571,19 @@ defineExpose({ openEditConnection, openNew })
   border: 0;
   margin: 0;
   min-width: 0;
+  min-height: 0;
   padding: 0 4px 0 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.modal-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1 1 auto;
-  overflow-y: auto;
 }
 .modal-footer {
   display: flex;

@@ -1,9 +1,11 @@
 import { ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { runToolbarAction, type ToolbarActionContext } from './context'
 
-const filters = [{ name: 'IEC104 Config', extensions: ['json'] }]
+const suite = import.meta.env.VITE_SIMLAB_SUITE === '1'
+const filters = [{ name: 'IEC104 / SAIO Project', extensions: suite ? ['saioproj', 'json'] : ['json'] }]
+const saveFilters = [{ name: 'IEC104 Project', extensions: suite ? ['saioproj'] : ['json'] }]
 export function useConfigActions(context: ToolbarActionContext) {
   const { t, showAlert, showPrompt, resetWorkspaceView, refreshTree, refreshData } = context
   const loading = ref(false)
@@ -48,7 +50,7 @@ export function useConfigActions(context: ToolbarActionContext) {
   async function saveConfig() {
     await runToolbarAction(context, async () => {
       try {
-        const path = await save({ filters, defaultPath: 'iec104-slave-config.json' })
+        const path = await save({ filters: saveFilters, defaultPath: suite ? 'iec104-slave.saioproj' : 'iec104-slave-config.json' })
         if (!path) return
         await invoke('save_config', { path })
         await showAlert(t('toolbar.configSaved'))

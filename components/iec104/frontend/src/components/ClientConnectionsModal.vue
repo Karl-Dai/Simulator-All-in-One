@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 import type { ClientConnectionInfo } from '../types'
@@ -68,7 +69,7 @@ function close() {
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && props.visible) close()
+  if (event.key === 'Escape' && !event.isComposing && event.keyCode !== 229 && props.visible) close()
 }
 
 watch(
@@ -96,7 +97,7 @@ onBeforeUnmount(() => {
     <Transition name="dialog-pop">
       <div
         v-if="visible"
-        class="connections-backdrop dialog-blur"
+        v-modal="() => emit('close')" class="connections-backdrop dialog-blur"
         @mousedown.self="close"
       >
         <section class="connections-modal" role="dialog" aria-modal="true" :aria-label="t('connections.title')">

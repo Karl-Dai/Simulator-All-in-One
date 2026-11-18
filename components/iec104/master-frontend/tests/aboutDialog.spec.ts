@@ -30,7 +30,7 @@ describe('AboutDialog localization', () => {
     })
     await flushPromises()
 
-    expect(wrapper.find('.about-notes').text()).toContain(ABOUT_RELEASE_NOTES['en-US'][0])
+    expect(wrapper.find('.about-notes').text()).toContain(import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'Updates are delivered with SAIO.' : ABOUT_RELEASE_NOTES['en-US'][0])
     expect(wrapper.find('.about-notes').text()).not.toMatch(/[\u3400-\u9fff]/u)
     expect(wrapper.get('[data-testid="simlab-link"]').text()).toBe('SimLab Online')
     await wrapper.get('[data-testid="simlab-link"]').trigger('click')
@@ -44,7 +44,7 @@ describe('AboutDialog localization', () => {
 
     useI18n().setLocale('zh-CN')
     await nextTick()
-    expect(wrapper.find('.about-notes').text()).toContain(ABOUT_RELEASE_NOTES['zh-CN'][0])
+    expect(wrapper.find('.about-notes').text()).toContain(import.meta.env.VITE_SIMLAB_SUITE === '1' ? '随 SAIO 统一更新。' : ABOUT_RELEASE_NOTES['zh-CN'][0])
     expect(wrapper.get('[data-testid="simlab-link"]').text()).toBe('在线体验 SimLab')
     await wrapper.get('[data-testid="documentation-link"]').trigger('click')
     expect(invokeMock).toHaveBeenLastCalledWith('plugin:opener|open_url', {

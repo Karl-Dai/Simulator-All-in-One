@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert, showPrompt as ShowPrompt, showConfirm as ShowConfirm } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
+import { isSimLabSuite } from '@shared/suite'
 import AboutDialog from '@shared/components/AboutDialog.vue'
 import LangSwitch from '@shared/components/LangSwitch.vue'
 import ThemeSwitch from '@shared/components/ThemeSwitch.vue'
@@ -49,6 +50,7 @@ const updateChecking = ref(false)
 const MIRROR_RELEASE_URL = 'https://ghfast.top/https://github.com/Karl-Dai/IEC60870-5-104-Simulator/releases/latest'
 
 async function manualCheckUpdate() {
+  if (isSimLabSuite) return
   if (busy.value || updateChecking.value) return
   busy.value = true
   updateChecking.value = true
@@ -102,7 +104,7 @@ const secondaryMenus = computed(() => [
   ] },
 ])
 const helpItems = computed(() => [
-  { id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), action: manualCheckUpdate },
+  ...(!isSimLabSuite ? [{ id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), action: manualCheckUpdate }] : []),
   { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
 ])
 </script>

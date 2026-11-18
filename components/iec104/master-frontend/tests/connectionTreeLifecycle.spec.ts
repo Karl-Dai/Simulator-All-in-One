@@ -141,3 +141,41 @@ describe('ConnectionTree workspace lifecycle', () => {
     expect(openEditConnection).toHaveBeenNthCalledWith(2, 'secure')
   })
 })
+
+
+describe('ConnectionTree point presence', () => {
+  it.each([{ addresses: [1] }, { addresses: [1, 2] }])('updates populated and empty categories with CAs $addresses', async ({ addresses }) => {
+    invokeMock.mockResolvedValue([connection('counts', { common_addresses: addresses })])
+    const counts = ref<CategoryCountsMap>(new Map([
+      ['counts', new Map(addresses.map(ca => [ca, new Map([['float_measured', ca === 1 ? 48 : 28]])]))],
+    ]))
+    const { wrapper } = mountTree(counts)
+    try {
+      await flushPromises()
+      const rows = wrapper.findAll('.tree-child')
+      const populated = rows[6]
+      const empty = rows[0]
+      expect(populated.classes()).toContain('has-points')
+      expect(populated.find('.node-count').text()).toBe('48')
+      expect(empty.classes()).not.toContain('has-points')
+      expect(empty.find('.node-count').text()).toBe('0')
+      expect(populated.find('.node-count').attributes('title')).toContain('48')
+
+      await populated.trigger('click')
+      expect(populated.classes()).toContain('selected')
+      expect(populated.classes()).toContain('has-points')
+      expect(wrapper.emitted('category-select')?.[0]).toEqual(['counts', 'float_measured', addresses.length > 1 ? 1 : null])
+      if (addresses.length > 1) expect(rows[14].find('.node-count').text()).toBe('28')
+
+      counts.value = new Map([['counts', new Map([[1, new Map([['single_point', 3]])]])]])
+      await nextTick()
+      expect(populated.classes()).not.toContain('has-points')
+      expect(populated.classes()).toContain('selected')
+      expect(populated.find('.node-count').text()).toBe('0')
+      expect(empty.classes()).toContain('has-points')
+      expect(empty.find('.node-count').text()).toBe('3')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+})

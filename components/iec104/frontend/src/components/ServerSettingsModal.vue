@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 import FilePathInput from '@shared/components/FilePathInput.vue'
@@ -113,7 +114,7 @@ async function save() {
 }
 
 function close() { if (!mutating.value) emit('close') }
-function keydown(event: KeyboardEvent) { if (props.visible && event.key === 'Escape') close() }
+function keydown(event: KeyboardEvent) { if (props.visible && event.key === 'Escape' && !event.isComposing && event.keyCode !== 229) close() }
 onMounted(() => window.addEventListener('keydown', keydown))
 onBeforeUnmount(() => { session++; window.removeEventListener('keydown', keydown) })
 </script>
@@ -121,7 +122,7 @@ onBeforeUnmount(() => { session++; window.removeEventListener('keydown', keydown
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="settings-backdrop dialog-blur">
+      <div v-if="visible" v-modal="close" class="settings-backdrop dialog-blur">
         <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="server-settings-title" :aria-busy="busy">
           <header>
             <h2 id="server-settings-title">{{ t('serverSettings.title') }}</h2>

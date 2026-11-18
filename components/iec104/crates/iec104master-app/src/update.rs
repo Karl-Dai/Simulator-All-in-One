@@ -119,6 +119,7 @@ pub async fn check_for_update(
     state: State<'_, UpdateState>,
     force: Option<bool>,
 ) -> Result<Option<UpdateMeta>, String> {
+    crate::suite::ensure_component_updates_allowed()?;
     let force = force.unwrap_or(false);
 
     // A choice made in the previous run is handled by the startup task. Do not
@@ -171,6 +172,7 @@ pub async fn check_for_update(
 /// Installs the already downloaded package. No network request is made here.
 #[tauri::command]
 pub async fn install_update(app: AppHandle, state: State<'_, UpdateState>) -> Result<(), String> {
+    crate::suite::ensure_component_updates_allowed()?;
     let prepared = state.prepared.lock().await;
     let update = prepared
         .as_ref()
@@ -194,6 +196,7 @@ pub async fn skip_update(
     state: State<'_, UpdateState>,
     version: String,
 ) -> Result<(), String> {
+    crate::suite::ensure_component_updates_allowed()?;
     let mut prepared = state.prepared.lock().await;
     if !prepared
         .as_ref()
@@ -215,6 +218,7 @@ pub async fn schedule_update_on_next_launch(
     state: State<'_, UpdateState>,
     version: String,
 ) -> Result<(), String> {
+    crate::suite::ensure_component_updates_allowed()?;
     let prepared = state.prepared.lock().await;
     if !prepared
         .as_ref()
@@ -230,6 +234,7 @@ pub async fn schedule_update_on_next_launch(
 /// Called from Tauri setup on every launch. It is a no-op unless the user chose
 /// "install on next launch" in the previous run.
 pub async fn install_pending_update(app: AppHandle) -> Result<(), String> {
+    crate::suite::ensure_component_updates_allowed()?;
     if !read_bool(&app, KEY_INSTALL_ON_NEXT_LAUNCH) {
         return Ok(());
     }

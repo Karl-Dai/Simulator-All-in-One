@@ -1,6 +1,21 @@
 import type { DictShape } from './zh-CN'
 
 const dict: DictShape = {
+  suiteAppearance: {
+    managed: 'Managed by suite settings',
+    readFailed: 'Cannot read suite appearance settings. Keeping the current theme and language.',
+    repairHint: 'Retry reading settings. If the problem continues, check suite settings or repair the complete suite.',
+    retry: 'Retry',
+    details: 'Suggested action',
+    close: 'Close',
+    selectedConnection: 'Selected connection status',
+    noConnection: 'No connection selected',
+    connected: 'Connected',
+    connecting: 'Connecting',
+    reconnecting: 'Reconnecting',
+    disconnected: 'Disconnected',
+    unknown: 'State: {state}',
+  },
   common: {
     confirm: 'Confirm',
     cancel: 'Cancel',
@@ -102,6 +117,7 @@ const dict: DictShape = {
     broadcastAddressInvalid: 'Enter 1–4 hex digits',
   },
   tree: {
+    pointCount: '{n} points',
     title: 'Connections',
     noConnections: 'No connections',
     deleteConnection: 'Delete connection',
@@ -350,6 +366,15 @@ const dict: DictShape = {
     cot9: '9 - Deactivation Confirmation',
     cot10: '10 - Activation Termination',
     sending: 'Sending...',
+    waitingForConfirmation: 'Waiting for confirmation…',
+    selectConfirmed: 'Selection confirmed',
+    executeConfirmed: 'Execution confirmed',
+    deactivateConfirmed: 'Deactivation confirmed',
+    sentUnconfirmed: 'Sent; confirmation not awaited',
+    resultUnconfirmed: 'Confirmation not verified',
+    confirmationDuration: 'confirmation {ms} ms',
+    sendDuration: 'send {ms} ms',
+    elapsedDuration: 'elapsed {ms} ms',
     send: 'Send',
   },
   about: {

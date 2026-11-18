@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, computed, watch, inject, onUnmounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n, localizeCategoryLabel } from '@shared/i18n'
@@ -127,6 +128,7 @@ function handleBackdropClick(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
   if (e.key === 'Escape') {
     emit('close')
   } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -139,7 +141,7 @@ function handleKeydown(e: KeyboardEvent) {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="modal-backdrop dialog-blur" @click="handleBackdropClick">
+      <div v-if="visible" v-modal="() => emit('close')" class="modal-backdrop dialog-blur" @click="handleBackdropClick">
         <div class="modal">
           <div class="modal-header">
             <span class="modal-title">{{ t('batchWrite.title') }}</span>

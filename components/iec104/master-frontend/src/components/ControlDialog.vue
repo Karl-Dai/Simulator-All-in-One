@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { vModal } from "@app/simlab-ui/modal"
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { CommandType, ControlResult } from '../types'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 import AppSelect from '@shared/components/ui/AppSelect.vue'
+import { controlResultStatus } from '../utils/controlResult'
 
 const { t } = useI18n()
 
@@ -63,6 +65,24 @@ if (commandType.value === 'bitstring' && controlMode.value !== 'execute') {
 const errorMsg = ref('')
 const sending = ref(false)
 const lastResult = ref<ControlResult | null>(null)
+const resultStatus = computed(() => lastResult.value ? controlResultStatus(lastResult.value) : null)
+const waitingForConfirmation = ref(false)
+let requestGeneration = 0
+
+function resetRequest() {
+  requestGeneration++
+  sending.value = false
+  waitingForConfirmation.value = false
+  lastResult.value = null
+  errorMsg.value = ''
+}
+
+function close() {
+  resetRequest()
+  emit('close')
+}
+
+onBeforeUnmount(resetRequest)
 
 // Advanced parameters (intentionally not persisted — these are per-send
 // tweaks the user usually wants to set deliberately each time)
@@ -87,8 +107,8 @@ const scaledValue = ref(saved.scaledValue ?? '0')
 const floatValue = ref(saved.floatValue ?? '0.0')
 const bitstringValue = ref<number>(saved.bitstringValue ?? 0)
 
-function savePersisted() {
-  const data: Persisted = {
+function persistedValues(): Persisted {
+  return {
     ca: ca.value,
     ioa: ioa.value,
     commandType: commandType.value,
@@ -101,14 +121,11 @@ function savePersisted() {
     floatValue: floatValue.value,
     bitstringValue: bitstringValue.value,
   }
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) } catch { /* ignore */ }
 }
 
-watch(() => props.visible, (v) => {
+watch(() => [props.visible, props.connectionId] as const, ([v]) => {
+  resetRequest()
   if (v) {
-    errorMsg.value = ''
-    sending.value = false
-    lastResult.value = null
     qualifier.value = 0
     cot.value = 6
     showAdvanced.value = false
@@ -119,7 +136,7 @@ watch(() => props.visible, (v) => {
     if (props.prefillIoa != null) ioa.value = props.prefillIoa
     if (props.prefillCommandType) commandType.value = props.prefillCommandType
   }
-})
+}, { flush: 'sync' })
 
 watch(commandType, () => {
   qualifier.value = 0
@@ -190,14 +207,19 @@ const controlModeValue = computed({
 })
 
 async function send() {
-  if (!props.connectionId) return
+  if (!props.visible || !props.connectionId || sending.value) return
+  const generation = ++requestGeneration
+  const connectionId = props.connectionId
+  const savedValues = persistedValues()
+  const isCurrentRequest = () => generation === requestGeneration && props.visible && props.connectionId === connectionId
   errorMsg.value = ''
   sending.value = true
+  waitingForConfirmation.value = controlMode.value === 'sbo' || [6, 8].includes(cot.value & 0x3f)
   lastResult.value = null
 
   try {
     const payload: Record<string, unknown> = {
-      connection_id: props.connectionId,
+      connection_id: connectionId,
       ioa: ioa.value,
       common_address: ca.value,
       command_type: commandType.value,
@@ -211,24 +233,25 @@ async function send() {
       payload.bitstring = bitstringValue.value >>> 0
     }
     const result = await invoke<ControlResult>('send_control_command', { request: payload })
+    if (!isCurrentRequest()) return
     lastResult.value = result
-    sending.value = false
-    // Persist on successful send so the user's last good CA / IOA / type /
-    // value combo comes back next time. The dialog stays open so the user
-    // can immediately tweak and send again — `lastResult` shows the OK
-    // indicator beneath the form for confirmation.
-    savePersisted()
+    // Save the values actually sent, even if the dialog's context later changes.
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedValues)) } catch { /* ignore */ }
     emit('sent')
   } catch (e) {
+    if (!isCurrentRequest()) return
     errorMsg.value = String(e)
-    sending.value = false
+  } finally {
+    if (isCurrentRequest()) {
+      sending.value = false
+      waitingForConfirmation.value = false
+    }
   }
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    emit('close')
-  } else if (e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229 && e.target instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(e.target.type)) {
+    e.preventDefault()
     send()
   }
 }
@@ -277,34 +300,33 @@ const caSelectValue = computed<number>({
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
+    <div v-if="visible" v-modal="close" class="modal-backdrop dialog-blur" @mousedown.self="close" @keydown="handleKeydown">
       <div class="modal-box">
         <div class="modal-title">{{ t('control.title') }}</div>
         <div class="modal-body">
+          <fieldset class="form-fields" :disabled="sending">
           <div class="form-row">
-            <label class="form-label form-label-half">
-              {{ t('control.targetCa') }}
+            <label class="address-label ca-label" for="control-ca">{{ t('control.targetCa') }}</label>
+            <label class="address-label ioa-label" for="control-ioa">{{ t('control.ioa') }}</label>
+            <div class="ca-controls">
               <template v-if="useCASelect">
-                <select v-model.number="caSelectValue" class="form-input">
+                <select id="control-ca" v-model.number="caSelectValue" class="form-input">
                   <option v-for="opt in availableCAs" :key="opt" :value="opt">CA {{ opt }}</option>
                   <option :value="CUSTOM_CA">{{ t('control.caCustom') }}</option>
                 </select>
                 <input
                   v-if="caSelectValue === CUSTOM_CA"
                   v-model.number="ca"
+                  :aria-label="t('control.targetCa')"
                   class="form-input"
                   type="number"
                   min="1"
                   max="65534"
-                  style="margin-top: 4px"
                 />
               </template>
-              <input v-else v-model.number="ca" class="form-input" type="number" min="1" max="65534" />
-            </label>
-            <label class="form-label form-label-half">
-              {{ t('control.ioa') }}
-              <input v-model.number="ioa" class="form-input" type="number" min="0" max="16777215" />
-            </label>
+              <input v-else id="control-ca" v-model.number="ca" class="form-input" type="number" min="1" max="65534" />
+            </div>
+            <input id="control-ioa" v-model.number="ioa" class="form-input ioa-input" type="number" min="0" max="16777215" />
           </div>
 
           <label class="form-label">
@@ -390,20 +412,25 @@ const caSelectValue = computed<number>({
               </label>
             </div>
           </details>
+          </fieldset>
 
-          <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+          <div v-if="errorMsg" class="error-msg" role="alert">{{ errorMsg }}</div>
 
-          <div v-if="lastResult" class="result-indicator result-ok">
+          <div v-if="sending" class="result-indicator result-pending" role="status">
+            {{ waitingForConfirmation ? t('control.waitingForConfirmation') : t('control.sending') }}
+          </div>
+
+          <div v-if="lastResult && resultStatus" :class="['result-indicator', resultStatus.confirmed ? 'result-ok' : 'result-unconfirmed']" role="status">
             <span class="result-steps">
               <span v-for="(step, i) in lastResult.steps" :key="i" class="step-dot" :title="step.action">&#9679;</span>
             </span>
-            <span class="result-text">OK {{ lastResult.duration_ms }}ms</span>
+            <span class="result-text">{{ t(resultStatus.label) }} · {{ t(resultStatus.duration, { ms: lastResult.duration_ms }) }}</span>
           </div>
         </div>
         <div class="modal-footer">
-          <AppButton @click="emit('close')">{{ t('common.close') }}</AppButton>
-          <AppButton variant="primary" :disabled="sending" @click="send">
-            {{ sending ? t('control.sending') : t('control.send') }}
+          <AppButton @click="close">{{ t('common.close') }}</AppButton>
+          <AppButton variant="primary" :disabled="sending || !connectionId" @click="send">
+            {{ sending ? (waitingForConfirmation ? t('control.waitingForConfirmation') : t('control.sending')) : t('control.send') }}
           </AppButton>
         </div>
       </div>
@@ -428,8 +455,8 @@ const caSelectValue = computed<number>({
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   padding: 20px;
-  min-width: 400px;
-  max-width: 90vw;
+  width: 520px;
+  max-width: calc(100vw - 32px);
   /* issue #28:setpoint + 展开高级区 + 错误/结果提示时约 500-560px,小视口下标题/按钮
      必须常驻,滚动收进 .modal-body —— 之前连 max-height 都没有,超高内容直接被裁。 */
   max-height: 90vh;
@@ -464,6 +491,16 @@ const caSelectValue = computed<number>({
   margin-top: 20px;
 }
 
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .form-label {
   display: flex;
   flex-direction: column;
@@ -473,12 +510,42 @@ const caSelectValue = computed<number>({
 }
 
 .form-row {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: "ca-label ioa-label" "ca-control ioa-control";
+  align-items: start;
+  gap: 4px 12px;
 }
 
-.form-label-half {
-  flex: 1;
+.address-label {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ca-label { grid-area: ca-label; }
+.ioa-label { grid-area: ioa-label; }
+.ca-controls {
+  grid-area: ca-control;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ioa-input { grid-area: ioa-control; }
+.form-row .form-input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "ca-label" "ca-control" "ioa-label" "ioa-control";
+  }
+  .ioa-label { margin-top: 8px; }
+  .toggle-row { align-items: flex-start; flex-direction: column; gap: 6px; }
 }
 
 .bitstring-control {
@@ -639,6 +706,13 @@ const caSelectValue = computed<number>({
   color: var(--success);
 }
 
+.result-unconfirmed,
+.result-pending {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
 .result-steps {
   display: flex;
   gap: 4px;
@@ -646,7 +720,7 @@ const caSelectValue = computed<number>({
 }
 
 .step-dot {
-  color: var(--success);
+  color: currentColor;
 }
 
 .result-text {

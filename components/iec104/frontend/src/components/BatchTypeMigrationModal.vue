@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { computed, inject, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
@@ -78,7 +79,7 @@ async function applyMigration() {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="modal-backdrop dialog-blur">
+      <div v-if="visible" v-modal="() => { if (!isSaving) emit('close') }" class="modal-backdrop dialog-blur">
         <div class="modal">
           <div class="modal-header">
             <span class="modal-title">{{ t('batchType.title') }}</span>
@@ -138,6 +139,9 @@ async function applyMigration() {
   background: rgba(0, 0, 0, 0.55);
 }
 .modal {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   width: 420px;
   max-width: 90vw;
   overflow: hidden;
@@ -148,6 +152,7 @@ async function applyMigration() {
 }
 .modal-header,
 .modal-footer {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 16px 20px;
@@ -171,7 +176,9 @@ async function applyMigration() {
   color: var(--c-overlay0);
   line-height: 1;
 }
-.modal-body { padding: 20px; }
+.modal-body {
+  min-height: 0;
+  overflow-y: auto; padding: 20px; }
 .selection-hint,
 .migration-note,
 .target-preview {

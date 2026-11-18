@@ -39,6 +39,8 @@ impl MasterConnectionState {
 
 /// Application state holding all active master connections.
 pub struct AppState {
+    #[cfg(feature = "simlab-suite")]
+    pub suite_storage: crate::suite_storage::SuiteStorage,
     pub connections: RwLock<HashMap<String, MasterConnectionState>>,
     pub next_connection_id: RwLock<u32>,
     /// Serializes workspace membership changes. In particular, a full config
@@ -58,6 +60,8 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "simlab-suite")]
+            suite_storage: Default::default(),
             connections: RwLock::new(HashMap::new()),
             next_connection_id: RwLock::new(1),
             workspace_mutation: Mutex::new(()),

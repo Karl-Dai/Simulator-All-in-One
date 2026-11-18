@@ -12,9 +12,10 @@ import ServerSettingsModal from './components/ServerSettingsModal.vue'
 import type { ServerInfo } from './types'
 import AppDialog from '@shared/components/AppDialog.vue'
 import UpdateDialog from '@shared/components/UpdateDialog.vue'
+import { isSimLabSuite } from '@shared/suite'
 import ParseFrameDialog from '@shared/components/ParseFrameDialog.vue'
 import Splitter from '@shared/components/Splitter.vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { showAlert, showConfirm, showPrompt, dialogKey } from '@shared/composables/useDialog'
 import { formatCorrections, type TimingCorrection } from '@shared/timing'
 import { useI18n } from '@shared/i18n'
@@ -176,6 +177,7 @@ const updateMeta = ref<UpdateMeta | null>(null)
 const updateVisible = ref(false)
 
 async function checkUpdate(force = false): Promise<UpdateMeta | null> {
+  if (isSimLabSuite) return null
   const meta = await invoke<UpdateMeta | null>('check_for_update', { force })
   if (meta) {
     updateMeta.value = meta
@@ -207,9 +209,11 @@ onMounted(async () => {
       void showAlert(`${t('remoteParams.configTimingCorrected')}\n${lines.join('\n')}`)
     },
   )
-  setTimeout(() => {
-    checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
-  }, 2000)
+  if (!isSimLabSuite) {
+    setTimeout(() => {
+      checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
+    }, 2000)
+  }
 })
 
 onUnmounted(() => {
@@ -341,6 +345,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
       @close="parseFrameVisible = false"
     />
     <UpdateDialog
+      v-if="!isSimLabSuite"
       :visible="updateVisible"
       :version="updateMeta?.version ?? ''"
       :notes="updateMeta?.notes ?? ''"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, inject, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
@@ -109,7 +110,7 @@ async function submit() {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-overlay dialog-blur">
+    <div v-if="visible" v-modal="close" class="modal-overlay dialog-blur">
       <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="new-server-title" :aria-busy="pending">
         <div id="new-server-title" class="modal-title">{{ t('newServer.title') }}</div>
         <fieldset class="modal-body" :disabled="pending">

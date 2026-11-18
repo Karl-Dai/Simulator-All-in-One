@@ -83,6 +83,29 @@ describe('NewConnectionModal SOCKS5', () => {
     useI18n().setLocale('zh-CN')
   })
 
+  it.each([false, true])('suite edits use one atomic command (conflict=%s)', async (conflict) => {
+    vi.stubEnv('VITE_SIMLAB_SUITE', '1')
+    const { wrapper, selectedConnectionId, showAlert } = mountModal()
+    try {
+      selectedConnectionId.value = 'conn_1'
+      invokeMock.mockImplementation(command => {
+        if (command === 'list_connections') return Promise.resolve([editableConnection()])
+        if (command === 'replace_connection') return conflict ? Promise.reject(new Error('configuration conflict')) : Promise.resolve({ id: 'conn_2', timing_corrections: [] })
+        return Promise.reject(new Error('unexpected command'))
+      })
+      await (wrapper.vm as unknown as ModalVm).openEditConnection('conn_1')
+      await wrapper.find('.btn-primary').trigger('click')
+      await flushPromises()
+      expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', 'replace_connection'])
+      expect(invokeMock.mock.calls[1][1]).toMatchObject({ id: 'conn_1' })
+      expect(selectedConnectionId.value).toBe(conflict ? 'conn_1' : 'conn_2')
+      if (conflict) {
+        expect(showAlert).toHaveBeenCalledWith('Error: configuration conflict')
+        expect(wrapper.find('.modal-title').text()).toBe('编辑连接')
+      }
+    } finally { wrapper.unmount(); vi.unstubAllEnvs() }
+  })
+
   it.each(['Connected', 'Connecting', 'Error'])('取消编辑时保留 %s 连接', async (state) => {
     invokeMock.mockResolvedValue([editableConnection(state)])
     const { wrapper, showConfirm, selectedConnectionState } = mountModal()
@@ -133,7 +156,7 @@ describe('NewConnectionModal SOCKS5', () => {
     await (wrapper.vm as unknown as ModalVm).openEditConnection('conn_1')
     await wrapper.find('.btn-primary').trigger('click')
     await flushPromises()
-    expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', 'create_connection'])
+    expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'replace_connection' : 'create_connection'])
     expect(selectedConnectionId.value).toBe('conn_1')
     expect(showAlert).toHaveBeenCalledWith('Error: invalid config')
     expect(wrapper.find('.btn-primary').attributes('disabled')).toBeUndefined()
@@ -145,7 +168,7 @@ describe('NewConnectionModal SOCKS5', () => {
     let finish!: (value: unknown) => void
     invokeMock.mockImplementation((command) => {
       if (command === 'list_connections') return Promise.resolve([editableConnection()])
-      if (command === 'create_connection') return new Promise(resolve => { finish = resolve })
+      if (command === (import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'replace_connection' : 'create_connection')) return new Promise(resolve => { finish = resolve })
       return Promise.resolve()
     })
     const { wrapper, selectedConnectionId, selectedCA, selectedCategory, refreshTree, showConfirm } = mountModal()
@@ -158,11 +181,14 @@ describe('NewConnectionModal SOCKS5', () => {
     await wrapper.find('.btn-primary').trigger('click')
     await wrapper.find('.modal-backdrop').trigger('mousedown')
     expect(wrapper.find('fieldset').attributes('disabled')).toBeDefined()
-    expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', 'create_connection'])
+    expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'replace_connection' : 'create_connection'])
     expect(wrapper.emitted('update:visible')).toEqual([[true]])
     finish({ id: 'conn_2', timing_corrections: [] })
     await flushPromises()
-    expect(invokeMock).toHaveBeenLastCalledWith('delete_connection', { id: 'conn_1' })
+    if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+      expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', 'replace_connection'])
+      expect(invokeMock.mock.calls.at(-1)?.[1]).toMatchObject({ id: 'conn_1' })
+    } else expect(invokeMock).toHaveBeenLastCalledWith('delete_connection', { id: 'conn_1' })
     expect(selectedConnectionId.value).toBe('conn_2')
     expect(selectedCA.value).toBeNull()
     expect(selectedCategory.value).toBeNull()
@@ -171,7 +197,7 @@ describe('NewConnectionModal SOCKS5', () => {
     wrapper.unmount()
   })
 
-  it('旧连接无法替换时清理候选连接，保留原选择和编辑表单', async () => {
+  it('替换失败时保留原选择和编辑表单，独立版清理候选连接', async () => {
     invokeMock.mockImplementation((command, args) => {
       if (command === 'list_connections') return Promise.resolve([editableConnection()])
       if (command === 'create_connection') return Promise.resolve({ id: 'conn_2' })
@@ -183,7 +209,10 @@ describe('NewConnectionModal SOCKS5', () => {
     await (wrapper.vm as unknown as ModalVm).openEditConnection('conn_1')
     await wrapper.find('.btn-primary').trigger('click')
     await flushPromises()
-    expect(invokeMock).toHaveBeenLastCalledWith('delete_connection', { id: 'conn_2' })
+    if (import.meta.env.VITE_SIMLAB_SUITE === '1') {
+      expect(invokeMock.mock.calls.map(call => call[0])).toEqual(['list_connections', 'replace_connection'])
+      expect(invokeMock.mock.calls.at(-1)?.[1]).toMatchObject({ id: 'conn_1' })
+    } else expect(invokeMock).toHaveBeenLastCalledWith('delete_connection', { id: 'conn_2' })
     expect(selectedConnectionId.value).toBe('conn_1')
     expect(wrapper.find('.modal-title').text()).toBe('编辑连接')
     expect(showAlert).toHaveBeenCalledWith('Error: retire failed')

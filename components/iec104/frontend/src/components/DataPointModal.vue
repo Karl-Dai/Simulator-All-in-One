@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, watch, inject, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
@@ -263,7 +264,7 @@ async function handleConfirm() {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur">
+    <div v-if="visible" v-modal="() => { if (!isSaving) emit('close') }" class="modal-backdrop dialog-blur">
       <div class="modal">
         <div class="modal-header">
           <span class="modal-title">{{ isEditing ? t('pointModal.editTitle') : t('pointModal.title') }}</span>

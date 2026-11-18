@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref, shallowRef, computed, provide, onMounted, onUnmounted, watch } from 'vue'
+import StatusBadge from './simlab-ui/components/StatusBadge.vue'
+import ErrorNotice from './simlab-ui/components/ErrorNotice.vue'
+import { suiteAppearanceKey } from './suiteAppearance'
+import { ref, shallowRef, computed, provide, inject, onMounted, onUnmounted, watch } from 'vue'
 import { listen } from '@tauri-apps/api/event'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import Toolbar from './components/Toolbar.vue'
 import ConnectionTree from './components/ConnectionTree.vue'
 import DataTable from './components/DataTable.vue'
@@ -9,6 +12,7 @@ import ValuePanel from './components/ValuePanel.vue'
 import LogPanel from './components/LogPanel.vue'
 import AppDialog from '@shared/components/AppDialog.vue'
 import UpdateDialog from '@shared/components/UpdateDialog.vue'
+import { isSimLabSuite } from '@shared/suite'
 import ParseFrameDialog from '@shared/components/ParseFrameDialog.vue'
 import Splitter from '@shared/components/Splitter.vue'
 import { showAlert, showConfirm, showPrompt, dialogKey } from '@shared/composables/useDialog'
@@ -19,6 +23,19 @@ import type { ReceivedDataPointInfo, ChangedCategoriesMap, CategoryCountsMap } f
 // Shared state
 const selectedConnectionId = ref<string | null>(null)
 const selectedConnectionState = ref<string>('Disconnected')
+const appearance = inject(suiteAppearanceKey, null)
+const connectionStatus = computed(() => {
+  const state = selectedConnectionState.value
+  const keys: Record<string, string> = {
+    Connected: 'connected', Disconnected: 'disconnected',
+    Connecting: 'connecting', Reconnecting: 'reconnecting',
+  }
+  return {
+    label: t(`suiteAppearance.${selectedConnectionId.value ? (keys[state] ?? 'unknown') : 'noConnection'}`, { state }),
+    tone: (selectedConnectionId.value && state === 'Connected' ? 'success' : 'neutral') as 'success' | 'neutral',
+    busy: !!selectedConnectionId.value && (state === 'Connecting' || state === 'Reconnecting'),
+  }
+})
 // Multi-CA: which Common Address inside the selected connection is the user
 // looking at? `null` means "all CAs combined" (legacy single-CA behaviour).
 const selectedCA = ref<number | null>(null)
@@ -132,6 +149,7 @@ let unlistenConnState: (() => void) | null = null
 let unlistenTimingCorrected: (() => void) | null = null
 // CA set updated by GI debouncer; refresh tree to reflect new common addresses in memory.
 let unlistenCasUpdated: (() => void) | null = null
+let unlistenSaveError: (() => void) | null = null
 
 onMounted(async () => {
   // Tauri runtime 不可用(纯浏览器 vite dev / headless UI 验证)时跳过 IPC listener,
@@ -141,6 +159,7 @@ onMounted(async () => {
     console.warn('Tauri runtime not detected; skipping IPC listeners for UI-only render')
     return
   }
+  unlistenSaveError = await listen<string>('configuration-save-error', event => { void showAlert(`配置未保存 / Configuration not saved: ${event.payload}`) })
   unlistenConnState = await listen<{ id: string; state: string }>('connection-state', (event) => {
     const { id, state } = event.payload
     if (selectedConnectionId.value === id) {
@@ -165,15 +184,19 @@ onMounted(async () => {
       refreshTree()
     },
   )
-  setTimeout(() => {
-    checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
-  }, 2000)
+  if (!isSimLabSuite) {
+    setTimeout(() => {
+      checkUpdate(false).catch((e) => console.warn('auto update check failed', e))
+    }, 2000)
+  }
 })
 
 onUnmounted(() => {
+  appearance?.dispose()
   unlistenConnState?.()
   unlistenTimingCorrected?.()
   unlistenCasUpdated?.()
+  unlistenSaveError?.()
   if (refreshTreePending !== null) {
     clearTimeout(refreshTreePending)
     refreshTreePending = null
@@ -219,6 +242,7 @@ const updateMeta = ref<{ version: string; notes: string; pub_date?: string | nul
 const updateVisible = ref(false)
 
 async function checkUpdate(force = false): Promise<{ version: string; notes: string; pub_date?: string | null } | null> {
+  if (isSimLabSuite) return null
   const meta = await invoke<{ version: string; notes: string; pub_date?: string | null } | null>('check_for_update', { force })
   if (meta) {
     updateMeta.value = meta
@@ -252,6 +276,15 @@ provide('resetWorkspaceView', resetWorkspaceView)
   >
     <header class="toolbar-area">
       <Toolbar ref="toolbarRef" />
+      <div class="suite-foundation">
+        <StatusBadge :label="connectionStatus.label" :tone="connectionStatus.tone" :busy="connectionStatus.busy"
+          :aria-label="`${t('suiteAppearance.selectedConnection')}: ${connectionStatus.label}`" />
+        <ErrorNotice v-if="appearance?.visible.value"
+          :message="t('suiteAppearance.readFailed')" :details="t('suiteAppearance.repairHint')"
+          :details-label="t('suiteAppearance.details')" :close-label="t('suiteAppearance.close')"
+          :retry-label="t('suiteAppearance.retry')" :busy="appearance.busy.value"
+          @close="appearance.dismiss()" @retry="appearance.retry()" />
+      </div>
     </header>
 
     <aside class="tree-area">
@@ -306,6 +339,7 @@ provide('resetWorkspaceView', resetWorkspaceView)
       @close="parseFrameVisible = false"
     />
     <UpdateDialog
+      v-if="!isSimLabSuite"
       :visible="updateVisible"
       :version="updateMeta?.version ?? ''"
       :notes="updateMeta?.notes ?? ''"
@@ -315,6 +349,16 @@ provide('resetWorkspaceView', resetWorkspaceView)
 </template>
 
 <style>
+.suite-foundation {
+  --surface: var(--c-base);
+  --text: var(--c-text);
+  --muted: var(--c-subtext0);
+  --success: var(--c-green);
+  --warning: var(--c-yellow);
+  --danger: var(--c-red);
+  padding: 4px 12px;
+}
+.suite-foundation > .error-notice { margin-top: 6px; max-height: 180px; overflow: auto; }
 /* Reset, body, scrollbars and focus ring live in shared-frontend/styles/base.css. */
 .app-layout {
   display: grid;

@@ -3,13 +3,14 @@ use iec104sim_core::config::{MasterConfigFile, MasterSnapshotPoint};
 use iec104sim_core::log_collector::LogCollector;
 use iec104sim_core::log_entry::LogEntry;
 use iec104sim_core::master::{
-    ControlResult, ControlStep, MasterConfig, MasterConnection, Socks5Config, TlsConfig,
+    ControlResult, MasterConfig, MasterConnection, Socks5Config, TlsConfig,
     TlsVersionPolicy,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State};
+#[cfg(not(feature = "simlab-suite"))]
 use tauri_plugin_store::StoreExt;
 
 const WORKSPACE_STORE_FILE: &str = "master_workspace.json";
@@ -389,6 +390,9 @@ fn activate_connection(app_handle: AppHandle, activation: ConnectionActivation) 
             use tauri::Manager;
             while let Some(ev) = flush_rx.recv().await {
                 let state: State<'_, AppState> = app.state();
+                let _workspace_guard = state.workspace_mutation.lock().await;
+                #[cfg(feature = "simlab-suite")]
+                let previous = state.connections.read().await.get(&id_clone).map(|c| c.common_addresses.clone());
                 let (added, all_cas) = {
                     // 单次 write guard:同时扩 MasterConnection.configured_cas(供广播过滤)
                     // 与 MasterConnectionState.common_addresses(供 list_connections 暴露给前端)。
@@ -409,10 +413,24 @@ fn activate_connection(app_handle: AppHandle, activation: ConnectionActivation) 
                     (added, all_cas)
                 };
                 if !added.is_empty() {
-                    if let Err(error) = persist_workspace(&state, &app).await {
-                        log::warn!(
-                            "failed to persist master workspace after discovering common addresses: {error}"
-                        );
+                    #[cfg(feature = "simlab-suite")]
+                    let saved = match workspace_file(&*state.connections.read().await, false).await {
+                        Ok(file) => save_suite_workspace(&state, &file).await,
+                        Err(error) => Err(error),
+                    };
+                    #[cfg(not(feature = "simlab-suite"))]
+                    let saved = persist_workspace(&state, &app).await;
+                    if let Err(error) = saved {
+                        #[cfg(feature = "simlab-suite")]
+                        if let Some(previous) = previous {
+                            if let Some(c) = state.connections.write().await.get_mut(&id_clone) {
+                                c.connection.set_configured_cas(previous.clone());
+                                c.common_addresses = previous;
+                            }
+                        }
+                        let _ = app.emit("configuration-save-error", &error);
+                        log::warn!("failed to persist discovered common addresses: {error}");
+                        continue;
                     }
                     let payload = serde_json::json!({
                         "id": id_clone,
@@ -448,6 +466,14 @@ async fn replace_connections_impl(
     state: &AppState,
     prepared: Vec<PreparedConnection>,
 ) -> Result<ReplacementOutcome, String> {
+    replace_connections_persisted(state, prepared, false).await
+}
+
+async fn replace_connections_persisted(
+    state: &AppState,
+    prepared: Vec<PreparedConnection>,
+    persist: bool,
+) -> Result<ReplacementOutcome, String> {
     let _workspace_guard = state.workspace_mutation.lock().await;
     let imported = prepared.len();
     let imported_u32 =
@@ -481,6 +507,13 @@ async fn replace_connections_impl(
         });
     }
 
+    #[cfg(feature = "simlab-suite")]
+    if persist {
+        save_suite_workspace(state, &workspace_file(&new_connections, false).await?).await?;
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    let _ = persist;
+
     // Both values are committed while the workspace mutation guard is held.
     // `connections` changes in exactly one operation, so readers can observe
     // either the complete old workspace or the complete new workspace.
@@ -506,8 +539,30 @@ pub async fn create_connection(
     app_handle: AppHandle,
     request: CreateConnectionRequest,
 ) -> Result<ConnectionInfo, String> {
+    create_connection_impl(&state, &app_handle, request, None).await
+}
+
+#[tauri::command]
+pub async fn replace_connection(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+    id: String,
+    request: CreateConnectionRequest,
+) -> Result<ConnectionInfo, String> {
+    create_connection_impl(&state, &app_handle, request, Some(id)).await
+}
+
+async fn create_connection_impl(
+    state: &AppState,
+    app_handle: &AppHandle,
+    request: CreateConnectionRequest,
+    replace_id: Option<String>,
+) -> Result<ConnectionInfo, String> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
+    if let Some(id) = &replace_id {
+        if !state.connections.read().await.contains_key(id) { return Err(format!("connection {id} not found")); }
+    }
     let prepared = prepare_connection(request, Vec::new())?;
     let number = *state.next_connection_id.read().await;
     let next_id = number
@@ -521,19 +576,52 @@ pub async fn create_connection(
         flush_rx: pending.flush_rx,
     };
 
+    let mut retired = None;
+    #[cfg(feature = "simlab-suite")]
+    {
+        let connections = state.connections.read().await;
+        if connections.contains_key(&pending.id) { return Err(format!("connection {} already exists", pending.id)); }
+        let mut candidate = workspace_file(&connections, false).await?;
+        if let Some(id) = &replace_id {
+            let mut ordered: Vec<_> = connections.keys().collect();
+            ordered.sort_by_key(|id| id.strip_prefix("conn_").and_then(|v| v.parse::<u32>().ok()).unwrap_or(u32::MAX));
+            let index = ordered.iter().position(|key| *key == id).ok_or("connection not found")?;
+            candidate.connections.remove(index);
+        }
+        let mut addition = HashMap::new();
+        addition.insert(pending.id.clone(), pending.state);
+        candidate.connections.extend(workspace_file(&addition, false).await?.connections);
+        save_suite_workspace(&state, &candidate).await?;
+        // Move the staged connection back after the durable commit.
+        let staged = addition.remove(&pending.id).expect("staged connection");
+        drop(connections);
+        let mut counter = state.next_connection_id.write().await;
+        let mut connections = state.connections.write().await;
+        if let Some(id) = &replace_id { retired = connections.remove(id); }
+        connections.insert(pending.id, staged);
+        *counter = next_id;
+    }
+    #[cfg(not(feature = "simlab-suite"))]
     {
         let mut counter = state.next_connection_id.write().await;
         let mut connections = state.connections.write().await;
         if connections.contains_key(&pending.id) {
             return Err(format!("connection {} already exists", pending.id));
         }
+        if let Some(id) = &replace_id { retired = connections.remove(id); }
         connections.insert(pending.id, pending.state);
         *counter = next_id;
     }
 
+    // Replace the old runtime only after the single durable config commit.
+    // IDs are never reused, so its supervisor cannot reconnect the new target.
+    if let Some(mut retired) = retired {
+        tokio::spawn(async move { let _ = retired.disconnect().await; });
+    }
     // App-facing tasks start only after the connection is visible in the map.
     activate_connection(app_handle.clone(), activation);
 
+    #[cfg(not(feature = "simlab-suite"))]
     if let Err(error) = persist_workspace(&state, &app_handle).await {
         log::warn!("failed to persist master workspace after creating a connection: {error}");
     }
@@ -583,15 +671,29 @@ pub async fn delete_connection(
 ) -> Result<(), String> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
+    #[cfg(feature = "simlab-suite")]
+    {
+        let connections = state.connections.read().await;
+        if !connections.contains_key(&id) { return Err(format!("connection {} not found", id)); }
+        let mut ordered: Vec<_> = connections.keys().collect();
+        ordered.sort_by_key(|id| id.strip_prefix("conn_").and_then(|v| v.parse::<u32>().ok()).unwrap_or(u32::MAX));
+        let index = ordered.iter().position(|key| **key == id).expect("existing connection");
+        let mut candidate = workspace_file(&connections, false).await?;
+        candidate.connections.remove(index);
+        save_suite_workspace(&state, &candidate).await?;
+    }
     let mut conn_state = {
         let mut connections = state.connections.write().await;
         connections
             .remove(&id)
             .ok_or_else(|| format!("connection {} not found", id))?
     };
+    #[cfg(not(feature = "simlab-suite"))]
     if let Err(error) = persist_workspace(&state, &app_handle).await {
         log::warn!("failed to persist master workspace after deleting a connection: {error}");
     }
+    #[cfg(feature = "simlab-suite")]
+    let _ = app_handle;
     // Disconnect + drop the per-connection caches (15k+ point HashMap, log
     // buffer, receiver task) off the Tauri command thread. disconnect() has a
     // 2s internal timeout, so the spawned task can't leak.
@@ -839,7 +941,7 @@ pub struct RawApduRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ControlMode {
-    /// 仅执行:单发一条 S/E=0 的执行帧,发完即返回(默认,等同旧"直接执行")。
+    /// 仅执行:单发一条 S/E=0 的执行帧,激活时等待执行确认。
     Execute,
     /// 仅选择:单发一条 S/E=1 的选择帧,不自动跟发执行帧(供调试用)。
     Select,
@@ -904,44 +1006,41 @@ pub async fn send_control_command(
         request.command_type, ioa, ca, mode, t_lock.as_millis()
     );
 
-    // 仅执行 / 仅选择: 发一条命令并立即返回(不阻塞等待 ACT_CON)。
-    // sel 决定 S/E 位: 仅选择→true(S/E=1), 仅执行→false(S/E=0)。
+    // Single-frame modes never add another command. Activation/deactivation
+    // waits for the peer confirmation; custom causes report only "sent".
     if mode != ControlMode::Sbo {
+        use iec104sim_core::log_entry::{DetailEvent, FrameLabel};
         let sel = mode == ControlMode::Select;
-        let start = std::time::Instant::now();
-        match request.command_type.as_str() {
+        let (frame, label, kind, value) = match request.command_type.as_str() {
             "single" => {
                 let value = parse_bool(&request.value)?;
-                conn.connection.send_single_command(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                (build_control_frames_single(ca, ioa, value, sel, qu, cot), FrameLabel::SingleCommand,
+                 "single_command", serde_json::json!(value))
             }
             "double" => {
-                let value = request.value.parse::<u8>().map_err(|e| format!("{}", e))?;
-                conn.connection.send_double_command(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                let value = request.value.parse::<u8>().map_err(|e| e.to_string())?;
+                (build_control_frames_double(ca, ioa, value, sel, qu, cot), FrameLabel::DoubleCommand,
+                 "double_command", serde_json::json!(value))
             }
             "step" => {
-                let value = request.value.parse::<u8>().map_err(|e| format!("{}", e))?;
-                conn.connection.send_step_command(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                let value = request.value.parse::<u8>().map_err(|e| e.to_string())?;
+                (build_control_frames_step(ca, ioa, value, sel, qu, cot), FrameLabel::StepCommand,
+                 "step_command", serde_json::json!(value))
             }
             "setpoint_normalized" => {
-                // NVA 直传:value 为原始 16 位 NVA 整数;sel 透传 S/E 位(支持仅选择)。
-                let value = request.value.parse::<i16>().map_err(|e| format!("{}", e))?;
-                conn.connection.send_setpoint_normalized(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                let value = request.value.parse::<i16>().map_err(|e| e.to_string())?;
+                (build_control_frames_setpoint_norm(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointNormalized,
+                 "setpoint_normalized", serde_json::json!(value))
             }
             "setpoint_scaled" => {
-                let value = request.value.parse::<i16>().map_err(|e| format!("{}", e))?;
-                conn.connection.send_setpoint_scaled(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                let value = request.value.parse::<i16>().map_err(|e| e.to_string())?;
+                (build_control_frames_setpoint_scaled(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointScaled,
+                 "setpoint_scaled", serde_json::json!(value))
             }
             "setpoint_float" => {
-                let value = request.value.parse::<f32>().map_err(|e| format!("{}", e))?;
-                let t_send = std::time::Instant::now();
-                conn.connection.send_setpoint_float(ioa, value, sel, ca, qu, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
-                eprintln!("[send_control_command] setpoint_float send_frame={}ms", t_send.elapsed().as_millis());
+                let value = request.value.parse::<f32>().map_err(|e| e.to_string())?;
+                (build_control_frames_setpoint_float(ca, ioa, value, sel, qu, cot), FrameLabel::SetpointFloat,
+                 "setpoint_float", serde_json::json!(value))
             }
             "bitstring" => {
                 if sel {
@@ -950,19 +1049,18 @@ pub async fn send_control_command(
                 let value = request.bitstring
                     .or_else(|| parse_u32_value(&request.value))
                     .ok_or_else(|| "bitstring 命令需要提供 32 位数值 (bitstring 字段或 value)".to_string())?;
-                conn.connection.send_bitstring_command(ioa, value, ca, cot).await
-                    .map_err(|e| format!("failed to send command: {}", e))?;
+                (build_control_frame_bitstring(ca, ioa, value, cot), FrameLabel::Bitstring,
+                 "bitstring_command", serde_json::json!(value))
             }
             _ => return Err(format!("unknown command type: {}", request.command_type)),
-        }
-        let action = if sel { "select_sent" } else { "execute_sent" };
-        return Ok(ControlResult {
-            steps: vec![ControlStep {
-                action: action.to_string(),
-                timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
-            }],
-            duration_ms: start.elapsed().as_millis() as u64,
-        });
+        };
+        let detail = format!("{} IOA={} val={} sel={} COT={}", request.command_type, ioa, value, sel, cot);
+        let event = DetailEvent {
+            kind: kind.to_string(),
+            payload: serde_json::json!({ "ioa": ioa, "val": value, "select": sel, "qu": qu, "ql": qu, "cot": cot }),
+        };
+        return conn.connection.send_control_frame_with_confirmation(frame, &detail, label, ca, Some(event))
+            .await.map_err(|e| e.to_string());
     }
 
     // SbO mode: delegate to send_control_with_sbo_event
@@ -1214,6 +1312,14 @@ fn build_control_frames_setpoint_float(ca: u16, ioa: u32, value: f32, select: bo
          val_bytes[0], val_bytes[1], val_bytes[2], val_bytes[3], qos]
 }
 
+fn build_control_frame_bitstring(ca: u16, ioa: u32, value: u32, cot: u8) -> Vec<u8> {
+    let mut frame = vec![0x68, 0x11, 0, 0, 0, 0, 51, 1, cot, 0];
+    frame.extend_from_slice(&ca.to_le_bytes());
+    frame.extend_from_slice(&ioa.to_le_bytes()[..3]);
+    frame.extend_from_slice(&value.to_le_bytes());
+    frame
+}
+
 // ---------------------------------------------------------------------------
 // Data Commands
 // ---------------------------------------------------------------------------
@@ -1395,13 +1501,18 @@ pub async fn save_config(
 ) -> Result<(), String> {
     state.wait_workspace_ready().await;
     let json = serialize_workspace(&state, true).await?;
+    #[cfg(feature = "simlab-suite")]
+    { return crate::config_store::export_project(std::path::Path::new(&path), "iec104.master", "workspace", &serde_json::from_str(&json).map_err(|e| format!("配置序列化失败: {e}"))?); }
+    #[cfg(not(feature = "simlab-suite"))]
     std::fs::write(&path, json).map_err(|e| format!("写入文件失败: {e}"))
 }
 
 async fn serialize_workspace(state: &AppState, include_snapshot: bool) -> Result<String, String> {
-    use iec104sim_core::config::{MasterConnectionConfig, MasterSnapshotPoint};
+    workspace_file(&*state.connections.read().await, include_snapshot).await?.to_json()
+}
 
-    let connections = state.connections.read().await;
+async fn workspace_file(connections: &HashMap<String, MasterConnectionState>, include_snapshot: bool) -> Result<MasterConfigFile, String> {
+    use iec104sim_core::config::{MasterConnectionConfig, MasterSnapshotPoint};
     let mut ordered: Vec<_> = connections.iter().collect();
     ordered.sort_by_key(|(id, _)| {
         id.strip_prefix("conn_")
@@ -1451,16 +1562,22 @@ async fn serialize_workspace(state: &AppState, include_snapshot: bool) -> Result
             snapshot,
         });
     }
-    MasterConfigFile::new(out).to_json()
+    Ok(MasterConfigFile::new(out))
 }
 
+#[cfg(feature = "simlab-suite")]
+async fn save_suite_workspace(state: &AppState, file: &MasterConfigFile) -> Result<(), String> {
+    state.suite_storage.save("workspace", &serde_json::to_value(file).map_err(|e| e.to_string())?)
+}
+
+#[cfg(not(feature = "simlab-suite"))]
 async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(), String> {
     let _persistence_guard = state.persistence_mutation.lock().await;
     // Automatic persistence stores connection definitions only. Received point
     // snapshots can be large and remain an explicit Save Config feature.
     let json = serialize_workspace(state, false).await?;
     let store = app_handle
-        .store(WORKSPACE_STORE_FILE)
+        .store(crate::suite::store_path(app_handle, WORKSPACE_STORE_FILE))
         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
     store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
     store
@@ -1469,8 +1586,12 @@ async fn persist_workspace(state: &AppState, app_handle: &AppHandle) -> Result<(
 }
 
 pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
+    #[cfg(feature = "simlab-suite")]
+    { return restore_suite_workspace(app_handle).await; }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
     let store = app_handle
-        .store(WORKSPACE_STORE_FILE)
+        .store(crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE))
         .map_err(|error| format!("打开工作区存储失败: {error}"))?;
     let Some(content) = store
         .get(WORKSPACE_STORE_KEY)
@@ -1491,6 +1612,51 @@ pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result
     }
     log::info!("restored {} persisted master connection(s)", outcome.imported);
     Ok(())
+    }
+}
+
+#[cfg(feature = "simlab-suite")]
+async fn restore_suite_workspace(app_handle: AppHandle) -> Result<(), String> {
+    let state: State<'_, AppState> = app_handle.state();
+    let legacy_path = crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE);
+    let root = legacy_path.parent().and_then(std::path::Path::parent).ok_or("配置目录无效")?;
+    state.suite_storage.initialize(root, "iec104.master")?;
+    let mut value = state.suite_storage.migrate("workspace", None, "master_workspace.json")?;
+    if value.is_none() && legacy_path.exists() {
+        let legacy: serde_json::Value = serde_json::from_slice(&std::fs::read(&legacy_path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        if let Some(content) = legacy.get(WORKSPACE_STORE_KEY) {
+            let content = content.as_str().ok_or("旧工作区格式无效")?;
+            let file = MasterConfigFile::from_json(content)?;
+            prepare_import_connections(file.clone())?;
+            let data = serde_json::to_vec(&file).map_err(|e| e.to_string())?;
+            value = state.suite_storage.migrate("workspace", Some(&data), "master_workspace.json")?;
+        }
+    }
+    if let Some(value) = value {
+        let file = MasterConfigFile::from_json(&value.to_string())?;
+        let outcome = replace_connections_impl(&state, prepare_import_connections(file)?).await?;
+        for activation in outcome.activations { activate_connection(app_handle.clone(), activation); }
+        retire_connections(outcome.retired).await;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn simlab_load_preferences(state: State<'_, AppState>, legacy: serde_json::Value) -> Result<serde_json::Value, String> {
+    state.wait_workspace_ready().await;
+    #[cfg(feature = "simlab-suite")]
+    { state.suite_storage.ensure_writable()?; return state.suite_storage.load_preferences(legacy); }
+    #[cfg(not(feature = "simlab-suite"))]
+    Ok(legacy)
+}
+
+#[tauri::command]
+pub async fn simlab_save_preferences(state: State<'_, AppState>, values: serde_json::Value) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    #[cfg(feature = "simlab-suite")]
+    { return state.suite_storage.save_preferences(values); }
+    #[cfg(not(feature = "simlab-suite"))]
+    { let _ = values; Ok(()) }
 }
 
 fn prepare_import_connections(file: MasterConfigFile) -> Result<Vec<PreparedConnection>, String> {
@@ -1555,8 +1721,18 @@ pub async fn load_config(
     path: String,
 ) -> Result<usize, String> {
     state.wait_workspace_ready().await;
-    let content = std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {e}"))?;
-    let outcome = replace_config_contents_impl(&state, &content).await?;
+    #[cfg(feature = "simlab-suite")]
+    let outcome = {
+        state.suite_storage.ensure_writable()?;
+        let value = crate::config_store::read_project(std::path::Path::new(&path), "iec104.master", "workspace")?;
+        let file = MasterConfigFile::from_json(&value.to_string())?;
+        replace_connections_persisted(&state, prepare_import_connections(file)?, true).await?
+    };
+    #[cfg(not(feature = "simlab-suite"))]
+    let outcome = {
+        let content = std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {e}"))?;
+        replace_config_contents_impl(&state, &content).await?
+    };
     let ReplacementOutcome {
         imported,
         activations,
@@ -1577,6 +1753,7 @@ pub async fn load_config(
     if !corrected_events.is_empty() {
         let _ = app_handle.emit("config-timing-corrected", &corrected_events);
     }
+    #[cfg(not(feature = "simlab-suite"))]
     if let Err(error) = persist_workspace(&state, &app_handle).await {
         log::warn!("failed to persist master workspace after loading a config: {error}");
     }
@@ -1634,6 +1811,53 @@ mod tests {
         file: MasterConfigFile,
     ) -> Result<ReplacementOutcome, String> {
         replace_config_contents_impl(state, &file.to_json().unwrap()).await
+    }
+
+    #[cfg(feature = "simlab-suite")]
+    #[tokio::test]
+    async fn durable_replace_conflict_preserves_live_workspace_and_counter() {
+        let directory = tempfile::tempdir().unwrap();
+        let state = AppState::new();
+        state.suite_storage.initialize(directory.path(), "iec104.master").unwrap();
+        assert!(state.suite_storage.migrate("workspace", None, "test").unwrap().is_none());
+        let first = MasterConfigFile::new(vec![config_connection("old.example", Vec::new())]);
+        drop(replace_connections_persisted(&state, prepare_import_connections(first).unwrap(), true).await.unwrap());
+        let existing_log = state.connections.read().await["conn_1"].log_collector.clone();
+        let mut other = crate::config_store::Store::open(directory.path(), "iec104.master").unwrap();
+        other.load("workspace").unwrap();
+        other.save("workspace", &serde_json::to_value(MasterConfigFile::new(Vec::new())).unwrap()).unwrap();
+        let replacement = MasterConfigFile::new(vec![config_connection("new.example", Vec::new())]);
+        assert!(replace_connections_persisted(&state, prepare_import_connections(replacement).unwrap(), true).await.is_err());
+        let connections = state.connections.read().await;
+        assert_eq!(connections.len(), 1);
+        assert_eq!(connections["conn_1"].connection.config.target_address, "old.example");
+        assert!(Arc::ptr_eq(&existing_log, &connections["conn_1"].log_collector));
+        assert_eq!(*state.next_connection_id.read().await, 2);
+        let value = other.load("workspace").unwrap().unwrap();
+        assert_eq!(value["connections"].as_array().unwrap().len(), 0);
+    }
+
+    #[cfg(feature = "simlab-suite")]
+    #[tokio::test]
+    async fn durable_workspace_round_trip_restores_offline_without_received_cache() {
+        let directory = tempfile::tempdir().unwrap();
+        let state = AppState::new();
+        state.suite_storage.initialize(directory.path(), "iec104.master").unwrap();
+        state.suite_storage.migrate("workspace", None, "test").unwrap();
+        let file = MasterConfigFile::new(vec![config_connection("saved.example", Vec::new())]);
+        drop(replace_connections_persisted(&state, prepare_import_connections(file).unwrap(), true).await.unwrap());
+        let mut database = crate::config_store::Store::open(directory.path(), "iec104.master").unwrap();
+        let value = database.load("workspace").unwrap().unwrap();
+        let restored = AppState::new();
+        drop(replace_config_contents_impl(&restored, &value.to_string()).await.unwrap());
+        let connections = restored.connections.read().await;
+        let connection = &connections["conn_1"];
+        assert_eq!(connection.connection.config.target_address, "saved.example");
+        assert_eq!(format!("{:?}", connection.connection.state()), "Disconnected");
+        assert!(!connection.reconnect_enabled);
+        assert!(connection.connection.received_data.read().await.all_sorted().is_empty());
+        state.suite_storage.block("invalid prior restore".into());
+        assert!(save_suite_workspace(&state, &MasterConfigFile::new(Vec::new())).await.is_err());
     }
 
     #[tokio::test]

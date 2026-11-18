@@ -20,6 +20,9 @@ pub struct SlaveStationConfig {
     pub common_address: u16,
     pub name: String,
     pub object_defs: Vec<InformationObjectDef>,
+    #[cfg(feature = "simlab-suite")]
+    #[serde(default)]
+    pub cyclic_config: crate::slave::CyclicConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,7 +51,11 @@ pub struct SlaveConfigFile {
 
 impl SlaveConfigFile {
     pub fn new(servers: Vec<SlaveServerConfig>) -> Self {
-        Self { app: SLAVE_CONFIG_APP.to_string(), version: CONFIG_VERSION, servers }
+        Self {
+            app: SLAVE_CONFIG_APP.to_string(),
+            version: CONFIG_VERSION,
+            servers,
+        }
     }
 
     pub fn to_json(&self) -> Result<String, String> {
@@ -124,8 +131,12 @@ pub struct MasterConnectionConfig {
     pub snapshot: Vec<MasterSnapshotPoint>,
 }
 
-fn default_broadcast_address() -> Option<u16> { None }
-fn default_tls_version() -> String { "auto".to_string() }
+fn default_broadcast_address() -> Option<u16> {
+    None
+}
+fn default_tls_version() -> String {
+    "auto".to_string()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterConfigFile {
@@ -136,7 +147,11 @@ pub struct MasterConfigFile {
 
 impl MasterConfigFile {
     pub fn new(connections: Vec<MasterConnectionConfig>) -> Self {
-        Self { app: MASTER_CONFIG_APP.to_string(), version: CONFIG_VERSION, connections }
+        Self {
+            app: MASTER_CONFIG_APP.to_string(),
+            version: CONFIG_VERSION,
+            connections,
+        }
     }
 
     pub fn to_json(&self) -> Result<String, String> {
@@ -183,6 +198,8 @@ mod tests {
             stations: vec![SlaveStationConfig {
                 common_address: 1,
                 name: "站1".to_string(),
+                #[cfg(feature = "simlab-suite")]
+                cyclic_config: crate::slave::CyclicConfig::default(),
                 object_defs: vec![],
             }],
             protocol_timing: ProtocolTimingConfig::default(),
@@ -301,9 +318,15 @@ mod tests {
             port: 2404,
             common_addresses: vec![1, 2],
             timeout_ms: 3000,
-            t0: 30, t1: 15, t2: 10, t3: 20, k: 12, w: 8,
+            t0: 30,
+            t1: 15,
+            t2: 10,
+            t3: 20,
+            k: 12,
+            w: 8,
             channel_retry_s: 7,
-            default_qoi: 20, default_qcc: 5,
+            default_qoi: 20,
+            default_qcc: 5,
             interrogate_period_s: 0,
             counter_interrogate_period_s: 0,
             use_tls: true,

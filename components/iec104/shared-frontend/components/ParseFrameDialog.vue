@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, watch, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { ParsedFrame, ParsedObject } from '../types/frame'
 import { useI18n } from '../i18n'
 
@@ -69,7 +70,7 @@ async function parse() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape' && !e.isComposing && e.keyCode !== 229) emit('close')
 }
 
 const apciKindLabel = computed(() => {
@@ -148,7 +149,7 @@ function localizedCotName(cot: number, backendName: string): string {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
+    <div v-if="visible" v-modal="() => emit('close')" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
       <div class="modal-box">
         <div class="modal-title">{{ t('parseFrame.title') }}</div>
         <div class="modal-body">

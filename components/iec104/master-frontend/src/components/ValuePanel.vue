@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { inject, computed, ref, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { inject, computed, ref, watch, onBeforeUnmount, type Ref } from 'vue'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { ReceivedDataPointInfo, ControlResult } from '../types'
 import { getControlConfig, asduHasTimestamp } from '../types'
 import QualityIndicator from '@shared/components/QualityIndicator.vue'
@@ -9,6 +9,7 @@ import { useI18n, localizeCategoryLabel } from '@shared/i18n'
 import { formatDataPointValue, normalizeDoublePointCode } from '@shared/utils/dataPointValue'
 import { formatAsduTypeWithId } from '@shared/utils/asduType'
 import EmptyState from '@shared/components/EmptyState.vue'
+import { controlResultStatus } from '../utils/controlResult'
 
 const { t } = useI18n()
 const selectedConnectionId = inject<Ref<string | null>>('selectedConnectionId')!
@@ -21,6 +22,17 @@ const firstPoint = computed(() => selectedPoints.value[0] ?? null)
 const cmdSelect = ref(false)
 const sending = ref(false)
 const lastResult = ref<{ success: boolean; result?: ControlResult; error?: string } | null>(null)
+const resultStatus = computed(() => lastResult.value?.result ? controlResultStatus(lastResult.value.result) : null)
+let requestGeneration = 0
+
+function resetRequest() {
+  requestGeneration++
+  sending.value = false
+  lastResult.value = null
+}
+
+watch(() => [selectedConnectionId.value, firstPoint.value?.common_address, firstPoint.value?.ioa, firstPoint.value?.asdu_type], resetRequest, { flush: 'sync' })
+onBeforeUnmount(resetRequest)
 
 // Setpoint input values
 const setpointValue = ref('')
@@ -35,7 +47,8 @@ const controlConfig = computed(() => {
 const currentValue = computed(() => firstPoint.value?.value ?? '')
 
 async function sendCommand(value: string | number | boolean) {
-  if (!selectedConnectionId.value || !firstPoint.value || !controlConfig.value) return
+  if (!selectedConnectionId.value || !firstPoint.value || !controlConfig.value || sending.value) return
+  const generation = ++requestGeneration
   sending.value = true
   lastResult.value = null
 
@@ -53,11 +66,11 @@ async function sendCommand(value: string | number | boolean) {
         select: cmdSelect.value,
       }
     })
-    lastResult.value = { success: true, result }
+    if (generation === requestGeneration) lastResult.value = { success: true, result }
   } catch (e) {
-    lastResult.value = { success: false, error: String(e) }
+    if (generation === requestGeneration) lastResult.value = { success: false, error: String(e) }
   } finally {
-    sending.value = false
+    if (generation === requestGeneration) sending.value = false
   }
 }
 
@@ -90,15 +103,13 @@ const numericValue = computed(() => {
 })
 
 // Prefill setpoint when point changes
-import { watch } from 'vue'
 watch(firstPoint, (p) => {
-  if (p && controlConfig.value) {
+  if (p && controlConfig.value && !sending.value) {
     const w = controlConfig.value.widget
     if (w === 'slider' || w === 'number_input') {
       setpointValue.value = String(numericValue.value)
     }
   }
-  lastResult.value = null
 })
 </script>
 
@@ -256,8 +267,9 @@ watch(firstPoint, (p) => {
           </div>
 
           <!-- Control result indicator -->
-          <div v-if="lastResult" :class="['result-indicator', lastResult.success ? 'result-ok' : 'result-err']">
-            <template v-if="lastResult.success && lastResult.result">
+          <div v-if="sending" class="result-indicator result-unconfirmed" role="status">{{ t('control.waitingForConfirmation') }}</div>
+          <div v-if="lastResult" :class="['result-indicator', lastResult.success ? (resultStatus?.confirmed ? 'result-ok' : 'result-unconfirmed') : 'result-err']" role="status">
+            <template v-if="lastResult.success && lastResult.result && resultStatus">
               <div class="result-steps">
                 <span
                   v-for="(step, i) in lastResult.result.steps"
@@ -266,7 +278,7 @@ watch(firstPoint, (p) => {
                   :title="step.action + ' ' + step.timestamp"
                 >&#9679;</span>
               </div>
-              <span class="result-text">OK {{ lastResult.result.duration_ms }}ms</span>
+              <span class="result-text">{{ t(resultStatus.label) }} · {{ t(resultStatus.duration, { ms: lastResult.result.duration_ms }) }}</span>
             </template>
             <template v-else>
               <span class="result-text">{{ lastResult.error }}</span>
@@ -488,6 +500,12 @@ watch(firstPoint, (p) => {
   color: var(--success);
 }
 
+.result-unconfirmed {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
 .result-err {
   background: color-mix(in srgb, var(--danger) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
@@ -501,7 +519,7 @@ watch(firstPoint, (p) => {
 }
 
 .step-dot {
-  color: var(--success);
+  color: currentColor;
 }
 
 .result-text {

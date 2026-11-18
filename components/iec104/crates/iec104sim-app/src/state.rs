@@ -13,6 +13,8 @@ pub struct SlaveServerState {
 
 /// Application state holding all active servers.
 pub struct AppState {
+    #[cfg(feature = "simlab-suite")]
+    pub suite_storage: crate::suite_storage::SuiteStorage,
     pub servers: RwLock<HashMap<String, SlaveServerState>>,
     pub next_server_id: RwLock<u32>,
     /// Serializes whole-workspace mutations whose effects span both the server
@@ -30,6 +32,8 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "simlab-suite")]
+            suite_storage: crate::suite_storage::SuiteStorage::default(),
             servers: RwLock::new(HashMap::new()),
             next_server_id: RwLock::new(1),
             workspace_mutation: Mutex::new(()),

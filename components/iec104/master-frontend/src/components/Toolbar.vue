@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch, onMounted, onBeforeUnmount, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { save, open } from '@tauri-apps/plugin-dialog'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { dialogKey } from '@shared/composables/useDialog'
@@ -14,6 +14,7 @@ import LangSwitch from '@shared/components/LangSwitch.vue'
 import ThemeSwitch from '@shared/components/ThemeSwitch.vue'
 import VersionBadge from '@shared/components/VersionBadge.vue'
 import { useI18n } from '@shared/i18n'
+import { isSimLabSuite } from '@shared/suite'
 
 const { t } = useI18n()
 
@@ -33,6 +34,7 @@ const updateChecking = ref(false)
 const MIRROR_RELEASE_URL = 'https://ghfast.top/https://github.com/Karl-Dai/IEC60870-5-104-Simulator/releases/latest'
 
 async function manualCheckUpdate() {
+  if (isSimLabSuite) return
   if (updateChecking.value) return
   updateChecking.value = true
   try {
@@ -276,8 +278,8 @@ async function doCounterReadDeactivation(ca: number | null, connectionId: string
 
 async function saveConfig() {
   const path = await save({
-    filters: [{ name: 'IEC104 Config', extensions: ['json'] }],
-    defaultPath: 'iec104-master-config.json',
+    filters: [{ name: 'IEC104 Config', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'json'] : ['json'] }],
+    defaultPath: import.meta.env.VITE_SIMLAB_SUITE === '1' ? 'iec104-master-config.saioproj' : 'iec104-master-config.json',
   })
   if (!path) return
   try {
@@ -291,7 +293,7 @@ async function saveConfig() {
 async function openConfig() {
   const path = await open({
     multiple: false,
-    filters: [{ name: 'IEC104 Config', extensions: ['json'] }],
+    filters: [{ name: 'IEC104 Config', extensions: import.meta.env.VITE_SIMLAB_SUITE === '1' ? ['saioproj', 'json'] : ['json'] }],
   })
   if (!path || typeof path !== 'string') return
   try {
@@ -448,7 +450,7 @@ const menus = computed(() => [
   ] },
 ])
 const helpItems = computed(() => [
-  { id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), disabled: updateChecking.value, busy: updateChecking.value, action: manualCheckUpdate },
+  ...(!isSimLabSuite ? [{ id: 'check-update', label: updateChecking.value ? t('toolbar.checkingUpdate') : t('toolbar.checkUpdate'), disabled: updateChecking.value, busy: updateChecking.value, action: manualCheckUpdate }] : []),
   { id: 'about', label: t('toolbar.about'), action: () => { showAbout.value = true } },
 ])
 function menuHeading(id: string) {

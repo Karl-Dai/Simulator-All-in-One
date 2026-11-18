@@ -1,4 +1,146 @@
-use crate::state::{AppState, DataPointInfo, DataPointValueSnapshot, IncrementalDataResponse, ServerInfo, SlaveServerState, StationInfo};
+/// Exact editable state retained while a configuration mutation is pending.
+/// Existing listener objects and their runtime handles remain in place.
+pub(crate) struct WorkspaceRollback {
+    #[cfg(feature = "simlab-suite")]
+    servers: HashMap<String, ServerRollback>,
+    #[cfg(feature = "simlab-suite")]
+    next_id: u32,
+    #[cfg(feature = "simlab-suite")]
+    scope: Option<String>,
+}
+#[cfg(feature = "simlab-suite")]
+struct ServerRollback {
+    transport: SlaveTransportConfig,
+    stations: HashMap<u16, Station>,
+    timing: ProtocolTimingConfig,
+    remote: RemoteOperationConfig,
+    mutations: Vec<(u16, u32, AsduTypeId, MutationParams, u32)>,
+}
+impl WorkspaceRollback {
+    pub(crate) async fn capture(state: &AppState) -> Result<Self, String> {
+        Self::capture_scope(state, None).await
+    }
+    pub(crate) async fn capture_server(state: &AppState, id: &str) -> Result<Self, String> {
+        Self::capture_scope(state, Some(id)).await
+    }
+    async fn capture_scope(state: &AppState, scope: Option<&str>) -> Result<Self, String> {
+        #[cfg(feature = "simlab-suite")]
+        {
+            state.suite_storage.ensure_writable()?;
+            let mut saved = HashMap::new();
+            let servers = state.servers.read().await;
+            for (id, entry) in servers
+                .iter()
+                .filter(|(id, _)| scope.map_or(true, |selected| id.as_str() == selected))
+            {
+                saved.insert(
+                    id.clone(),
+                    ServerRollback {
+                        transport: entry.server.transport.clone(),
+                        stations: entry.server.stations.read().await.clone(),
+                        timing: entry.server.get_protocol_timing().await,
+                        remote: entry.server.get_remote_ops().await,
+                        mutations: entry.server.list_point_mutations_with_params().await,
+                    },
+                );
+            }
+            Ok(Self {
+                servers: saved,
+                next_id: *state.next_server_id.read().await,
+                scope: scope.map(str::to_owned),
+            })
+        }
+        #[cfg(not(feature = "simlab-suite"))]
+        {
+            let _ = (state, scope);
+            Ok(Self {})
+        }
+    }
+    async fn restore(self, state: &AppState) -> Result<(), String> {
+        #[cfg(feature = "simlab-suite")]
+        {
+            let mut servers = state.servers.write().await;
+            let added: Vec<_> = servers
+                .keys()
+                .filter(|id| self.scope.is_none() && !self.servers.contains_key(*id))
+                .cloned()
+                .collect();
+            for id in added {
+                if let Some(mut entry) = servers.remove(&id) {
+                    shutdown_server_for_removal(&mut entry.server)
+                        .await
+                        .map_err(|e| e.to_string())?;
+                }
+            }
+            for (id, old) in self.servers {
+                let entry = servers
+                    .get_mut(&id)
+                    .ok_or_else(|| format!("无法恢复服务器 {id}"))?;
+                entry.server.transport = old.transport;
+                let mut current_stations = entry.server.stations.write().await;
+                // Only definitions roll back. Preserve values, quality, timestamps
+                // and sequence numbers received while the database was busy.
+                current_stations.retain(|ca, _| old.stations.contains_key(ca));
+                for (ca, mut previous) in old.stations {
+                    if let Some(current) = current_stations.get(&ca) {
+                        if station_definition(current) == station_definition(&previous) {
+                            continue;
+                        }
+                        let mut live_points = current.data_points.clone();
+                        live_points
+                            .points
+                            .retain(|key, _| previous.data_points.points.contains_key(key));
+                        for (key, point) in &previous.data_points.points {
+                            live_points
+                                .points
+                                .entry(*key)
+                                .or_insert_with(|| point.clone());
+                        }
+                        previous.data_points = live_points;
+                    }
+                    current_stations.insert(ca, previous);
+                }
+                drop(current_stations);
+                entry.server.set_protocol_timing(old.timing).await;
+                entry.server.set_remote_ops(old.remote).await;
+                let current = entry.server.list_point_mutations_with_params().await;
+                for (ca, ioa, kind, params, period) in &current {
+                    if !old
+                        .mutations
+                        .contains(&(*ca, *ioa, *kind, *params, *period))
+                    {
+                        entry.server.stop_point_mutation(*ca, *ioa, *kind).await;
+                    }
+                }
+                for (ca, ioa, kind, params, period) in old.mutations {
+                    if !current.contains(&(ca, ioa, kind, params, period)) {
+                        entry
+                            .server
+                            .start_point_mutation(ca, ioa, kind, period, params)
+                            .await
+                            .map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+            if self.scope.is_none() {
+                *state.next_server_id.write().await = self.next_id;
+            }
+        }
+        #[cfg(not(feature = "simlab-suite"))]
+        let _ = state;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "simlab-suite")]
+fn station_definition(station: &Station) -> serde_json::Value {
+    serde_json::json!({"common_address":station.common_address,"name":station.name,"object_defs":station.object_defs,"cyclic_config":station.cyclic_config})
+}
+
+use crate::state::{
+    AppState, DataPointInfo, DataPointValueSnapshot, IncrementalDataResponse, ServerInfo,
+    SlaveServerState, StationInfo,
+};
 use iec104sim_core::config::SlaveConfigFile;
 use iec104sim_core::data_point::{ControlTarget, DataPoint, DataPointValue, InformationObjectDef};
 use iec104sim_core::log_collector::LogCollector;
@@ -68,8 +210,11 @@ pub async fn create_server(
 ) -> Result<ServerInfo, String> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
-    let info = create_server_in_workspace(&state, request, false).await.map_err(|e| e.message)?;
-    persist_workspace_after(&state, &app_handle, "creating a server").await;
+    let rollback = WorkspaceRollback::capture(&state).await?;
+    let info = create_server_in_workspace(&state, request, false)
+        .await
+        .map_err(|e| e.message)?;
+    persist_workspace_after(&state, &app_handle, "creating a server", rollback).await?;
     Ok(info)
 }
 
@@ -83,8 +228,18 @@ pub async fn create_and_start_server(
 ) -> Result<ServerInfo, StartServerError> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture(&state)
+        .await
+        .map_err(|e| StartServerError::new("persistence_failed", e))?;
     let info = create_server_in_workspace(&state, request, true).await?;
-    persist_workspace_after(&state, &app_handle, "creating and starting a server").await;
+    persist_workspace_after(
+        &state,
+        &app_handle,
+        "creating and starting a server",
+        rollback,
+    )
+    .await
+    .map_err(|e| StartServerError::new("persistence_failed", e))?;
     Ok(info)
 }
 
@@ -94,13 +249,18 @@ async fn create_server_in_workspace(
     start: bool,
 ) -> Result<ServerInfo, StartServerError> {
     if request.port == 0 {
-        return Err(StartServerError::new("invalid_port", "端口必须在 1–65535 之间"));
+        return Err(StartServerError::new(
+            "invalid_port",
+            "端口必须在 1–65535 之间",
+        ));
     }
     // A full config load replaces both the server table and the ID allocation
     // range. The command caller holds the workspace mutation guard.
 
     let transport = SlaveTransportConfig {
-        bind_address: request.bind_address.unwrap_or_else(|| "0.0.0.0".to_string()),
+        bind_address: request
+            .bind_address
+            .unwrap_or_else(|| "0.0.0.0".to_string()),
         port: request.port,
         tls: iec104sim_core::slave::SlaveTlsConfig {
             enabled: request.use_tls.unwrap_or(false),
@@ -183,9 +343,9 @@ pub async fn start_server(
     let state_str: String;
     {
         let mut servers = state.servers.write().await;
-        let srv = servers
-            .get_mut(&id)
-            .ok_or_else(|| StartServerError::new("server_not_found", format!("server {} not found", id)))?;
+        let srv = servers.get_mut(&id).ok_or_else(|| {
+            StartServerError::new("server_not_found", format!("server {} not found", id))
+        })?;
 
         if let Err(error) = srv.server.start().await {
             return Err(StartServerError::from_slave(error));
@@ -193,9 +353,15 @@ pub async fn start_server(
         state_str = format!("{:?}", srv.server.state());
     }
 
-    app_handle.emit("server-state-changed", ServerStateEvent {
-        id, state: state_str,
-    }).map_err(|e| StartServerError::new("event_failed", e.to_string()))?;
+    app_handle
+        .emit(
+            "server-state-changed",
+            ServerStateEvent {
+                id,
+                state: state_str,
+            },
+        )
+        .map_err(|e| StartServerError::new("event_failed", e.to_string()))?;
 
     Ok(())
 }
@@ -213,12 +379,22 @@ pub struct StartServerError {
 
 impl StartServerError {
     fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { code: code.into(), message: message.into(), addr: None, os_error: None }
+        Self {
+            code: code.into(),
+            message: message.into(),
+            addr: None,
+            os_error: None,
+        }
     }
 
     fn from_slave(error: SlaveError) -> Self {
         match error {
-            SlaveError::BindFailed { code, addr, os_error, message } => Self {
+            SlaveError::BindFailed {
+                code,
+                addr,
+                os_error,
+                message,
+            } => Self {
                 code: code.to_string(),
                 message,
                 addr: Some(addr),
@@ -250,9 +426,15 @@ pub async fn stop_server(
         state_str = format!("{:?}", srv.server.state());
     }
 
-    app_handle.emit("server-state-changed", ServerStateEvent {
-        id, state: state_str,
-    }).map_err(|e| e.to_string())?;
+    app_handle
+        .emit(
+            "server-state-changed",
+            ServerStateEvent {
+                id,
+                state: state_str,
+            },
+        )
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -292,8 +474,30 @@ pub async fn delete_server(
 ) -> Result<(), String> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
-    delete_server_impl(state.inner(), &id).await?;
-    persist_workspace_after(&state, &app_handle, "deleting a server").await;
+    #[cfg(feature = "simlab-suite")]
+    {
+        state.suite_storage.ensure_writable()?;
+        let mut removed = state
+            .servers
+            .write()
+            .await
+            .remove(&id)
+            .ok_or_else(|| format!("server {id} not found"))?;
+        if let Err(error) = persist_workspace(&state, &app_handle).await {
+            state.servers.write().await.insert(id, removed);
+            return Err(error);
+        }
+        shutdown_server_for_removal(&mut removed.server)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        delete_server_impl(state.inner(), &id).await?;
+        if let Err(error) = persist_workspace(&state, &app_handle).await {
+            log::warn!("failed to save workspace after deletion: {error}");
+        }
+    }
     Ok(())
 }
 
@@ -317,9 +521,7 @@ pub fn list_bind_address_suggestions() -> Vec<String> {
 }
 
 #[tauri::command]
-pub async fn list_servers(
-    state: State<'_, AppState>,
-) -> Result<Vec<ServerInfo>, String> {
+pub async fn list_servers(state: State<'_, AppState>) -> Result<Vec<ServerInfo>, String> {
     state.wait_workspace_ready().await;
     let servers = state.servers.read().await;
     let mut result = Vec::new();
@@ -399,8 +601,13 @@ pub struct ServerTlsSettings {
 
 impl From<&iec104sim_core::slave::SlaveTlsConfig> for ServerTlsSettings {
     fn from(tls: &iec104sim_core::slave::SlaveTlsConfig) -> Self {
-        Self { enabled: tls.enabled, cert_file: tls.cert_file.clone(), key_file: tls.key_file.clone(),
-            ca_file: tls.ca_file.clone(), require_client_cert: tls.require_client_cert }
+        Self {
+            enabled: tls.enabled,
+            cert_file: tls.cert_file.clone(),
+            key_file: tls.key_file.clone(),
+            ca_file: tls.ca_file.clone(),
+            require_client_cert: tls.require_client_cert,
+        }
     }
 }
 
@@ -414,18 +621,28 @@ pub struct ServerTransportInfo {
 }
 
 #[tauri::command]
-pub async fn get_server_transport(state: State<'_, AppState>, server_id: String) -> Result<ServerTransportInfo, String> {
+pub async fn get_server_transport(
+    state: State<'_, AppState>,
+    server_id: String,
+) -> Result<ServerTransportInfo, String> {
     state.wait_workspace_ready().await;
     let servers = state.servers.read().await;
-    let srv = servers.get(&server_id).ok_or_else(|| format!("server {} not found", server_id))?;
+    let srv = servers
+        .get(&server_id)
+        .ok_or_else(|| format!("server {} not found", server_id))?;
     Ok(ServerTransportInfo {
-        id: server_id, bind_address: srv.server.transport.bind_address.clone(),
-        port: srv.server.transport.port, state: format!("{:?}", srv.server.state()),
+        id: server_id,
+        bind_address: srv.server.transport.bind_address.clone(),
+        port: srv.server.transport.port,
+        state: format!("{:?}", srv.server.state()),
         tls: ServerTlsSettings::from(&srv.server.transport.tls),
     })
 }
 
-fn apply_server_transport(server: &mut SlaveServer, request: &UpdateServerTransportRequest) -> Result<(), String> {
+fn apply_server_transport(
+    server: &mut SlaveServer,
+    request: &UpdateServerTransportRequest,
+) -> Result<(), String> {
     validate_transport_change(server.state(), request.port)?;
     let tls = match &request.tls {
         Some(tls) => {
@@ -435,7 +652,9 @@ fn apply_server_transport(server: &mut SlaveServer, request: &UpdateServerTransp
             updated.key_file = tls.key_file.clone();
             updated.ca_file = tls.ca_file.clone();
             updated.require_client_cert = tls.require_client_cert;
-            if updated.cert_file != server.transport.tls.cert_file || updated.key_file != server.transport.tls.key_file {
+            if updated.cert_file != server.transport.tls.cert_file
+                || updated.key_file != server.transport.tls.key_file
+            {
                 updated.pkcs12_file.clear();
                 updated.pkcs12_password.clear();
             }
@@ -447,8 +666,13 @@ fn apply_server_transport(server: &mut SlaveServer, request: &UpdateServerTransp
     let bind = request.bind_address.trim();
     // Commit only after validation, retaining stations, points and runtime params.
     server.transport = SlaveTransportConfig {
-        bind_address: if bind.is_empty() { "0.0.0.0".into() } else { bind.into() },
-        port: request.port, tls,
+        bind_address: if bind.is_empty() {
+            "0.0.0.0".into()
+        } else {
+            bind.into()
+        },
+        port: request.port,
+        tls,
     };
     Ok(())
 }
@@ -464,6 +688,7 @@ pub async fn update_server_transport(
 ) -> Result<ServerInfo, String> {
     state.wait_workspace_ready().await;
     let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let mut servers = state.servers.write().await;
     let srv = servers
         .get_mut(&request.server_id)
@@ -482,7 +707,7 @@ pub async fn update_server_transport(
         use_tls: srv.server.transport.tls.enabled,
     };
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "updating server transport").await;
+    persist_workspace_after(&state, &app_handle, "updating server transport", rollback).await?;
     Ok(info)
 }
 
@@ -521,14 +746,21 @@ pub async fn add_station(
     app_handle: AppHandle,
     request: AddStationRequest,
 ) -> Result<StationInfo, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
         .ok_or_else(|| format!("server {} not found", request.server_id))?;
 
     let station = match request.init_mode.as_deref() {
-        Some("random") => Station::with_random_points(request.common_address, request.name.clone(), 10),
-        Some("zero") => Station::with_default_points(request.common_address, request.name.clone(), 10),
+        Some("random") => {
+            Station::with_random_points(request.common_address, request.name.clone(), 10)
+        }
+        Some("zero") => {
+            Station::with_default_points(request.common_address, request.name.clone(), 10)
+        }
         _ => Station::new(request.common_address, request.name.clone()),
     };
     let info = station_info(&station);
@@ -538,7 +770,7 @@ pub async fn add_station(
         .await
         .map_err(|e| format!("failed to add station: {}", e))?;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "adding a station").await;
+    persist_workspace_after(&state, &app_handle, "adding a station", rollback).await?;
     Ok(info)
 }
 
@@ -549,6 +781,9 @@ pub async fn remove_station(
     server_id: String,
     common_address: u16,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&server_id)
@@ -559,7 +794,7 @@ pub async fn remove_station(
         .await
         .map_err(|e| format!("failed to remove station: {}", e))?;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "removing a station").await;
+    persist_workspace_after(&state, &app_handle, "removing a station", rollback).await?;
     Ok(())
 }
 
@@ -578,6 +813,9 @@ pub async fn update_station(
     app_handle: AppHandle,
     request: UpdateStationRequest,
 ) -> Result<StationInfo, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
@@ -593,13 +831,16 @@ pub async fn update_station(
         .map_err(|e| format!("failed to update station: {}", e))?;
 
     let stations = srv.server.stations.read().await;
-    let station = stations
-        .get(&request.common_address)
-        .ok_or_else(|| format!("station CA={} not found after update", request.common_address))?;
+    let station = stations.get(&request.common_address).ok_or_else(|| {
+        format!(
+            "station CA={} not found after update",
+            request.common_address
+        )
+    })?;
     let info = station_info(station);
     drop(stations);
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "updating a station").await;
+    persist_workspace_after(&state, &app_handle, "updating a station", rollback).await?;
     Ok(info)
 }
 
@@ -619,10 +860,7 @@ pub async fn list_stations(
         srv.server.stations.clone()
     };
     let stations = stations_arc.read().await;
-    let result: Vec<StationInfo> = stations
-        .values()
-        .map(station_info)
-        .collect();
+    let result: Vec<StationInfo> = stations.values().map(station_info).collect();
 
     Ok(result)
 }
@@ -635,7 +873,8 @@ pub(crate) fn parse_asdu_type(s: &str) -> Result<AsduTypeId, String> {
     // 归一化: 小写 + 仅保留字母数字。涵盖三种来源:
     // PascalCase 枚举名 ("MSpNa1") / 小写下划线 ("m_sp_na_1") /
     // 前端从 list_data_points 拿到的显示名 ("M_SP_NA_1").
-    let key: String = s.chars()
+    let key: String = s
+        .chars()
         .filter(|c| c.is_alphanumeric())
         .flat_map(|c| c.to_lowercase())
         .collect();
@@ -694,12 +933,17 @@ fn resolve_control_target(
     source_type: AsduTypeId,
     request: Option<&ControlTargetRequest>,
 ) -> Result<Option<ControlTarget>, String> {
-    let Some(request) = request else { return Ok(None) };
+    let Some(request) = request else {
+        return Ok(None);
+    };
     if !source_type.is_control() {
         return Err("only control-direction points can define a mapping".to_string());
     }
     let target_type = parse_asdu_type(&request.asdu_type)?;
-    if !source_type.allowed_target_categories().contains(&target_type.category()) {
+    if !source_type
+        .allowed_target_categories()
+        .contains(&target_type.category())
+    {
         return Err(format!(
             "{} cannot map to {}",
             source_type.name(),
@@ -777,6 +1021,9 @@ pub async fn add_data_point(
     app_handle: AppHandle,
     request: AddDataPointRequest,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
@@ -817,7 +1064,7 @@ pub async fn add_data_point(
         })?;
     drop(stations);
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "adding a data point").await;
+    persist_workspace_after(&state, &app_handle, "adding a data point", rollback).await?;
     Ok(())
 }
 
@@ -880,10 +1127,7 @@ pub(crate) async fn update_data_point_definition_impl(
         srv.server
             .ensure_point_event_targets_editable(
                 request.common_address,
-                &[
-                    (request.ioa, asdu_type),
-                    (target_ioa, target_asdu_type),
-                ],
+                &[(request.ioa, asdu_type), (target_ioa, target_asdu_type)],
             )
             .await
             .map_err(|error| error.to_string())?;
@@ -908,11 +1152,7 @@ pub(crate) async fn update_data_point_definition_impl(
                         .iter_mut()
                         .find(|d| d.ioa == target_ioa && d.asdu_type == target_asdu_type)
                         .ok_or_else(|| {
-                            format!(
-                                "point IOA={} {} not found",
-                                request.ioa,
-                                asdu_type.name()
-                            )
+                            format!("point IOA={} {} not found", request.ioa, asdu_type.name())
                         })?;
                     def.name = request.name.unwrap_or_default();
                     def.comment = request.comment.unwrap_or_default();
@@ -953,8 +1193,17 @@ pub async fn update_data_point_definition(
     app_handle: AppHandle,
     request: UpdateDataPointDefinitionRequest,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     update_data_point_definition_impl(state.inner(), request).await?;
-    persist_workspace_after(&state, &app_handle, "updating a data point definition").await;
+    persist_workspace_after(
+        &state,
+        &app_handle,
+        "updating a data point definition",
+        rollback,
+    )
+    .await?;
     Ok(())
 }
 
@@ -1010,8 +1259,11 @@ pub async fn list_control_mapping_targets(
         }
     }
     result.sort_unstable_by(|a, b| {
-        (a.common_address, a.ioa, a.asdu_type.as_str())
-            .cmp(&(b.common_address, b.ioa, b.asdu_type.as_str()))
+        (a.common_address, a.ioa, a.asdu_type.as_str()).cmp(&(
+            b.common_address,
+            b.ioa,
+            b.asdu_type.as_str(),
+        ))
     });
     Ok(result)
 }
@@ -1050,6 +1302,9 @@ pub async fn batch_add_data_points(
     app_handle: AppHandle,
     request: BatchAddDataPointsRequest,
 ) -> Result<u32, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
@@ -1070,7 +1325,11 @@ pub async fn batch_add_data_points(
         return Err("no IOA to add".to_string());
     }
     if ioas.len() > BATCH_ADD_MAX {
-        return Err(format!("batch too large: {} > {}", ioas.len(), BATCH_ADD_MAX));
+        return Err(format!(
+            "batch too large: {} > {}",
+            ioas.len(),
+            BATCH_ADD_MAX
+        ));
     }
 
     let mut stations = srv.server.stations.write().await;
@@ -1090,7 +1349,7 @@ pub async fn batch_add_data_points(
         .map_err(|e| format!("failed to batch add points: {}", e))?;
     drop(stations);
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "batch adding data points").await;
+    persist_workspace_after(&state, &app_handle, "batch adding data points", rollback).await?;
     Ok(created)
 }
 
@@ -1103,6 +1362,9 @@ pub async fn remove_data_point(
     ioa: u32,
     asdu_type: String,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&server_id)
@@ -1136,7 +1398,7 @@ pub async fn remove_data_point(
         .await
         .map(|_| ())?;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "removing a data point").await;
+    persist_workspace_after(&state, &app_handle, "removing a data point", rollback).await?;
     Ok(())
 }
 
@@ -1232,9 +1494,9 @@ pub(crate) async fn batch_migrate_data_point_types_impl(
             StationMutationBatchMode::Merge,
             &updates,
             |stations| {
-                let current = stations.get(&request.common_address).ok_or_else(|| {
-                    format!("station CA={} not found", request.common_address)
-                })?;
+                let current = stations
+                    .get(&request.common_address)
+                    .ok_or_else(|| format!("station CA={} not found", request.common_address))?;
                 let mut staged = current.clone();
                 for &(ioa, source_type, target_ioa, target_type) in &migrations {
                     staged
@@ -1251,11 +1513,9 @@ pub(crate) async fn batch_migrate_data_point_types_impl(
                             if mapping.common_address != request.common_address {
                                 continue;
                             }
-                            if let Some((_, _, target_ioa, target_type)) = migrations
-                                .iter()
-                                .find(|(ioa, source_type, _, _)| {
-                                    mapping.ioa == *ioa
-                                        && mapping.asdu_type == *source_type
+                            if let Some((_, _, target_ioa, target_type)) =
+                                migrations.iter().find(|(ioa, source_type, _, _)| {
+                                    mapping.ioa == *ioa && mapping.asdu_type == *source_type
                                 })
                             {
                                 mapping.ioa = *target_ioa;
@@ -1277,8 +1537,17 @@ pub async fn batch_migrate_data_point_types(
     app_handle: AppHandle,
     request: BatchMigrateDataPointTypesRequest,
 ) -> Result<usize, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let changed = batch_migrate_data_point_types_impl(state.inner(), request).await?;
-    persist_workspace_after(&state, &app_handle, "batch migrating data point types").await;
+    persist_workspace_after(
+        &state,
+        &app_handle,
+        "batch migrating data point types",
+        rollback,
+    )
+    .await?;
     Ok(changed)
 }
 
@@ -1292,6 +1561,9 @@ pub async fn batch_remove_data_points(
     common_address: u16,
     points: Vec<RemovePointTarget>,
 ) -> Result<usize, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&server_id)
@@ -1319,7 +1591,8 @@ pub async fn batch_remove_data_points(
         .ensure_point_event_targets_editable(common_address, &targets)
         .await
         .map_err(|error| error.to_string())?;
-    let removed = srv.server
+    let removed = srv
+        .server
         .transact_station_point_mutations(
             common_address,
             StationMutationBatchMode::Merge,
@@ -1334,7 +1607,7 @@ pub async fn batch_remove_data_points(
         .await
         .map(|(removed, _)| removed)?;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "batch removing data points").await;
+    persist_workspace_after(&state, &app_handle, "batch removing data points", rollback).await?;
     Ok(removed)
 }
 
@@ -1418,8 +1691,17 @@ pub async fn batch_update_control_options(
     app_handle: AppHandle,
     request: BatchControlOptionsRequest,
 ) -> Result<usize, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let changed = batch_update_control_options_impl(state.inner(), request).await?;
-    persist_workspace_after(&state, &app_handle, "batch updating control options").await;
+    persist_workspace_after(
+        &state,
+        &app_handle,
+        "batch updating control options",
+        rollback,
+    )
+    .await?;
     Ok(changed)
 }
 
@@ -1428,13 +1710,14 @@ pub async fn batch_update_control_options(
 fn parse_value_for(point: &DataPoint, value: &str) -> Result<DataPointValue, String> {
     let new_value = match &point.value {
         DataPointValue::SinglePoint { .. } => {
-            let v = value.parse::<bool>().or_else(|_| {
-                match value {
+            let v = value
+                .parse::<bool>()
+                .or_else(|_| match value {
                     "1" | "true" | "ON" | "on" => Ok(true),
                     "0" | "false" | "OFF" | "off" => Ok(false),
                     _ => Err(format!("invalid bool: {}", value)),
-                }
-            }).map_err(|e| format!("{}", e))?;
+                })
+                .map_err(|e| format!("{}", e))?;
             DataPointValue::SinglePoint { value: v }
         }
         DataPointValue::DoublePoint { .. } => {
@@ -1445,7 +1728,9 @@ fn parse_value_for(point: &DataPoint, value: &str) -> Result<DataPointValue, Str
             // 输入与显示对齐:用户输入原始 NVA 整数 (-32768..32767),内部仍存 [-1,1) f32。
             // 上送编码用 `value * 32767`(见 slave.rs),故此处反向换算 `nva / 32767`。
             let nva = value.trim().parse::<i16>().map_err(|e| format!("{}", e))?;
-            DataPointValue::Normalized { value: nva as f32 / 32767.0 }
+            DataPointValue::Normalized {
+                value: nva as f32 / 32767.0,
+            }
         }
         DataPointValue::Scaled { .. } => {
             let v = value.parse::<i16>().map_err(|e| format!("{}", e))?;
@@ -1455,9 +1740,15 @@ fn parse_value_for(point: &DataPoint, value: &str) -> Result<DataPointValue, Str
             let v = value.parse::<f32>().map_err(|e| format!("{}", e))?;
             DataPointValue::ShortFloat { value: v }
         }
-        DataPointValue::IntegratedTotal { carry, sequence, .. } => {
+        DataPointValue::IntegratedTotal {
+            carry, sequence, ..
+        } => {
             let v = value.parse::<i32>().map_err(|e| format!("{}", e))?;
-            DataPointValue::IntegratedTotal { value: v, carry: *carry, sequence: *sequence }
+            DataPointValue::IntegratedTotal {
+                value: v,
+                carry: *carry,
+                sequence: *sequence,
+            }
         }
         _ => return Err("unsupported value type".to_string()),
     };
@@ -1485,7 +1776,9 @@ pub async fn update_data_point(
         .get_mut(&common_address)
         .ok_or_else(|| format!("station CA={} not found", common_address))?;
 
-    let point = station.data_points.get_mut(ioa, asdu)
+    let point = station
+        .data_points
+        .get_mut(ioa, asdu)
         .ok_or_else(|| format!("IOA {} type {} not found", ioa, asdu_type))?;
 
     let new_value = parse_value_for(point, &value)?;
@@ -1497,7 +1790,9 @@ pub async fn update_data_point(
     station.data_points.mark_changed(ioa, asdu);
 
     drop(stations);
-    srv.server.queue_spontaneous(common_address, &[(ioa, asdu)]).await;
+    srv.server
+        .queue_spontaneous(common_address, &[(ioa, asdu)])
+        .await;
 
     Ok(())
 }
@@ -1529,7 +1824,9 @@ pub async fn set_data_point_quality(
         .get_mut(&common_address)
         .ok_or_else(|| format!("station CA={} not found", common_address))?;
 
-    let point = station.data_points.get_mut(ioa, asdu)
+    let point = station
+        .data_points
+        .get_mut(ioa, asdu)
         .ok_or_else(|| format!("IOA {} type {} not found", ioa, asdu_type))?;
 
     point.quality = QualityFlags { ov, bl, sb, nt, iv };
@@ -1539,7 +1836,9 @@ pub async fn set_data_point_quality(
     station.data_points.mark_changed(ioa, asdu);
 
     drop(stations);
-    srv.server.queue_spontaneous(common_address, &[(ioa, asdu)]).await;
+    srv.server
+        .queue_spontaneous(common_address, &[(ioa, asdu)])
+        .await;
 
     Ok(())
 }
@@ -1558,7 +1857,13 @@ fn apply_batch_quality(
     for (ioa, asdu) in targets {
         if let Some(point) = station.data_points.get_mut(*ioa, *asdu) {
             let measured = asdu.category().is_measured();
-            point.quality = QualityFlags { ov: ov && measured, bl, sb, nt, iv };
+            point.quality = QualityFlags {
+                ov: ov && measured,
+                bl,
+                sb,
+                nt,
+                iv,
+            };
             point.timestamp = Some(chrono::Utc::now());
             station.data_points.mark_changed(*ioa, *asdu);
             changed.push((*ioa, *asdu));
@@ -1698,7 +2003,11 @@ fn data_point_value_string(p: &DataPoint) -> String {
 fn data_point_timestamp_string(p: &DataPoint) -> Option<String> {
     // DataPoint.timestamp 内部存 UTC 便于无歧义比较；展示给用户时转为
     // 本地时区,这样 UI 看到的"时间戳"和系统挂钟一致。
-    p.timestamp.map(|t| t.with_timezone(&chrono::Local).format("%H:%M:%S%.3f").to_string())
+    p.timestamp.map(|t| {
+        t.with_timezone(&chrono::Local)
+            .format("%H:%M:%S%.3f")
+            .to_string()
+    })
 }
 
 /// Map a core `DataPoint` to the serialisable `DataPointInfo` the UI consumes.
@@ -1768,9 +2077,8 @@ pub async fn list_data_points(
     let defs = &station.object_defs;
 
     // Build O(1) lookup map instead of O(n) linear search per point
-    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> = defs.iter()
-        .map(|d| ((d.ioa, d.asdu_type), d))
-        .collect();
+    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> =
+        defs.iter().map(|d| ((d.ioa, d.asdu_type), d)).collect();
 
     let result: Vec<DataPointInfo> = points
         .into_iter()
@@ -1809,11 +2117,12 @@ pub async fn get_data_point(
         return Ok(None);
     };
     // 只取该点对应的 def(若有),复用 data_point_to_info。
-    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> =
-        station.object_defs.iter()
-            .filter(|d| d.ioa == ioa && d.asdu_type == ty)
-            .map(|d| ((d.ioa, d.asdu_type), d))
-            .collect();
+    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> = station
+        .object_defs
+        .iter()
+        .filter(|d| d.ioa == ioa && d.asdu_type == ty)
+        .map(|d| ((d.ioa, d.asdu_type), d))
+        .collect();
     Ok(Some(data_point_to_info(p, &def_map)))
 }
 
@@ -1891,12 +2200,14 @@ pub async fn list_data_points_since(
         .get(&common_address)
         .ok_or_else(|| format!("station CA={} not found", common_address))?;
 
-    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> =
-        station.object_defs.iter()
-            .map(|d| ((d.ioa, d.asdu_type), d))
-            .collect();
+    let def_map: std::collections::HashMap<(u32, AsduTypeId), &InformationObjectDef> = station
+        .object_defs
+        .iter()
+        .map(|d| ((d.ioa, d.asdu_type), d))
+        .collect();
 
-    let points: Vec<DataPointInfo> = station.data_points
+    let points: Vec<DataPointInfo> = station
+        .data_points
         .changed_since(since_seq)
         .into_iter()
         .map(|p| data_point_to_info(p, &def_map))
@@ -2026,22 +2337,32 @@ pub async fn random_mutate_data_points(
                     DataPointValue::SinglePoint { value } => {
                         DataPointValue::SinglePoint { value: !value }
                     }
-                    DataPointValue::DoublePoint { value } => {
-                        DataPointValue::DoublePoint { value: if *value == 1 { 2 } else { 1 } }
-                    }
+                    DataPointValue::DoublePoint { value } => DataPointValue::DoublePoint {
+                        value: if *value == 1 { 2 } else { 1 },
+                    },
                     DataPointValue::Normalized { value } => {
                         let delta: f32 = rng.random_range(-0.1..0.1);
-                        DataPointValue::Normalized { value: (*value + delta).clamp(-1.0, 1.0) }
+                        DataPointValue::Normalized {
+                            value: (*value + delta).clamp(-1.0, 1.0),
+                        }
                     }
                     DataPointValue::Scaled { value } => {
                         let delta: i16 = rng.random_range(-100..100);
-                        DataPointValue::Scaled { value: value.saturating_add(delta) }
+                        DataPointValue::Scaled {
+                            value: value.saturating_add(delta),
+                        }
                     }
                     DataPointValue::ShortFloat { value } => {
                         let delta: f32 = rng.random_range(-10.0..10.0);
-                        DataPointValue::ShortFloat { value: value + delta }
+                        DataPointValue::ShortFloat {
+                            value: value + delta,
+                        }
                     }
-                    DataPointValue::IntegratedTotal { value, carry, sequence } => {
+                    DataPointValue::IntegratedTotal {
+                        value,
+                        carry,
+                        sequence,
+                    } => {
                         let delta: i32 = rng.random_range(0..100);
                         DataPointValue::IntegratedTotal {
                             value: value + delta,
@@ -2074,7 +2395,9 @@ pub async fn random_mutate_data_points(
     let mut idx = 0;
     while idx < changed_ioas.len() {
         let end = (idx + batch_size).min(changed_ioas.len());
-        srv.server.queue_spontaneous(request.common_address, &changed_ioas[idx..end]).await;
+        srv.server
+            .queue_spontaneous(request.common_address, &changed_ioas[idx..end])
+            .await;
         idx = end;
         if idx < changed_ioas.len() && pacing.delay_ms > 0 {
             tokio::time::sleep(delay).await;
@@ -2096,9 +2419,13 @@ pub struct CyclicConfigRequest {
 #[tauri::command]
 pub async fn set_cyclic_config(
     state: State<'_, AppState>,
+    app_handle: AppHandle,
     request: CyclicConfigRequest,
 ) -> Result<(), String> {
     use iec104sim_core::slave::CyclicConfig;
+    state.wait_workspace_ready().await;
+    let _guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
@@ -2106,10 +2433,15 @@ pub async fn set_cyclic_config(
     srv.server
         .set_cyclic_config(
             request.common_address,
-            CyclicConfig { enabled: request.enabled, interval_ms: request.interval_ms },
+            CyclicConfig {
+                enabled: request.enabled,
+                interval_ms: request.interval_ms,
+            },
         )
         .await
-        .map_err(|e| format!("{:?}", e))
+        .map_err(|e| format!("{:?}", e))?;
+    drop(servers);
+    persist_workspace_after(&state, &app_handle, "updating cyclic config", rollback).await
 }
 
 // ---------------------------------------------------------------------------
@@ -2129,6 +2461,9 @@ pub async fn set_protocol_timing(
     app_handle: AppHandle,
     request: ProtocolTimingRequest,
 ) -> Result<Vec<iec104sim_core::timing::TimingCorrection>, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
@@ -2139,7 +2474,7 @@ pub async fn set_protocol_timing(
     let corrections = timing.normalize();
     srv.server.set_protocol_timing(timing).await;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "updating protocol timing").await;
+    persist_workspace_after(&state, &app_handle, "updating protocol timing", rollback).await?;
     Ok(corrections)
 }
 
@@ -2169,13 +2504,17 @@ pub async fn set_simulation_pacing(
     server_id: String,
     pacing: RandomMutationPacing,
 ) -> Result<RandomMutationPacing, String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &server_id).await?;
     let pacing = pacing.normalized();
     let servers = state.servers.read().await;
-    let srv = servers.get(&server_id)
+    let srv = servers
+        .get(&server_id)
         .ok_or_else(|| format!("server {} not found", server_id))?;
     srv.server.set_simulation_pacing(pacing).await;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "updating simulation pacing").await;
+    persist_workspace_after(&state, &app_handle, "updating simulation pacing", rollback).await?;
     Ok(pacing)
 }
 
@@ -2185,13 +2524,22 @@ pub async fn set_remote_operation_config(
     app_handle: AppHandle,
     request: RemoteOpsRequest,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &request.server_id).await?;
     let servers = state.servers.read().await;
     let srv = servers
         .get(&request.server_id)
         .ok_or_else(|| format!("server {} not found", request.server_id))?;
     srv.server.set_remote_ops(request.ops).await;
     drop(servers);
-    persist_workspace_after(&state, &app_handle, "updating remote operation config").await;
+    persist_workspace_after(
+        &state,
+        &app_handle,
+        "updating remote operation config",
+        rollback,
+    )
+    .await?;
     Ok(())
 }
 
@@ -2232,6 +2580,8 @@ pub async fn start_point_mutation(
     min: Option<f64>,
     max: Option<f64>,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
     let asdu = parse_asdu_type(&asdu_type)?;
     let params = MutationParams {
         mode: parse_mutation_mode(mode.as_deref()),
@@ -2257,6 +2607,8 @@ pub async fn stop_point_mutation(
     ioa: u32,
     asdu_type: String,
 ) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    let _workspace_guard = state.workspace_mutation.lock().await;
     let asdu = parse_asdu_type(&asdu_type)?;
     let servers = state.servers.read().await;
     let srv = servers
@@ -2323,12 +2675,17 @@ pub async fn list_point_mutations(
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn save_config(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
+pub async fn save_config(state: State<'_, AppState>, path: String) -> Result<(), String> {
     state.wait_workspace_ready().await;
     let json = serialize_workspace(&state).await?;
+    #[cfg(feature = "simlab-suite")]
+    return crate::config_store::export_project(
+        std::path::Path::new(&path),
+        "iec104.slave",
+        "workspace",
+        &serde_json::from_str(&json).map_err(|e| e.to_string())?,
+    );
+    #[cfg(not(feature = "simlab-suite"))]
     std::fs::write(&path, json).map_err(|e| format!("写入文件失败: {e}"))
 }
 
@@ -2352,6 +2709,8 @@ pub(crate) async fn serialize_workspace(state: &AppState) -> Result<String, Stri
                 common_address: station.common_address,
                 name: station.name.clone(),
                 object_defs: station.object_defs.clone(),
+                #[cfg(feature = "simlab-suite")]
+                cyclic_config: station.cyclic_config.clone(),
             })
             .collect();
         station_configs.sort_by_key(|station| station.common_address);
@@ -2374,44 +2733,150 @@ pub(crate) async fn persist_workspace(
 ) -> Result<(), String> {
     let _persistence_guard = state.persistence_mutation.lock().await;
     let json = serialize_workspace(state).await?;
-    let store = app_handle
-        .store(WORKSPACE_STORE_FILE)
-        .map_err(|error| format!("打开工作区存储失败: {error}"))?;
-    store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
-    store
-        .save()
-        .map_err(|error| format!("保存工作区失败: {error}"))
+    #[cfg(feature = "simlab-suite")]
+    {
+        let _ = app_handle;
+        return state.suite_storage.save(
+            "workspace",
+            &serde_json::from_str(&json).map_err(|e| e.to_string())?,
+        );
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        let store = app_handle
+            .store(crate::suite::store_path(app_handle, WORKSPACE_STORE_FILE))
+            .map_err(|e| format!("打开工作区存储失败: {e}"))?;
+        store.set(WORKSPACE_STORE_KEY, serde_json::Value::String(json));
+        store.save().map_err(|e| format!("保存工作区失败: {e}"))
+    }
 }
 
 pub(crate) async fn persist_workspace_after(
     state: &AppState,
     app_handle: &AppHandle,
     reason: &str,
-) {
-    if let Err(error) = persist_workspace(state, app_handle).await {
-        log::warn!("failed to persist slave workspace after {reason}: {error}");
+    rollback: WorkspaceRollback,
+) -> Result<(), String> {
+    #[cfg(feature = "simlab-suite")]
+    {
+        let _ = (app_handle, reason);
+        return commit_suite_workspace(state, rollback).await;
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        let _ = rollback;
+        if let Err(error) = persist_workspace(state, app_handle).await {
+            log::warn!("failed to persist workspace after {reason}: {error}");
+        }
+        Ok(())
     }
 }
 
-pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
-    let store = app_handle
-        .store(WORKSPACE_STORE_FILE)
-        .map_err(|error| format!("打开工作区存储失败: {error}"))?;
-    let Some(content) = store
-        .get(WORKSPACE_STORE_KEY)
-        .and_then(|value| value.as_str().map(str::to_owned))
-    else {
-        return Ok(());
-    };
-
-    let file = SlaveConfigFile::from_json(&content)?;
-    let state: State<'_, AppState> = app_handle.state();
-    let outcome = load_config_impl(state.inner(), file).await?;
-    if !outcome.corrected_events.is_empty() {
-        let _ = app_handle.emit("config-timing-corrected", &outcome.corrected_events);
+#[cfg(feature = "simlab-suite")]
+async fn initialize_suite_workspace(
+    state: &AppState,
+    root: &std::path::Path,
+    legacy: &std::path::Path,
+) -> Result<Vec<TimingCorrectedEvent>, String> {
+    let result: Result<Vec<TimingCorrectedEvent>, String> = async {
+        state.suite_storage.initialize(root, "iec104.slave")?;
+        let stored = state.suite_storage.load("workspace")?;
+        let value = if stored.is_some() {
+            stored
+        } else {
+            let content = match std::fs::read(legacy) {
+                Ok(bytes) => {
+                    let envelope: serde_json::Value =
+                        serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+                    match envelope.get(WORKSPACE_STORE_KEY) {
+                        Some(serde_json::Value::String(content)) => {
+                            prepare_slave_config(SlaveConfigFile::from_json(content)?).await?;
+                            Some(content.as_bytes().to_vec())
+                        }
+                        None => None,
+                        _ => return Err("旧工作区格式无效".into()),
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(error) => return Err(error.to_string()),
+            };
+            state.suite_storage.migrate(
+                "workspace",
+                content.as_deref(),
+                &legacy.to_string_lossy(),
+            )?
+        };
+        if let Some(value) = value {
+            let file = SlaveConfigFile::from_json(
+                &serde_json::to_string(&value).map_err(|e| e.to_string())?,
+            )?;
+            return Ok(load_config_impl(state, file).await?.corrected_events);
+        }
+        Ok(Vec::new())
     }
-    log::info!("restored {} persisted slave server(s)", outcome.imported);
+    .await;
+    if let Err(error) = &result {
+        state.suite_storage.block(error.clone());
+    }
+    result
+}
+
+#[cfg(feature = "simlab-suite")]
+async fn commit_suite_workspace(
+    state: &AppState,
+    rollback: WorkspaceRollback,
+) -> Result<(), String> {
+    let result = async {
+        let json = serialize_workspace(state).await?;
+        let _ = SlaveConfigFile::from_json(&json)?;
+        let value: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        state.suite_storage.save("workspace", &value)
+    }
+    .await;
+    if let Err(error) = result {
+        if let Err(restore) = rollback.restore(state).await {
+            let combined = format!("{error}; 回退配置失败: {restore}");
+            state.suite_storage.block(combined.clone());
+            return Err(combined);
+        }
+        return Err(error);
+    }
     Ok(())
+}
+
+pub(crate) async fn restore_persisted_workspace(app_handle: AppHandle) -> Result<(), String> {
+    let state: State<'_, AppState> = app_handle.state();
+    #[cfg(feature = "simlab-suite")]
+    {
+        let legacy = crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE);
+        let root = legacy
+            .parent()
+            .and_then(std::path::Path::parent)
+            .ok_or("Missing SimLab data root")?;
+        let events = initialize_suite_workspace(state.inner(), root, &legacy).await?;
+        if !events.is_empty() {
+            let _ = app_handle.emit("config-timing-corrected", &events);
+        }
+        return Ok(());
+    }
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        let store = app_handle
+            .store(crate::suite::store_path(&app_handle, WORKSPACE_STORE_FILE))
+            .map_err(|error| format!("打开工作区存储失败: {error}"))?;
+        let Some(content) = store
+            .get(WORKSPACE_STORE_KEY)
+            .and_then(|value| value.as_str().map(str::to_owned))
+        else {
+            return Ok(());
+        };
+        let outcome =
+            load_config_impl(state.inner(), SlaveConfigFile::from_json(&content)?).await?;
+        if !outcome.corrected_events.is_empty() {
+            let _ = app_handle.emit("config-timing-corrected", &outcome.corrected_events);
+        }
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -2421,16 +2886,60 @@ pub async fn load_config(
     path: String,
 ) -> Result<usize, String> {
     state.wait_workspace_ready().await;
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取文件失败: {e}"))?;
-    let file = SlaveConfigFile::from_json(&content)?;
-    let outcome = load_config_impl(state.inner(), file).await?;
-    // 把导入时的时序纠正上抛,让用户知道加载的配置被调整过。
-    if !outcome.corrected_events.is_empty() {
-        let _ = app_handle.emit("config-timing-corrected", &outcome.corrected_events);
+    #[cfg(feature = "simlab-suite")]
+    {
+        let value = crate::config_store::read_project(
+            std::path::Path::new(&path),
+            "iec104.slave",
+            "workspace",
+        )?;
+        let file =
+            SlaveConfigFile::from_json(&serde_json::to_string(&value).map_err(|e| e.to_string())?)?;
+        let prepared = prepare_slave_config(file).await?;
+        let _guard = state.workspace_mutation.lock().await;
+        state.suite_storage.ensure_writable()?;
+        // Serialize the validated, normalized candidate before publishing it.
+        let candidate = AppState::new();
+        let _ = replace_servers_impl(&candidate, prepared).await?;
+        let value: serde_json::Value =
+            serde_json::from_str(&serialize_workspace(&candidate).await?)
+                .map_err(|e| e.to_string())?;
+        let prior: serde_json::Value =
+            serde_json::from_str(&serialize_workspace(&state).await?).map_err(|e| e.to_string())?;
+        state.suite_storage.save("workspace", &value)?;
+        let prepared = prepare_slave_config(SlaveConfigFile::from_json(
+            &serde_json::to_string(&value).map_err(|e| e.to_string())?,
+        )?)
+        .await?;
+        let outcome = match replace_servers_impl(state.inner(), prepared).await {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                if let Err(restore) = state.suite_storage.save("workspace", &prior) {
+                    let combined = format!("{error}; 恢复原工作区存储失败: {restore}");
+                    state.suite_storage.block(combined.clone());
+                    return Err(combined);
+                }
+                return Err(error);
+            }
+        };
+        if !outcome.corrected_events.is_empty() {
+            let _ = app_handle.emit("config-timing-corrected", &outcome.corrected_events);
+        }
+        return Ok(outcome.imported);
     }
-    persist_workspace_after(&state, &app_handle, "loading a config").await;
-    Ok(outcome.imported)
+    #[cfg(not(feature = "simlab-suite"))]
+    {
+        let content = std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {e}"))?;
+        let outcome =
+            load_config_impl(state.inner(), SlaveConfigFile::from_json(&content)?).await?;
+        if !outcome.corrected_events.is_empty() {
+            let _ = app_handle.emit("config-timing-corrected", &outcome.corrected_events);
+        }
+        if let Err(error) = persist_workspace(&state, &app_handle).await {
+            log::warn!("failed to save imported workspace: {error}");
+        }
+        Ok(outcome.imported)
+    }
 }
 
 /// `config-timing-corrected` 事件载荷:slave `load_config` 导入时发生的时序纠正。
@@ -2484,6 +2993,10 @@ async fn prepare_slave_config(file: SlaveConfigFile) -> Result<PreparedSlaveConf
             let station_number = station_index + 1;
             let common_address = st.common_address;
             let mut station = Station::new(common_address, st.name);
+            #[cfg(feature = "simlab-suite")]
+            {
+                station.cyclic_config = st.cyclic_config;
+            }
             for (point_index, def) in st.object_defs.into_iter().enumerate() {
                 station.add_point(def).map_err(|e| {
                     format!(
@@ -2521,8 +3034,8 @@ async fn replace_servers_impl(
     prepared: PreparedSlaveConfig,
 ) -> Result<LoadConfigOutcome, String> {
     let imported = prepared.servers.len();
-    let imported_u32 = u32::try_from(imported)
-        .map_err(|_| "配置包含过多服务器,无法分配服务器 ID".to_string())?;
+    let imported_u32 =
+        u32::try_from(imported).map_err(|_| "配置包含过多服务器,无法分配服务器 ID".to_string())?;
 
     // Keep the established allocator -> table lock order used by create_server.
     let mut counter = state.next_server_id.write().await;
@@ -2571,23 +3084,19 @@ async fn load_config_impl(
 
 #[tauri::command]
 pub fn parse_hex(data: String) -> Result<Vec<u8>, String> {
-    iec104sim_core::tools::parse_hex_string(&data)
-        .map_err(|e| format!("{}", e))
+    iec104sim_core::tools::parse_hex_string(&data).map_err(|e| format!("{}", e))
 }
 
 #[tauri::command]
 pub fn parse_apci(data: String) -> Result<String, String> {
-    let bytes = iec104sim_core::tools::parse_hex_string(&data)
-        .map_err(|e| format!("{}", e))?;
-    let frame = iec104sim_core::frame::parse_apci(&bytes)
-        .map_err(|e| format!("{}", e))?;
+    let bytes = iec104sim_core::tools::parse_hex_string(&data).map_err(|e| format!("{}", e))?;
+    let frame = iec104sim_core::frame::parse_apci(&bytes).map_err(|e| format!("{}", e))?;
     Ok(iec104sim_core::frame::format_frame_summary(&frame))
 }
 
 #[tauri::command]
 pub fn parse_frame_full(data: String) -> Result<iec104sim_core::decode::ParsedFrame, String> {
-    let bytes = iec104sim_core::tools::parse_hex_string(&data)
-        .map_err(|e| format!("{}", e))?;
+    let bytes = iec104sim_core::tools::parse_hex_string(&data).map_err(|e| format!("{}", e))?;
     iec104sim_core::decode::parse_frame_full(&bytes)
 }
 
@@ -2667,6 +3176,8 @@ mod tests {
             common_address,
             name: name.to_string(),
             object_defs: vec![ctl_def(1, AsduTypeId::MSpNa1)],
+            #[cfg(feature = "simlab-suite")]
+            cyclic_config: iec104sim_core::slave::CyclicConfig::default(),
         }
     }
 
@@ -2795,12 +3306,9 @@ mod tests {
         };
         let state = AppState::new();
 
-        let outcome = load_config_impl(
-            &state,
-            SlaveConfigFile::new(vec![server_config]),
-        )
-        .await
-        .unwrap();
+        let outcome = load_config_impl(&state, SlaveConfigFile::new(vec![server_config]))
+            .await
+            .unwrap();
 
         assert_eq!(outcome.imported, 1);
         assert_eq!(*state.next_server_id.read().await, 2);
@@ -2824,11 +3332,8 @@ mod tests {
 
     #[tokio::test]
     async fn load_config_replaces_server_table_and_reimport_does_not_duplicate() {
-        let state = state_with_server(
-            SlaveServer::new(test_transport(free_port())),
-            "server_1",
-        )
-        .await;
+        let state =
+            state_with_server(SlaveServer::new(test_transport(free_port())), "server_1").await;
         *state.next_server_id.write().await = 2;
         let file = SlaveConfigFile::new(vec![
             imported_server(2404, vec![imported_station(1, "first")]),
@@ -2864,11 +3369,8 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_load_config_preserves_existing_table_and_id_counter() {
-        let state = state_with_server(
-            SlaveServer::new(test_transport(free_port())),
-            "server_41",
-        )
-        .await;
+        let state =
+            state_with_server(SlaveServer::new(test_transport(free_port())), "server_41").await;
         *state.next_server_id.write().await = 42;
         let file = SlaveConfigFile::new(vec![
             imported_server(2404, vec![imported_station(1, "valid")]),
@@ -2896,11 +3398,8 @@ mod tests {
 
     #[tokio::test]
     async fn empty_load_config_clears_table_without_consuming_an_id() {
-        let state = state_with_server(
-            SlaveServer::new(test_transport(free_port())),
-            "server_8",
-        )
-        .await;
+        let state =
+            state_with_server(SlaveServer::new(test_transport(free_port())), "server_8").await;
         *state.next_server_id.write().await = 9;
 
         let outcome = load_config_impl(&state, SlaveConfigFile::new(Vec::new()))
@@ -2943,18 +3442,10 @@ mod tests {
     async fn load_config_aborts_mutations_owned_by_stopped_server() {
         let server = SlaveServer::new(test_transport(free_port()));
         let mut station = Station::new(1, "stopped");
-        station
-            .add_point(ctl_def(1, AsduTypeId::MSpNa1))
-            .unwrap();
+        station.add_point(ctl_def(1, AsduTypeId::MSpNa1)).unwrap();
         server.add_station(station).await.unwrap();
         server
-            .start_point_mutation(
-                1,
-                1,
-                AsduTypeId::MSpNa1,
-                50,
-                MutationParams::default(),
-            )
+            .start_point_mutation(1, 1, AsduTypeId::MSpNa1, 50, MutationParams::default())
             .await
             .unwrap();
         let retained_stations = Arc::clone(&server.stations);
@@ -3015,7 +3506,11 @@ mod tests {
         {
             let point = station.data_points.get_mut(1, AsduTypeId::MSpNa1).unwrap();
             point.value = DataPointValue::SinglePoint { value: true };
-            point.quality = QualityFlags { iv: true, sb: true, ..Default::default() };
+            point.quality = QualityFlags {
+                iv: true,
+                sb: true,
+                ..Default::default()
+            };
             point.timestamp = Some(chrono::Utc::now());
         }
         server.add_station(station).await.unwrap();
@@ -3026,13 +3521,28 @@ mod tests {
             "s1",
             1,
             vec![
-                RemovePointTarget { ioa: 1, asdu_type: "M_SP_NA_1".to_string() },
-                RemovePointTarget { ioa: 1, asdu_type: "MSpNa1".to_string() },
-                RemovePointTarget { ioa: 999, asdu_type: "M_SP_NA_1".to_string() },
+                RemovePointTarget {
+                    ioa: 1,
+                    asdu_type: "M_SP_NA_1".to_string(),
+                },
+                RemovePointTarget {
+                    ioa: 1,
+                    asdu_type: "MSpNa1".to_string(),
+                },
+                RemovePointTarget {
+                    ioa: 999,
+                    asdu_type: "M_SP_NA_1".to_string(),
+                },
             ],
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(snapshots.len(), 1, "duplicate keys are collapsed and unknown points skipped");
+        assert_eq!(
+            snapshots.len(),
+            1,
+            "duplicate keys are collapsed and unknown points skipped"
+        );
         let snapshot = &snapshots[0];
         assert_eq!(snapshot.ioa, 1);
         assert_eq!(snapshot.asdu_type, "M_SP_NA_1");
@@ -3051,7 +3561,9 @@ mod tests {
         server.start().await.expect("start");
         let state = state_with_server(server, "server_1").await;
 
-        delete_server_impl(&state, "server_1").await.expect("delete");
+        delete_server_impl(&state, "server_1")
+            .await
+            .expect("delete");
 
         std::net::TcpListener::bind(("127.0.0.1", port))
             .expect("port must be released after deleting a running server");
@@ -3066,19 +3578,15 @@ mod tests {
         station.add_point(ctl_def(1, AsduTypeId::MSpNa1)).unwrap();
         server.add_station(station).await.unwrap();
         server
-            .start_point_mutation(
-                1,
-                1,
-                AsduTypeId::MSpNa1,
-                50,
-                MutationParams::default(),
-            )
+            .start_point_mutation(1, 1, AsduTypeId::MSpNa1, 50, MutationParams::default())
             .await
             .unwrap();
         let retained_stations = Arc::clone(&server.stations);
         let state = state_with_server(server, "server_1").await;
 
-        delete_server_impl(&state, "server_1").await.expect("delete");
+        delete_server_impl(&state, "server_1")
+            .await
+            .expect("delete");
         let seq = retained_stations
             .read()
             .await
@@ -3150,10 +3658,16 @@ mod tests {
         let servers = state.servers.read().await;
         let stations = servers.get("s1").unwrap().server.stations.read().await;
         let st = stations.get(&1).unwrap();
-        assert!(st.object_defs.iter().any(|d| d.ioa == 200 && d.asdu_type == AsduTypeId::MDpNa1));
+        assert!(st
+            .object_defs
+            .iter()
+            .any(|d| d.ioa == 200 && d.asdu_type == AsduTypeId::MDpNa1));
         assert!(!st.data_points.contains(2, AsduTypeId::MDpNa1));
         let p = st.data_points.get(200, AsduTypeId::MDpNa1).unwrap();
-        assert!(matches!(p.value, DataPointValue::DoublePoint { value: 2 }), "改址须保值");
+        assert!(
+            matches!(p.value, DataPointValue::DoublePoint { value: 2 }),
+            "改址须保值"
+        );
         let ctrl = st
             .object_defs
             .iter()
@@ -3176,30 +3690,43 @@ mod tests {
                 5,
                 AsduTypeId::MSpNa1,
                 1000,
-                MutationParams { mode: MutationMode::Flip, step: 1.0, min: 0.0, max: 1.0 },
+                MutationParams {
+                    mode: MutationMode::Flip,
+                    step: 1.0,
+                    min: 0.0,
+                    max: 1.0,
+                },
             )
             .await
             .unwrap();
         let state = state_with_server(server, "s1").await;
 
-        update_data_point_definition_impl(&state, UpdateDataPointDefinitionRequest {
-            server_id: "s1".to_string(),
-            common_address: 1,
-            ioa: 5,
-            new_ioa: Some(50),
-            new_asdu_type: None,
-            asdu_type: "MSpNa1".to_string(),
-            name: None,
-            comment: None,
-            mapping: None,
-            command_qualifier: None,
-            select_before_operate: None,
-        })
+        update_data_point_definition_impl(
+            &state,
+            UpdateDataPointDefinitionRequest {
+                server_id: "s1".to_string(),
+                common_address: 1,
+                ioa: 5,
+                new_ioa: Some(50),
+                new_asdu_type: None,
+                asdu_type: "MSpNa1".to_string(),
+                name: None,
+                comment: None,
+                mapping: None,
+                command_qualifier: None,
+                select_before_operate: None,
+            },
+        )
         .await
         .unwrap();
 
         let servers = state.servers.read().await;
-        let mutations = servers.get("s1").unwrap().server.list_point_mutations().await;
+        let mutations = servers
+            .get("s1")
+            .unwrap()
+            .server
+            .list_point_mutations()
+            .await;
         assert_eq!(mutations.len(), 1, "改址后活动任务须保留: {mutations:?}");
         assert_eq!(mutations[0].1, 50, "活动任务须迁到新 IOA");
         assert_eq!(mutations[0].2, AsduTypeId::MSpNa1);
@@ -3494,34 +4021,52 @@ mod tests {
         let state = state_with_server(server, "s1").await;
 
         // 混入非控制点:该点被跳过,控制点正常写入(逐点跳过语义)。
-        let n = batch_update_control_options_impl(&state, BatchControlOptionsRequest {
-            server_id: "s1".to_string(),
-            common_address: 1,
-            points: vec![
-                RemovePointTarget { ioa: 10, asdu_type: "CScNa1".to_string() },
-                RemovePointTarget { ioa: 12, asdu_type: "MSpNa1".to_string() },
-            ],
-            command_qualifier: Some(1),
-            set_qualifier: true,
-            select_before_operate: None,
-            set_select_before_operate: false,
-        })
+        let n = batch_update_control_options_impl(
+            &state,
+            BatchControlOptionsRequest {
+                server_id: "s1".to_string(),
+                common_address: 1,
+                points: vec![
+                    RemovePointTarget {
+                        ioa: 10,
+                        asdu_type: "CScNa1".to_string(),
+                    },
+                    RemovePointTarget {
+                        ioa: 12,
+                        asdu_type: "MSpNa1".to_string(),
+                    },
+                ],
+                command_qualifier: Some(1),
+                set_qualifier: true,
+                select_before_operate: None,
+                set_select_before_operate: false,
+            },
+        )
         .await
         .unwrap();
         assert_eq!(n, 1, "非控制点跳过,只更新 CScNa1");
 
-        let n = batch_update_control_options_impl(&state, BatchControlOptionsRequest {
-            server_id: "s1".to_string(),
-            common_address: 1,
-            points: vec![
-                RemovePointTarget { ioa: 10, asdu_type: "CScNa1".to_string() },
-                RemovePointTarget { ioa: 11, asdu_type: "CScNa1".to_string() },
-            ],
-            command_qualifier: Some(2),
-            set_qualifier: true,
-            select_before_operate: Some(true),
-            set_select_before_operate: true,
-        })
+        let n = batch_update_control_options_impl(
+            &state,
+            BatchControlOptionsRequest {
+                server_id: "s1".to_string(),
+                common_address: 1,
+                points: vec![
+                    RemovePointTarget {
+                        ioa: 10,
+                        asdu_type: "CScNa1".to_string(),
+                    },
+                    RemovePointTarget {
+                        ioa: 11,
+                        asdu_type: "CScNa1".to_string(),
+                    },
+                ],
+                command_qualifier: Some(2),
+                set_qualifier: true,
+                select_before_operate: Some(true),
+                set_select_before_operate: true,
+            },
+        )
         .await
         .unwrap();
         assert_eq!(n, 2);
@@ -3574,12 +4119,19 @@ mod tests {
     #[test]
     fn data_point_to_info_maps_all_quality_bits() {
         let mut p = DataPoint::new(100, AsduTypeId::MMeNc1);
-        p.quality = QualityFlags { nt: true, sb: true, ..Default::default() };
+        p.quality = QualityFlags {
+            nt: true,
+            sb: true,
+            ..Default::default()
+        };
         let def_map: HashMap<(u32, AsduTypeId), &InformationObjectDef> = HashMap::new();
         let info = data_point_to_info(&p, &def_map);
         assert!(info.quality_nt, "nt 透传");
         assert!(info.quality_sb, "sb 透传");
-        assert!(!info.quality_iv && !info.quality_ov && !info.quality_bl, "未置位为 false");
+        assert!(
+            !info.quality_iv && !info.quality_ov && !info.quality_bl,
+            "未置位为 false"
+        );
     }
 
     #[test]
@@ -3587,7 +4139,13 @@ mod tests {
         let p = DataPoint::new(100, AsduTypeId::MSpNa1);
         let def_map: HashMap<(u32, AsduTypeId), &InformationObjectDef> = HashMap::new();
         let info = data_point_to_info(&p, &def_map);
-        assert!(!info.quality_iv && !info.quality_nt && !info.quality_sb && !info.quality_bl && !info.quality_ov);
+        assert!(
+            !info.quality_iv
+                && !info.quality_nt
+                && !info.quality_sb
+                && !info.quality_bl
+                && !info.quality_ov
+        );
     }
 
     #[test]
@@ -3603,23 +4161,44 @@ mod tests {
     // ---- parse_value_for / 批量 helper(任务 2.3 / 3.3)----
 
     fn sp(ioa: u32, v: bool) -> DataPoint {
-        DataPoint::with_value(ioa, AsduTypeId::MSpNa1, DataPointValue::SinglePoint { value: v })
+        DataPoint::with_value(
+            ioa,
+            AsduTypeId::MSpNa1,
+            DataPointValue::SinglePoint { value: v },
+        )
     }
     fn me(ioa: u32, v: f32) -> DataPoint {
-        DataPoint::with_value(ioa, AsduTypeId::MMeNc1, DataPointValue::ShortFloat { value: v })
+        DataPoint::with_value(
+            ioa,
+            AsduTypeId::MMeNc1,
+            DataPointValue::ShortFloat { value: v },
+        )
     }
 
     #[test]
     fn parse_value_for_handles_types_and_errors() {
-        assert!(matches!(parse_value_for(&sp(1, false), "ON"), Ok(DataPointValue::SinglePoint { value: true })));
-        assert!(matches!(parse_value_for(&sp(1, true), "0"), Ok(DataPointValue::SinglePoint { value: false })));
+        assert!(matches!(
+            parse_value_for(&sp(1, false), "ON"),
+            Ok(DataPointValue::SinglePoint { value: true })
+        ));
+        assert!(matches!(
+            parse_value_for(&sp(1, true), "0"),
+            Ok(DataPointValue::SinglePoint { value: false })
+        ));
         assert!(parse_value_for(&sp(1, false), "abc").is_err());
-        assert!(matches!(parse_value_for(&me(1, 0.0), "1.5"), Ok(DataPointValue::ShortFloat { .. })));
+        assert!(matches!(
+            parse_value_for(&me(1, 0.0), "1.5"),
+            Ok(DataPointValue::ShortFloat { .. })
+        ));
         assert!(parse_value_for(&me(1, 0.0), "x").is_err());
     }
 
     fn norm(ioa: u32, v: f32) -> DataPoint {
-        DataPoint::with_value(ioa, AsduTypeId::MMeNa1, DataPointValue::Normalized { value: v })
+        DataPoint::with_value(
+            ioa,
+            AsduTypeId::MMeNa1,
+            DataPointValue::Normalized { value: v },
+        )
     }
 
     #[test]
@@ -3628,13 +4207,23 @@ mod tests {
         // 显示:内部 [-1,1) f32 → 原始 NVA 整数,与主站/线上一致。
         for nva in [-32767i16, -16384, -1, 0, 1, 16384, 32766, 32767] {
             let p = norm(1, nva as f32 / 32767.0);
-            assert_eq!(data_point_to_info(&p, &def_map).value, nva.to_string(), "display nva={}", nva);
+            assert_eq!(
+                data_point_to_info(&p, &def_map).value,
+                nva.to_string(),
+                "display nva={}",
+                nva
+            );
         }
         // 输入:用户输原始整数 → 内部 f32;再显示应原样还原(往返无损)。
         for nva in [-32767i16, -1, 0, 1, 16384, 32767] {
             let parsed = parse_value_for(&norm(1, 0.0), &nva.to_string()).unwrap();
             let p = DataPoint::with_value(1, AsduTypeId::MMeNa1, parsed);
-            assert_eq!(data_point_to_info(&p, &def_map).value, nva.to_string(), "roundtrip nva={}", nva);
+            assert_eq!(
+                data_point_to_info(&p, &def_map).value,
+                nva.to_string(),
+                "roundtrip nva={}",
+                nva
+            );
         }
         // 小数输入应被拒(已改为整数语义)。
         assert!(parse_value_for(&norm(1, 0.0), "0.5").is_err());
@@ -3650,24 +4239,59 @@ mod tests {
         // nt=true 落到混类型两点
         let changed = apply_batch_quality(&mut st, &targets, false, false, false, true, false);
         assert_eq!(changed.len(), 2);
-        assert!(st.data_points.get(100, AsduTypeId::MSpNa1).unwrap().quality.nt);
-        assert!(st.data_points.get(200, AsduTypeId::MMeNc1).unwrap().quality.nt);
+        assert!(
+            st.data_points
+                .get(100, AsduTypeId::MSpNa1)
+                .unwrap()
+                .quality
+                .nt
+        );
+        assert!(
+            st.data_points
+                .get(200, AsduTypeId::MMeNc1)
+                .unwrap()
+                .quality
+                .nt
+        );
 
         // ov=true 仅落测量类
         apply_batch_quality(&mut st, &targets, true, false, false, false, false);
-        assert!(!st.data_points.get(100, AsduTypeId::MSpNa1).unwrap().quality.ov, "SP 忽略 OV");
-        assert!(st.data_points.get(200, AsduTypeId::MMeNc1).unwrap().quality.ov, "ME 写入 OV");
+        assert!(
+            !st.data_points
+                .get(100, AsduTypeId::MSpNa1)
+                .unwrap()
+                .quality
+                .ov,
+            "SP 忽略 OV"
+        );
+        assert!(
+            st.data_points
+                .get(200, AsduTypeId::MMeNc1)
+                .unwrap()
+                .quality
+                .ov,
+            "ME 写入 OV"
+        );
     }
 
     #[test]
     fn batch_value_same_category_writes_all() {
         let mut st = iec104sim_core::slave::Station::new(1, "t");
-        for ioa in 100..103u32 { st.data_points.insert(sp(ioa, false)); }
-        let targets = [(100, AsduTypeId::MSpNa1), (101, AsduTypeId::MSpNa1), (102, AsduTypeId::MSpNa1)];
+        for ioa in 100..103u32 {
+            st.data_points.insert(sp(ioa, false));
+        }
+        let targets = [
+            (100, AsduTypeId::MSpNa1),
+            (101, AsduTypeId::MSpNa1),
+            (102, AsduTypeId::MSpNa1),
+        ];
         let changed = apply_batch_value(&mut st, &targets, "ON").unwrap();
         assert_eq!(changed.len(), 3);
         for ioa in 100..103u32 {
-            assert!(matches!(st.data_points.get(ioa, AsduTypeId::MSpNa1).unwrap().value, DataPointValue::SinglePoint { value: true }));
+            assert!(matches!(
+                st.data_points.get(ioa, AsduTypeId::MSpNa1).unwrap().value,
+                DataPointValue::SinglePoint { value: true }
+            ));
         }
     }
 
@@ -3677,9 +4301,19 @@ mod tests {
         st.data_points.insert(sp(100, false));
         st.data_points.insert(me(200, 0.0));
         // "1" 对 SP 可解析,但因含 ME(跨类)整体应被拒,且 SP 不被改动
-        let res = apply_batch_value(&mut st, &[(100, AsduTypeId::MSpNa1), (200, AsduTypeId::MMeNc1)], "1");
+        let res = apply_batch_value(
+            &mut st,
+            &[(100, AsduTypeId::MSpNa1), (200, AsduTypeId::MMeNc1)],
+            "1",
+        );
         assert!(res.is_err());
-        assert!(matches!(st.data_points.get(100, AsduTypeId::MSpNa1).unwrap().value, DataPointValue::SinglePoint { value: false }), "SP 未被改动");
+        assert!(
+            matches!(
+                st.data_points.get(100, AsduTypeId::MSpNa1).unwrap().value,
+                DataPointValue::SinglePoint { value: false }
+            ),
+            "SP 未被改动"
+        );
     }
 
     #[test]
@@ -3688,7 +4322,13 @@ mod tests {
         st.data_points.insert(sp(103, false));
         let res = apply_batch_value(&mut st, &[(103, AsduTypeId::MSpNa1)], "abc");
         assert!(res.is_err());
-        assert!(matches!(st.data_points.get(103, AsduTypeId::MSpNa1).unwrap().value, DataPointValue::SinglePoint { value: false }), "解析失败不改动");
+        assert!(
+            matches!(
+                st.data_points.get(103, AsduTypeId::MSpNa1).unwrap().value,
+                DataPointValue::SinglePoint { value: false }
+            ),
+            "解析失败不改动"
+        );
     }
 
     // ---- update_server_transport 的端口/运行态守卫(纯函数) ----
@@ -3700,7 +4340,8 @@ mod tests {
             "count_per_category": 2, "use_tls": tls,
             "cert_file": "/missing/server.crt", "key_file": "/missing/server.key",
             "ca_file": "/missing/ca.crt", "require_client_cert": true,
-        })).unwrap()
+        }))
+        .unwrap()
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -3708,21 +4349,37 @@ mod tests {
         let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = occupied.local_addr().unwrap().port();
         let state = AppState::new();
-        let bind_error = create_server_in_workspace(&state, server_ui_request(port, false), true).await.unwrap_err();
+        let bind_error = create_server_in_workspace(&state, server_ui_request(port, false), true)
+            .await
+            .unwrap_err();
         assert_eq!(bind_error.code, "addr_in_use");
         drop(occupied);
-        let tls_error = create_server_in_workspace(&state, server_ui_request(port, true), true).await.unwrap_err();
+        let tls_error = create_server_in_workspace(&state, server_ui_request(port, true), true)
+            .await
+            .unwrap_err();
         assert_eq!(tls_error.code, "start_failed");
         assert!(state.servers.read().await.is_empty());
         assert_eq!(*state.next_server_id.read().await, 1);
-        let info = create_server_in_workspace(&state, server_ui_request(port, false), true).await.unwrap();
+        let info = create_server_in_workspace(&state, server_ui_request(port, false), true)
+            .await
+            .unwrap();
         assert_eq!(info.id, "server_1");
         assert_eq!(info.state, "Running");
         assert_eq!(state.servers.read().await.len(), 1);
-        let saved = SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
+        let saved =
+            SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
         assert_eq!(saved.servers[0].stations[0].common_address, 456);
         assert_eq!(saved.servers[0].stations[0].name, "保留的站点");
-        state.servers.write().await.get_mut(&info.id).unwrap().server.stop().await.unwrap();
+        state
+            .servers
+            .write()
+            .await
+            .get_mut(&info.id)
+            .unwrap()
+            .server
+            .stop()
+            .await
+            .unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -3731,57 +4388,101 @@ mod tests {
         let probe = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = probe.local_addr().unwrap().port();
         let state = AppState::new();
-        let info = create_server_in_workspace(&state, server_ui_request(port, true), false).await.unwrap();
-        let before = SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
+        let info = create_server_in_workspace(&state, server_ui_request(port, true), false)
+            .await
+            .unwrap();
+        let before =
+            SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
         {
             let mut servers = state.servers.write().await;
             let server = &mut servers.get_mut(&info.id).unwrap().server;
             let mut tls = ServerTlsSettings::from(&server.transport.tls);
             tls.enabled = false;
             let request = UpdateServerTransportRequest {
-                server_id: info.id.clone(), bind_address: "127.0.0.1".into(), port, tls: Some(tls.clone()),
+                server_id: info.id.clone(),
+                bind_address: "127.0.0.1".into(),
+                port,
+                tls: Some(tls.clone()),
             };
             apply_server_transport(server, &request).unwrap();
             assert!(!server.transport.tls.enabled);
             assert_eq!(server.transport.tls.cert_file, "/missing/server.crt");
             // Validation must finish before any address/port/TLS mutation.
             tls.enabled = true;
-            let invalid = UpdateServerTransportRequest { bind_address: "0.0.0.0".into(), port: 1, tls: Some(tls), ..request };
+            let invalid = UpdateServerTransportRequest {
+                bind_address: "0.0.0.0".into(),
+                port: 1,
+                tls: Some(tls),
+                ..request
+            };
             assert!(apply_server_transport(server, &invalid).is_err());
             assert_eq!(server.transport.port, port);
             assert_eq!(server.transport.bind_address, "127.0.0.1");
             assert!(!server.transport.tls.enabled);
             drop(probe);
             server.start().await.unwrap();
-            assert!(apply_server_transport(server, &invalid).unwrap_err().contains("停止"));
+            assert!(apply_server_transport(server, &invalid)
+                .unwrap_err()
+                .contains("停止"));
             assert_eq!(server.transport.port, port);
         }
-        let mut client = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        let mut client = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
         client.write_all(&[0x68, 4, 7, 0, 0, 0]).await.unwrap();
         let mut reply = [0; 6];
-        tokio::time::timeout(std::time::Duration::from_secs(2), client.read_exact(&mut reply)).await.unwrap().unwrap();
+        tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            client.read_exact(&mut reply),
+        )
+        .await
+        .unwrap()
+        .unwrap();
         assert_eq!(reply, [0x68, 4, 0x0b, 0, 0, 0]);
-        let after = SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
-        assert_eq!(serde_json::to_value(&before.servers[0].stations).unwrap(), serde_json::to_value(&after.servers[0].stations).unwrap());
+        let after =
+            SlaveConfigFile::from_json(&serialize_workspace(&state).await.unwrap()).unwrap();
+        assert_eq!(
+            serde_json::to_value(&before.servers[0].stations).unwrap(),
+            serde_json::to_value(&after.servers[0].stations).unwrap()
+        );
         assert!(!after.servers[0].tls.enabled);
-        assert_eq!(after.servers[0].tls.cert_file, before.servers[0].tls.cert_file);
-        state.servers.write().await.get_mut(&info.id).unwrap().server.stop().await.unwrap();
+        assert_eq!(
+            after.servers[0].tls.cert_file,
+            before.servers[0].tls.cert_file
+        );
+        state
+            .servers
+            .write()
+            .await
+            .get_mut(&info.id)
+            .unwrap()
+            .server
+            .stop()
+            .await
+            .unwrap();
     }
 
     #[test]
     fn server_ui_old_address_editor_preserves_tls_and_readback_excludes_passwords() {
         let mut server = SlaveServer::new(SlaveTransportConfig {
-            bind_address: "127.0.0.1".into(), port: 2404,
-            tls: SlaveTlsConfig { enabled: true, cert_file: "/retained.crt".into(),
-                pkcs12_password: "not-for-the-frontend".into(), ..Default::default() },
+            bind_address: "127.0.0.1".into(),
+            port: 2404,
+            tls: SlaveTlsConfig {
+                enabled: true,
+                cert_file: "/retained.crt".into(),
+                pkcs12_password: "not-for-the-frontend".into(),
+                ..Default::default()
+            },
         });
         let request: UpdateServerTransportRequest = serde_json::from_value(serde_json::json!({
             "server_id": "server_1", "bind_address": "0.0.0.0", "port": 2405,
-        })).unwrap();
+        }))
+        .unwrap();
         apply_server_transport(&mut server, &request).unwrap();
         assert!(server.transport.tls.enabled);
         assert_eq!(server.transport.tls.cert_file, "/retained.crt");
-        let readback = serde_json::to_string(&ServerTlsSettings::from(&server.transport.tls)).unwrap();
+        let readback =
+            serde_json::to_string(&ServerTlsSettings::from(&server.transport.tls)).unwrap();
         assert!(!readback.contains("password"));
         assert!(!readback.contains("not-for-the-frontend"));
     }
@@ -3800,5 +4501,297 @@ mod tests {
     fn validate_transport_rejects_running_server() {
         // 运行中端口被监听占用,必须先停止
         assert!(validate_transport_change(ServerState::Running, 2404).is_err());
+    }
+}
+
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_load_preferences(
+    state: State<'_, AppState>,
+    legacy: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    state.wait_workspace_ready().await;
+    state.suite_storage.load_preferences(legacy)
+}
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn simlab_save_preferences(
+    state: State<'_, AppState>,
+    values: serde_json::Value,
+) -> Result<(), String> {
+    state.wait_workspace_ready().await;
+    state.suite_storage.save_preferences(values)
+}
+#[cfg(feature = "simlab-suite")]
+#[tauri::command]
+pub async fn get_persistence_status(
+    state: State<'_, AppState>,
+) -> Result<crate::suite_storage::PersistenceStatus, String> {
+    state.wait_workspace_ready().await;
+    state.suite_storage.status()
+}
+
+#[cfg(all(test, feature = "simlab-suite"))]
+mod suite_persistence_tests {
+    use super::*;
+    async fn initialize(state: &AppState, root: &std::path::Path) {
+        initialize_suite_workspace(state, root, &root.join("iec104-slave/slave_workspace.json"))
+            .await
+            .unwrap();
+    }
+    async fn add_server(state: &AppState) {
+        let rollback = WorkspaceRollback::capture(state).await.unwrap();
+        let request: CreateServerRequest = serde_json::from_value(serde_json::json!({"port":2404,"bind_address":"127.0.0.1","common_address":7,"station_name":"Saved","count_per_category":2})).unwrap();
+        create_server_in_workspace(state, request, false)
+            .await
+            .unwrap();
+        {
+            let servers = state.servers.read().await;
+            let entry = servers.values().next().unwrap();
+            entry
+                .server
+                .set_cyclic_config(
+                    7,
+                    iec104sim_core::slave::CyclicConfig {
+                        enabled: true,
+                        interval_ms: 1234,
+                    },
+                )
+                .await
+                .unwrap();
+        }
+        commit_suite_workspace(state, rollback).await.unwrap();
+    }
+    #[tokio::test]
+    async fn automatic_workspace_restores_definitions_cyclic_and_stopped_services() {
+        let root = tempfile::tempdir().unwrap();
+        let state = AppState::new();
+        initialize(&state, root.path()).await;
+        add_server(&state).await;
+        let restored = AppState::new();
+        initialize(&restored, root.path()).await;
+        {
+            let servers = restored.servers.read().await;
+            let entry = servers.values().next().unwrap();
+            assert_eq!(entry.server.state(), ServerState::Stopped);
+            let stations = entry.server.stations.read().await;
+            let station = &stations[&7];
+            assert_eq!(station.name, "Saved");
+            assert!(!station.object_defs.is_empty());
+            assert!(station.cyclic_config.enabled);
+            assert_eq!(station.cyclic_config.interval_ms, 1234);
+        }
+        let rollback = WorkspaceRollback::capture(&restored).await.unwrap();
+        restored.servers.write().await.clear();
+        commit_suite_workspace(&restored, rollback).await.unwrap();
+        let empty = AppState::new();
+        initialize(&empty, root.path()).await;
+        assert!(empty.servers.read().await.is_empty());
+    }
+    #[tokio::test]
+    async fn stale_save_restores_exact_existing_runtime_configuration() {
+        let root = tempfile::tempdir().unwrap();
+        let first = AppState::new();
+        initialize(&first, root.path()).await;
+        add_server(&first).await;
+        let stale = AppState::new();
+        initialize(&stale, root.path()).await;
+        let stations = stale
+            .servers
+            .read()
+            .await
+            .values()
+            .next()
+            .unwrap()
+            .server
+            .stations
+            .clone();
+        let rollback = WorkspaceRollback::capture(&first).await.unwrap();
+        first
+            .servers
+            .write()
+            .await
+            .values_mut()
+            .next()
+            .unwrap()
+            .server
+            .transport
+            .port = 2415;
+        commit_suite_workspace(&first, rollback).await.unwrap();
+        let rollback = WorkspaceRollback::capture(&stale).await.unwrap();
+        stale
+            .servers
+            .write()
+            .await
+            .values_mut()
+            .next()
+            .unwrap()
+            .server
+            .transport
+            .port = 2420;
+        assert!(commit_suite_workspace(&stale, rollback).await.is_err());
+        let servers = stale.servers.read().await;
+        let server = &servers.values().next().unwrap().server;
+        assert_eq!(server.transport.port, 2404);
+        assert!(Arc::ptr_eq(&stations, &server.stations));
+        assert!(stale.suite_storage.status().unwrap().error.is_some());
+    }
+    #[tokio::test]
+    async fn legacy_migration_preserves_original_and_project_files_are_scoped() {
+        let root = tempfile::tempdir().unwrap();
+        let state = AppState::new();
+        initialize(&state, root.path()).await;
+        add_server(&state).await;
+        let json = serialize_workspace(&state).await.unwrap();
+        let legacy_root = tempfile::tempdir().unwrap();
+        let legacy = legacy_root.path().join("legacy.json");
+        let bytes = serde_json::to_vec(&serde_json::json!({"workspace":json})).unwrap();
+        std::fs::write(&legacy, &bytes).unwrap();
+        let migrated = AppState::new();
+        initialize_suite_workspace(&migrated, legacy_root.path(), &legacy)
+            .await
+            .unwrap();
+        assert_eq!(migrated.servers.read().await.len(), 1);
+        assert_eq!(std::fs::read(&legacy).unwrap(), bytes);
+        std::fs::write(&legacy, "{old broken file").unwrap();
+        let second = AppState::new();
+        initialize_suite_workspace(&second, legacy_root.path(), &legacy)
+            .await
+            .unwrap();
+        assert_eq!(second.servers.read().await.len(), 1);
+        let file = root.path().join("workspace.saioproj");
+        let value: serde_json::Value =
+            serde_json::from_str(&serialize_workspace(&state).await.unwrap()).unwrap();
+        crate::config_store::export_project(&file, "iec104.slave", "workspace", &value).unwrap();
+        assert!(std::fs::read(&file)
+            .unwrap()
+            .starts_with(b"SQLite format 3\0"));
+        assert!(crate::config_store::read_project(&file, "iec104.master", "workspace").is_err());
+        let restored =
+            crate::config_store::read_project(&file, "iec104.slave", "workspace").unwrap();
+        let project =
+            SlaveConfigFile::from_json(&serde_json::to_string(&restored).unwrap()).unwrap();
+        let offline = AppState::new();
+        load_config_impl(&offline, project).await.unwrap();
+        assert_eq!(
+            offline
+                .servers
+                .read()
+                .await
+                .values()
+                .next()
+                .unwrap()
+                .server
+                .state(),
+            ServerState::Stopped
+        );
+        let legacy_project = root.path().join("export.json");
+        std::fs::write(&legacy_project, serialize_workspace(&state).await.unwrap()).unwrap();
+        assert!(
+            crate::config_store::read_project(&legacy_project, "iec104.slave", "workspace").is_ok()
+        );
+    }
+    #[tokio::test]
+    async fn corrupt_legacy_blocks_default_workspace_and_ui_writes() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("broken.json");
+        std::fs::write(&legacy, "{broken").unwrap();
+        let state = AppState::new();
+        assert!(initialize_suite_workspace(&state, root.path(), &legacy)
+            .await
+            .is_err());
+        assert!(WorkspaceRollback::capture(&state).await.is_err());
+        assert!(state
+            .suite_storage
+            .save("workspace", &serde_json::json!({}))
+            .is_err());
+        assert!(state
+            .suite_storage
+            .load_preferences(serde_json::json!({}))
+            .is_err());
+        assert_eq!(std::fs::read_to_string(&legacy).unwrap(), "{broken");
+    }
+    #[tokio::test]
+    async fn failed_a_save_preserves_b_live_values_quality_and_mutation_task() {
+        let root = tempfile::tempdir().unwrap();
+        let first = AppState::new();
+        initialize(&first, root.path()).await;
+        add_server(&first).await;
+        add_server(&first).await;
+        let stale = AppState::new();
+        initialize(&stale, root.path()).await;
+        let newer = WorkspaceRollback::capture_server(&first, "server_1")
+            .await
+            .unwrap();
+        first
+            .servers
+            .write()
+            .await
+            .get_mut("server_1")
+            .unwrap()
+            .server
+            .transport
+            .port = 2415;
+        commit_suite_workspace(&first, newer).await.unwrap();
+        let rollback = WorkspaceRollback::capture_server(&stale, "server_1")
+            .await
+            .unwrap();
+        {
+            let mut servers = stale.servers.write().await;
+            servers.get_mut("server_1").unwrap().server.transport.port = 2420;
+            let a = &servers["server_1"].server;
+            let mut stations = a.stations.write().await;
+            let station = stations.get_mut(&7).unwrap();
+            station.name = "Unsaved".into();
+            let point = station.data_points.get_mut(1, AsduTypeId::MSpNa1).unwrap();
+            point.value = DataPointValue::SinglePoint { value: true };
+            point.quality.iv = true;
+        }
+        let b_stations = {
+            let servers = stale.servers.read().await;
+            let b = &servers["server_2"].server;
+            b.start_point_mutation(7, 2, AsduTypeId::MSpNa1, 10_000, MutationParams::default())
+                .await
+                .unwrap();
+            let mut stations = b.stations.write().await;
+            let point = stations
+                .get_mut(&7)
+                .unwrap()
+                .data_points
+                .get_mut(1, AsduTypeId::MSpNa1)
+                .unwrap();
+            point.value = DataPointValue::SinglePoint { value: true };
+            point.quality.iv = true;
+            point.update_seq = 42;
+            b.stations.clone()
+        };
+        assert!(commit_suite_workspace(&stale, rollback).await.is_err());
+        let servers = stale.servers.read().await;
+        let b = &servers["server_2"].server;
+        assert!(Arc::ptr_eq(&b_stations, &b.stations));
+        let stations = b.stations.read().await;
+        let point = stations[&7].data_points.get(1, AsduTypeId::MSpNa1).unwrap();
+        assert!(matches!(
+            point.value,
+            DataPointValue::SinglePoint { value: true }
+        ));
+        assert!(point.quality.iv);
+        assert_eq!(point.update_seq, 42);
+        let tasks = b.list_point_mutations_with_params().await;
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].1, 2);
+        assert_eq!(tasks[0].4, 10_000);
+        let a_stations = servers["server_1"].server.stations.read().await;
+        assert_eq!(a_stations[&7].name, "Saved");
+        let live_a = a_stations[&7]
+            .data_points
+            .get(1, AsduTypeId::MSpNa1)
+            .unwrap();
+        assert!(matches!(
+            live_a.value,
+            DataPointValue::SinglePoint { value: true }
+        ));
+        assert!(live_a.quality.iv);
+        b.stop_point_mutation(7, 2, AsduTypeId::MSpNa1).await;
     }
 }

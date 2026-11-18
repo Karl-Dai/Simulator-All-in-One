@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, inject, watch, onMounted, onUnmounted, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { ConnectionInfo, ChangedCategoriesMap, CategoryCountsMap } from '../types'
 import { useI18n } from '@shared/i18n'
 import { dialogKey, showAlert, showConfirm } from '@shared/composables/useDialog'
@@ -394,13 +394,14 @@ function stateClass(state: string): string {
                 :key="`${ca}-${cat.key}`"
                 :class="['tree-node', 'tree-child', 'tree-grand', {
                   selected: selectedNodeId === `${conn.info.id}:ca:${ca}:${cat.key}`,
+                  'has-points': countFor(conn.info.id, cat.key, ca) > 0,
                   'cat-flash': flashingCategories.has(flashKey(conn.info.id, ca, cat.key)),
                 }]"
                 @click="selectCategory(conn, cat, ca)"
               >
                 <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
                 <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
-                <span class="node-count" v-if="countFor(conn.info.id, cat.key, ca) > 0">
+                <span class="node-count" :title="t('tree.pointCount', { n: countFor(conn.info.id, cat.key, ca) })">
                   {{ countFor(conn.info.id, cat.key, ca) }}
                 </span>
               </div>
@@ -416,13 +417,14 @@ function stateClass(state: string): string {
             :key="cat.key"
             :class="['tree-node', 'tree-child', {
               selected: selectedNodeId === `${conn.info.id}:${cat.key}`,
+              'has-points': countFor(conn.info.id, cat.key, null) > 0,
               'cat-flash': flashingCategories.has(flashKey(conn.info.id, conn.info.common_addresses[0], cat.key)),
             }]"
             @click="selectCategory(conn, cat, null)"
           >
             <span class="node-label">{{ t(`category.${cat.key}`) }}</span>
             <span class="node-typeid">{{ CATEGORY_TYPEIDS[cat.key] }}</span>
-            <span class="node-count" v-if="countFor(conn.info.id, cat.key, null) > 0">
+            <span class="node-count" :title="t('tree.pointCount', { n: countFor(conn.info.id, cat.key, null) })">
               {{ countFor(conn.info.id, cat.key, null) }}
             </span>
           </div>
@@ -494,7 +496,6 @@ input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
 }
 
 .tree-node.selected .node-ca,
-.tree-node.selected .node-count,
 .tree-node.selected .ca-badge {
   color: var(--text-secondary);
 }
@@ -604,13 +605,31 @@ button.node-expand { background: transparent; border: 0; padding: 3px 0; flex-sh
 }
 
 .node-count {
-  font-size: 10px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-width: 26px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--bg-panel);
   color: var(--text-muted);
-  background: var(--bg-raised);
-  padding: 0 5px;
-  border-radius: 8px;
-  min-width: 18px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+.has-points .node-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.has-points .node-count {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--c-on-accent);
+  font-weight: 700;
 }
 
 .context-menu {

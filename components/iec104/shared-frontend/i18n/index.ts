@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, readonly } from 'vue'
 import type { Locale } from './types'
 import { SUPPORTED_LOCALES, STORAGE_KEY } from './types'
 import { detectSystemLocale } from './detect'
@@ -22,6 +22,7 @@ function initialLocale(): Locale {
 }
 
 export const locale = ref<Locale>(initialLocale())
+const languageManaged = ref(false)
 
 function lookup(dict: DictShape, key: string): string | undefined {
   const parts = key.split('.')
@@ -53,19 +54,27 @@ function translate(key: string, params?: Record<string, unknown>): string {
 }
 
 function setLocale(next: Locale) {
+  if (languageManaged.value) return
   if (!(SUPPORTED_LOCALES as readonly string[]).includes(next)) return
   locale.value = next
   try { localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
 }
 
+function setEffectiveLocale(next: Locale | null) {
+  if (next !== null && !(SUPPORTED_LOCALES as readonly string[]).includes(next)) return
+  languageManaged.value = next !== null
+  locale.value = next ?? initialLocale()
+}
+
 const localeRef = computed(() => locale.value)
 
 export function useI18n() {
-  return { t: translate, locale: localeRef, setLocale }
+  return { t: translate, locale: localeRef, setLocale, setEffectiveLocale, languageManaged: readonly(languageManaged) }
 }
 
 // Test-only: re-runs initial locale detection. Don't use in production code.
 export function __resetForTests() {
+  languageManaged.value = false
   locale.value = initialLocale()
 }
 

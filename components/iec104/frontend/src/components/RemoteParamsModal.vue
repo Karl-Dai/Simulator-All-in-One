@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, reactive, computed, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 import AppInput from '@shared/components/ui/AppInput.vue'
@@ -240,7 +241,7 @@ function handleBackdropClick(e: MouseEvent) {
 }
 
 function handleEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.visible) close()
+  if (e.key === 'Escape' && !e.isComposing && e.keyCode !== 229 && props.visible) close()
 }
 
 watch(() => props.visible, (v) => {
@@ -261,7 +262,7 @@ watch(() => props.visible, (v) => {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-      <div v-if="visible" class="modal-backdrop dialog-blur" @click="handleBackdropClick">
+      <div v-if="visible" v-modal="close" class="modal-backdrop dialog-blur" @click="handleBackdropClick">
         <div class="modal">
           <div class="modal-header">
             <span class="modal-title">

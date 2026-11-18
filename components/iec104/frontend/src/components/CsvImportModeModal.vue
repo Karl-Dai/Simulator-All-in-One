@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
 
@@ -14,7 +15,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') emit('cancel')
+  if (event.key === 'Escape' && !event.isComposing && event.keyCode !== 229) emit('cancel')
 }
 </script>
 
@@ -23,7 +24,7 @@ function handleKeydown(event: KeyboardEvent) {
     <Transition name="dialog-pop">
       <div
         v-if="visible"
-        class="csv-mode-backdrop dialog-blur"
+        v-modal="() => emit('cancel')" class="csv-mode-backdrop dialog-blur"
         data-testid="csv-import-mode-modal"
         @mousedown.self="emit('cancel')"
         @keydown="handleKeydown"

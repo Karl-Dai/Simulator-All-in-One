@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { ServerInfo } from '../../types'
 import { formatStartServerError } from '../../errors'
 import { runToolbarAction, type ToolbarActionContext } from './context'

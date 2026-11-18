@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 // 批量设置控制点 QU/QL 限定词与 S/E 执行模式(issue #28)。
 // 作用于表格当前多选中的控制点;两个字段可独立勾选是否应用,
 // 未勾选的字段保持各点原值。
 import { ref, watch, inject, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import { dialogKey } from '@shared/composables/useDialog'
 import type { showAlert as ShowAlert } from '@shared/composables/useDialog'
 import { useI18n } from '@shared/i18n'
@@ -100,7 +101,7 @@ async function handleApply() {
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur">
+    <div v-if="visible" v-modal="() => { if (!isSaving) emit('close') }" class="modal-backdrop dialog-blur">
       <div class="modal">
         <div class="modal-header">
           <span class="modal-title">{{ t('batchControl.title') }}</span>

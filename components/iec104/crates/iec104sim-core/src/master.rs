@@ -41,6 +41,11 @@ pub struct ControlResponse {
     pub asdu_type: u8,
     pub cot: u8,
     pub positive: bool,
+    pub common_address: u16,
+    pub originator: u8,
+    pub test: bool,
+    /// Echoed command value and qualifier, including the Select/Execute bit.
+    pub object_data: Vec<u8>,
 }
 
 /// Result of a control command execution.
@@ -815,6 +820,8 @@ pub struct MasterConnection {
     send_lock: Arc<tokio::sync::Mutex<()>>,
     /// Broadcast channel for control command responses (COT=7, COT=10).
     control_tx: tokio::sync::broadcast::Sender<ControlResponse>,
+    /// Only one acknowledged control transaction may be active per connection.
+    control_lock: tokio::sync::Mutex<()>,
     /// commands 层注入:未知 CA 喂这里。
     ca_inbox: Option<crate::ca_debouncer::CaInbox>,
     /// commands 层注入并随广播 flush 更新。Arc 包裹便于克隆进 spawned 接收任务。
@@ -846,6 +853,7 @@ impl MasterConnection {
             ack_notify: Arc::new(tokio::sync::Notify::new()),
             send_lock: Arc::new(tokio::sync::Mutex::new(())),
             control_tx,
+            control_lock: tokio::sync::Mutex::new(()),
             ca_inbox: None,
             configured_cas: Arc::new(std::sync::RwLock::new(Vec::new())),
         }
@@ -1607,11 +1615,15 @@ impl MasterConnection {
         ca: u16,
         event: Option<crate::log_entry::DetailEvent>,
     ) -> Result<ControlResult, MasterError> {
-        use std::time::Instant;
-        let start = Instant::now();
-        let mut steps = Vec::new();
-        let mut rx = self.control_tx.subscribe();
-
+        let _control = self.control_lock.try_lock().map_err(|_| {
+            MasterError::SendError("本连接已有控制命令等待确认".to_string())
+        })?;
+        if select_frame.get(8).map(|cot| cot & 0x3f) != Some(6)
+            || execute_frame.get(8).map(|cot| cot & 0x3f) != Some(6)
+        {
+            return Err(MasterError::SendError("自动选择执行只支持激活原因 COT=6".to_string()));
+        }
+        let start = std::time::Instant::now();
         let phase_event = |phase: &str| -> Option<crate::log_entry::DetailEvent> {
             event.as_ref().map(|e| {
                 let mut payload = e.payload.clone();
@@ -1621,78 +1633,107 @@ impl MasterConnection {
                 crate::log_entry::DetailEvent { kind: e.kind.clone(), payload }
             })
         };
-
-        // Step 1: Send Select frame
-        self.send_frame_with_event(&select_frame, &format!("{} (Select)", detail_prefix), label.clone(), ca, phase_event("select")).await?;
-        steps.push(ControlStep {
-            action: "select_sent".to_string(),
-            timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
-        });
-
-        // Step 2: Wait for Select confirmation (COT=7)
-        let select_confirmed = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            Self::wait_for_response(&mut rx, ioa, 7),
-        ).await;
-
-        match select_confirmed {
-            Ok(Ok(resp)) => {
-                if !resp.positive {
-                    return Err(MasterError::SendError("选择被拒绝 (否定确认)".to_string()));
-                }
-                steps.push(ControlStep {
-                    action: "select_confirmed".to_string(),
-                    timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
-                });
-            }
-            Ok(Err(e)) => return Err(MasterError::SendError(format!("等待选择确认失败: {}", e))),
-            Err(_) => return Err(MasterError::SendError("选择确认超时 (5s)".to_string())),
-        }
-
-        // Step 3: Send Execute frame
-        self.send_frame_with_event(&execute_frame, &format!("{} (Execute)", detail_prefix), label, ca, phase_event("execute")).await?;
-        steps.push(ControlStep {
-            action: "execute_sent".to_string(),
-            timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
-        });
-
-        // Step 4: Wait for Execute confirmation (COT=7)
-        let exec_confirmed = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            Self::wait_for_response(&mut rx, ioa, 7),
-        ).await;
-
-        match exec_confirmed {
-            Ok(Ok(resp)) => {
-                if !resp.positive {
-                    return Err(MasterError::SendError("执行被拒绝 (否定确认)".to_string()));
-                }
-                steps.push(ControlStep {
-                    action: "execute_confirmed".to_string(),
-                    timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
-                });
-            }
-            Ok(Err(e)) => return Err(MasterError::SendError(format!("等待执行确认失败: {}", e))),
-            Err(_) => return Err(MasterError::SendError("执行确认超时 (5s)".to_string())),
-        }
-
-        let duration_ms = start.elapsed().as_millis() as u64;
-        Ok(ControlResult { steps, duration_ms })
+        // Each phase subscribes before writing its own frame. A queued Select
+        // confirmation cannot complete Execute, even when both share an IOA.
+        let mut steps = self.send_control_phase(
+            &select_frame, detail_prefix, label.clone(), ca, phase_event("select"),
+        ).await?;
+        steps.extend(self.send_control_phase(
+            &execute_frame, detail_prefix, label, ca, phase_event("execute"),
+        ).await?);
+        let _ = ioa; // The complete request identity is decoded from each frame.
+        Ok(ControlResult { steps, duration_ms: start.elapsed().as_millis() as u64 })
     }
 
-    /// Wait for a ControlResponse matching the given IOA and COT.
-    async fn wait_for_response(
-        rx: &mut tokio::sync::broadcast::Receiver<ControlResponse>,
-        ioa: u32,
-        expected_cot: u8,
-    ) -> Result<ControlResponse, String> {
-        loop {
-            match rx.recv().await {
-                Ok(resp) if resp.ioa == ioa && resp.cot == expected_cot => return Ok(resp),
-                Ok(_) => continue, // Not our response, keep waiting
-                Err(e) => return Err(format!("broadcast recv error: {}", e)),
-            }
+    /// Send one control frame. Activation/deactivation waits for its matching
+    /// confirmation; other custom COT values deliberately report only "sent".
+    /// The low-level send_* methods remain available for raw protocol testing.
+    pub async fn send_control_frame_with_confirmation(
+        &self,
+        frame: Vec<u8>,
+        detail: &str,
+        label: FrameLabel,
+        ca: u16,
+        event: Option<crate::log_entry::DetailEvent>,
+    ) -> Result<ControlResult, MasterError> {
+        let _control = self.control_lock.try_lock().map_err(|_| {
+            MasterError::SendError("本连接已有控制命令等待确认".to_string())
+        })?;
+        let start = std::time::Instant::now();
+        let steps = self.send_control_phase(&frame, detail, label, ca, event).await?;
+        Ok(ControlResult { steps, duration_ms: start.elapsed().as_millis() as u64 })
+    }
+
+    async fn send_control_phase(
+        &self,
+        frame: &[u8],
+        detail: &str,
+        label: FrameLabel,
+        ca: u16,
+        event: Option<crate::log_entry::DetailEvent>,
+    ) -> Result<Vec<ControlStep>, MasterError> {
+        if frame.len() < 16 || frame[7] != 1
+            || !AsduTypeId::from_u8(frame[6]).is_some_and(|t| t.is_control())
+        {
+            return Err(MasterError::SendError("无效的单点控制帧".to_string()));
         }
+        let cot = frame[8] & 0x3f;
+        let expected_cot = match cot { 6 => Some(7), 8 => Some(9), _ => None };
+        let base_type = if frame[6] >= 58 { frame[6] - 13 } else { frame[6] };
+        let qualifier_index = match base_type { 45..=47 => Some(15), 48..=49 => Some(17), 50 => Some(19), _ => None };
+        let selected = qualifier_index.and_then(|i| frame.get(i)).is_some_and(|q| q & 0x80 != 0);
+        let phase = if cot == 8 { "deactivate" } else if selected { "select" } else { "execute" };
+        let step = |suffix: &str| ControlStep {
+            action: format!("{}_{}", phase, suffix),
+            timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
+        };
+        let mut rx = self.control_tx.subscribe();
+        let mut state_rx = self.subscribe_state();
+        let operation = async {
+            if *state_rx.borrow() != MasterState::Connected {
+                return Err(MasterError::NotConnected);
+            }
+            self.send_frame_with_event(frame, detail, label, ca, event).await?;
+            let mut steps = vec![step("sent")];
+            if let Some(expected_cot) = expected_cot {
+                loop {
+                    tokio::select! {
+                        response = rx.recv() => {
+                            let response = response.map_err(|e| MasterError::SendError(format!("控制确认接收失败: {}", e)))?;
+                            if !Self::response_matches_request(&response, frame) { continue; }
+                            if matches!(response.cot, 44..=47) {
+                                return Err(MasterError::SendError(format!("控制被拒绝 (COT={})", response.cot)));
+                            }
+                            if response.cot != expected_cot { continue; }
+                            if !response.positive {
+                                return Err(MasterError::SendError("控制被拒绝 (否定确认)".to_string()));
+                            }
+                            steps.push(step("confirmed"));
+                            return Ok(steps);
+                        }
+                        changed = state_rx.changed() => {
+                            if changed.is_err() || *state_rx.borrow() != MasterState::Connected {
+                                return Err(MasterError::SendError("等待控制确认时连接已断开".to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(steps)
+        };
+        // One deadline covers sending plus all unrelated responses; a noisy
+        // peer cannot extend a pending command indefinitely.
+        tokio::time::timeout(std::time::Duration::from_secs(5), operation).await
+            .map_err(|_| MasterError::SendError("控制确认超时 (5s)".to_string()))?
+    }
+
+    fn response_matches_request(response: &ControlResponse, frame: &[u8]) -> bool {
+        response.asdu_type == frame[6]
+            && response.common_address == u16::from_le_bytes([frame[10], frame[11]])
+            && response.ioa == u32::from_le_bytes([frame[12], frame[13], frame[14], 0])
+            && response.originator == frame[9]
+            && response.test == (frame[8] & 0x80 != 0)
+            && response.object_data == frame[15..]
     }
 
     async fn send_frame(&self, frame: &[u8], detail: &str, label: FrameLabel, ca: u16) -> Result<(), MasterError> {
@@ -2391,6 +2432,10 @@ fn parse_and_store_asdu(
                 asdu_type,
                 cot,
                 positive,
+                common_address: ca,
+                originator: data[9],
+                test: cause & 0x80 != 0,
+                object_data: data[15..].to_vec(),
             });
         }
         return;

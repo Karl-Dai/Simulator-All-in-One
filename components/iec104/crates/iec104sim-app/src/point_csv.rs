@@ -6,7 +6,7 @@
 //! not silently turn simulations off.
 
 use crate::commands::{
-    parse_asdu_type, persist_workspace_after, validate_control_point_options,
+    parse_asdu_type, persist_workspace_after, validate_control_point_options, WorkspaceRollback,
 };
 use crate::state::AppState;
 use csv::{QuoteStyle, ReaderBuilder, StringRecord, Terminator, Trim, WriterBuilder};
@@ -1151,6 +1151,9 @@ pub async fn import_point_config_csv(
     path: String,
     mode: String,
 ) -> Result<PointCsvImportResult, String> {
+    state.wait_workspace_ready().await;
+    let _guard = state.workspace_mutation.lock().await;
+    let rollback = WorkspaceRollback::capture_server(&state, &server_id).await?;
     let mode = ImportMode::parse(&mode)?;
     {
         let servers = state.servers.read().await;
@@ -1179,7 +1182,7 @@ pub async fn import_point_config_csv(
         apply_point_import_outcome(&server.server, &parsed, common_address, mode).await?
     };
 
-    persist_workspace_after(&state, &app_handle, "importing point CSV").await;
+    persist_workspace_after(&state, &app_handle, "importing point CSV", rollback).await?;
 
     Ok(PointCsvImportResult {
         imported,
@@ -1331,8 +1334,7 @@ mod tests {
         let mut raw_reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(&exported[UTF8_BOM.len()..]);
-        let raw_records: Vec<StringRecord> =
-            raw_reader.records().map(Result::unwrap).collect();
+        let raw_records: Vec<StringRecord> = raw_reader.records().map(Result::unwrap).collect();
         for record in raw_records.iter().take(dangerous.len()) {
             assert!(record_field(record, 3).starts_with(EXCEL_TEXT_GUARD));
             assert!(record_field(record, 4).starts_with(EXCEL_TEXT_GUARD));
@@ -1354,10 +1356,8 @@ mod tests {
         assert_eq!(parsed[dangerous.len()].definition.comment, marker_prefix);
         assert_eq!(parsed.last().unwrap().definition.name, original_guard);
 
-        let parsed_definitions: Vec<InformationObjectDef> = parsed
-            .iter()
-            .map(|row| row.definition.clone())
-            .collect();
+        let parsed_definitions: Vec<InformationObjectDef> =
+            parsed.iter().map(|row| row.definition.clone()).collect();
         let reexported = encode_point_csv(&parsed_definitions, &HashMap::new()).unwrap();
         assert_eq!(reexported, exported);
 
@@ -1417,8 +1417,14 @@ mod tests {
         let duplicate = monitor_row(19);
 
         let error = parse_point_csv(&csv_bytes(&[first, duplicate])).unwrap_err();
-        assert!(error.contains("Row 2 [Period]"), "unexpected error: {error}");
-        assert!(error.contains("Row 3 [IOA/Type ID]"), "unexpected error: {error}");
+        assert!(
+            error.contains("Row 2 [Period]"),
+            "unexpected error: {error}"
+        );
+        assert!(
+            error.contains("Row 3 [IOA/Type ID]"),
+            "unexpected error: {error}"
+        );
         assert!(
             error.contains("first declared on row 2"),
             "the invalid row still owns the first valid key declaration: {error}"
@@ -1447,23 +1453,14 @@ mod tests {
         station.add_point(point_definition(1)).unwrap();
         server.add_station(station).await.unwrap();
         server
-            .start_point_mutation(
-                21,
-                1,
-                AsduTypeId::MSpNa1,
-                700,
-                MutationParams::default(),
-            )
+            .start_point_mutation(21, 1, AsduTypeId::MSpNa1, 700, MutationParams::default())
             .await
             .unwrap();
 
         let mut unrelated_bad_type = monitor_row(2);
         unrelated_bad_type[2] = "255".into();
-        let parsed = parse_point_csv_outcome(&csv_bytes(&[
-            monitor_row(1),
-            unrelated_bad_type,
-        ]))
-        .unwrap();
+        let parsed =
+            parse_point_csv_outcome(&csv_bytes(&[monitor_row(1), unrelated_bad_type])).unwrap();
         let error = apply_point_import_outcome(&server, &parsed, 21, ImportMode::Merge)
             .await
             .unwrap_err();

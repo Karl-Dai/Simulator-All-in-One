@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, inject, watch, onMounted, onUnmounted, computed, shallowRef, nextTick, type Ref } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { ReceivedDataPointInfo, IncrementalDataResponse, CommandType, ControlResult, ChangedCategoriesMap, CategoryCountsMap } from '../types'
 import { getControlConfig, asduHasTimestamp } from '../types'
 import ControlDialog from './ControlDialog.vue'

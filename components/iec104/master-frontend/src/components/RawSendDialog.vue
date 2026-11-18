@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { vModal } from "@app/simlab-ui/modal"
 import { ref, watch, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from '@app/simlab-ui/configInvoke'
 import type { RawSendResult } from '../types'
 import { useI18n } from '@shared/i18n'
 import AppButton from '@shared/components/ui/AppButton.vue'
@@ -164,14 +165,14 @@ async function send() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape' && !e.isComposing && e.keyCode !== 229) emit('close')
 }
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="dialog-pop">
-    <div v-if="visible" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
+    <div v-if="visible" v-modal="() => emit('close')" class="modal-backdrop dialog-blur" @mousedown.self="emit('close')" @keydown="handleKeydown">
       <div class="modal-box">
         <div class="modal-title">{{ t('rawSend.title') }}</div>
         <div class="modal-body">
