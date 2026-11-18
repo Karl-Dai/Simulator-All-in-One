@@ -21,6 +21,10 @@ HEAD = "a" * 40
 
 class SuiteTests(unittest.TestCase):
     def setUp(self):
+        # CI sets CARGO_TARGET_DIR on Windows builders; fixtures must not inherit it.
+        env = patch.dict(os.environ, {"CARGO_TARGET_DIR": ""})
+        env.start()
+        self.addCleanup(env.stop)
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)

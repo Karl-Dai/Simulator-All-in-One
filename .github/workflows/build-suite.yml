@@ -44,8 +44,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     env:
-      # Keep vendored OpenSSL generated paths below the Windows compiler limit.
-      CARGO_TARGET_DIR: ${{ matrix.platform == 'windows' && 'D:/t' || '' }}
       CARGO_INCREMENTAL: '0'
       PYTHONUTF8: '1'
       MACOSX_DEPLOYMENT_TARGET: '13.0'
@@ -80,6 +78,10 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v${{ steps.toolchain.outputs.wails }}
       - name: Install locked npm
         run: npm install --global "npm@${{ steps.toolchain.outputs.npm }}"
+      - name: Keep vendored OpenSSL generated paths below the Windows compiler limit
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: echo "CARGO_TARGET_DIR=D:/t" >> "$GITHUB_ENV"
       - name: Check and record build tools
         run: python scripts/toolchain.py record --output dist/toolchain-environment.json
       - name: Packaging tests

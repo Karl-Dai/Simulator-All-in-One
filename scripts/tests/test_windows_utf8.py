@@ -1,6 +1,7 @@
 """Portable payload configuration must not depend on the Windows ANSI locale."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -13,6 +14,11 @@ SPEC.loader.exec_module(suite)
 
 
 class WindowsUtf8Tests(unittest.TestCase):
+    def setUp(self):
+        env = patch.dict(os.environ, {"CARGO_TARGET_DIR": ""})
+        env.start()
+        self.addCleanup(env.stop)
+
     def test_collects_unicode_config_and_resources_under_cp1252_defaults(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
