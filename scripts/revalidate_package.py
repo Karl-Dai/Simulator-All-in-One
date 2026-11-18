@@ -96,7 +96,7 @@ def main():
     if suite.digest(package) != json.loads(receipt.read_text(encoding="utf-8"))["sha256"]:
         raise suite.SuiteError("Original package checksum mismatch")
     stage = suite.ROOT / "dist/staging" / f"{args.platform}-amd64"
-    lock = suite.read_lock()
+    lock = suite.read_manifest()
     if args.platform == "windows":
         cache = workspace / "portable-cache"
         env = dict(os.environ, LOCALAPPDATA=str(cache))

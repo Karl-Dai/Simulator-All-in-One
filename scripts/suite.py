@@ -17,7 +17,6 @@ import tarfile
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import sync_ui
 import toolchain
 import windows_portable
 
@@ -114,24 +113,48 @@ def launcher_source_fingerprint(root):
     return value.hexdigest()
 
 
-def read_lock(root=ROOT):
-    value = json.loads((root / "components.lock.json").read_text(encoding="utf-8"))
-    if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", value.get("suiteVersion", "")):
+def read_manifest(root=ROOT):
+    value = json.loads((root / "components.json").read_text(encoding="utf-8"))
+    config = json.loads((root / "wails.json").read_text(encoding="utf-8"))
+    value["suiteVersion"] = config["info"]["productVersion"]
+    if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", value["suiteVersion"]):
         raise SuiteError("The suite version must be a three-part release version")
     ids = [item["id"] for item in value["components"]]
-    if value.get("schemaVersion") != 1 or set(ids) != EXPECTED_IDS or len(ids) != 12:
-        raise SuiteError("The lock must contain exactly the twelve supported component IDs")
-    repo_ids = [repo["id"] for repo in value["repositories"]]
-    if len(set(repo_ids)) != len(repo_ids):
-        raise SuiteError("The lock must not repeat a source repository")
-    if {component["repository"] for component in value["components"]} != set(repo_ids):
-        raise SuiteError("Every source repository must provide at least one component")
-    for repo in value["repositories"]:
-        if not re.fullmatch(r"[0-9a-f]{40}", repo["commit"]):
-            raise SuiteError(f"Invalid source commit: {repo['id']}")
-        if repo.get("cargoLock") and digest(root / repo["cargoLock"]) != repo["cargoLockSha256"]:
-            raise SuiteError(f"Cargo dependency lock checksum mismatch: {repo['id']}")
+    if value.get("schemaVersion") != 2 or set(ids) != EXPECTED_IDS or len(ids) != 12:
+        raise SuiteError("The manifest must contain exactly the twelve supported component IDs")
+    for component in value["components"]:
+        directory = root / "components" / component["repository"]
+        if not directory.is_dir():
+            raise SuiteError(f"Missing component source directory: {directory}")
     return value
+
+
+def source_commit(root=ROOT):
+    return git(root, "rev-parse", "HEAD").strip()
+
+
+def assert_clean_worktree(root=ROOT):
+    status = git(root, "status", "--porcelain", "--untracked-files=no")
+    if status.strip():
+        raise SuiteError("Suite builds require a clean git worktree; commit or stash tracked changes first")
+
+
+def inject_icons(root=ROOT):
+    """Copy role icons from assets/roles into the component trees before building."""
+    manifest = read_manifest(root)
+    sizes = ("32x32.png", "128x128.png", "128x128@2x.png", "icon.png", "icon.icns", "icon.ico")
+    for component in manifest["components"]:
+        source = root / "assets/roles" / component["id"]
+        repo = root / "components" / component["repository"]
+        targets = [(source / "icon.svg", repo / component["frontend"] / "public/suite-icon.svg")]
+        targets += [(source / name, repo / component["project"] / "suite-icons" / name) for name in sizes]
+        if component["repository"] == "modbus":
+            targets.append((source / "128x128.png", repo / "go/internal/suitehost/icons" / (component["id"] + ".png")))
+        for origin, destination in targets:
+            if not origin.is_file():
+                raise SuiteError(f"Missing role icon: {origin}")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(origin, destination)
 
 
 def native_target(target, arch):
@@ -145,83 +168,6 @@ def git(repo, *args, capture=True):
     return run(["git", "-C", repo, *args], capture=capture)
 
 
-def fingerprint(repo):
-    status = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
-    value = hashlib.sha256(status.encode())
-    # Include working-tree content as well as the index. Ignored build outputs
-    # and dependency directories deliberately do not participate.
-    names = subprocess.check_output(["git", "-C", str(repo), "ls-files", "--modified", "--others", "--exclude-standard", "-z"])
-    for name in sorted(set(names.split(b"\0")) - {b""}):
-        path = repo / os.fsdecode(name)
-        value.update(name)
-        if path.is_symlink():
-            value.update(os.fsencode(os.readlink(path)))
-        elif path.is_file():
-            value.update(path.read_bytes())
-        else:
-            value.update(b"deleted")
-    value.update(subprocess.check_output(["git", "-C", str(repo), "diff", "--cached", "--binary"]))
-    return value.hexdigest()
-
-
-def state_path(workspace, repo):
-    return workspace / ".state" / (repo["id"] + ".json")
-
-
-def record_state(workspace, repo, root=ROOT):
-    path = workspace / repo["directory"]
-    write_json(state_path(workspace, repo), {
-        "commit": repo["commit"], "patchSha256": digest(root / repo["patch"]),
-        "fingerprint": fingerprint(path),
-    })
-
-
-def assert_source(workspace, repo, root=ROOT, allow_adopt=False):
-    path = workspace / repo["directory"]
-    if git(path, "rev-parse", "HEAD") != repo["commit"]:
-        raise SuiteError(f"Source commit mismatch: {path}")
-    stamp = state_path(workspace, repo)
-    if stamp.exists():
-        state = json.loads(stamp.read_text(encoding="utf-8"))
-        if state != {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "fingerprint": fingerprint(path)}:
-            raise SuiteError(f"Source was changed outside the recorded build: {path}; preserve it and use a fresh workspace")
-    elif allow_adopt:
-        # This explicit path accepts the initial agent-produced build only if
-        # its entire tracked diff is the reviewed patch, including new files.
-        actual = subprocess.check_output(["git", "-C", str(path), "diff", "HEAD", "--binary", "--no-ext-diff"])
-        if actual != (root / repo["patch"]).read_bytes():
-            raise SuiteError(f"Existing source does not exactly match its suite patch: {path}")
-    else:
-        raise SuiteError(f"No bootstrap state for {path}; bootstrap a clean clone first")
-
-
-def bootstrap(workspace, root=ROOT):
-    lock = read_lock(root)
-    require("git")
-    workspace.mkdir(parents=True, exist_ok=True)
-    for repo in lock["repositories"]:
-        path = workspace / repo["directory"]
-        if state_path(workspace, repo).exists():
-            assert_source(workspace, repo, root)
-            continue
-        if path.exists():
-            # Never reset, clean, pull or overwrite an unknown dirty checkout.
-            if git(path, "status", "--porcelain=v1", "--untracked-files=all"):
-                raise SuiteError(f"Refusing to adapt a dirty checkout: {path}")
-            if git(path, "rev-parse", "HEAD") != repo["commit"]:
-                raise SuiteError(f"Clean checkout has a different commit: {path}; use a fresh workspace")
-        else:
-            run(["git", "init", path])
-            git(path, "config", "core.autocrlf", "false", capture=False)
-            git(path, "remote", "add", "origin", repo["url"], capture=False)
-            git(path, "fetch", "--depth=1", "origin", repo["commit"], capture=False)
-            git(path, "checkout", "--detach", "FETCH_HEAD", capture=False)
-        patch = root / repo["patch"]
-        git(path, "apply", "--check", "--index", patch, capture=False)
-        git(path, "apply", "--index", patch, capture=False)
-        record_state(workspace, repo, root)
-
-
 def wails(root=ROOT):
     binary = shutil.which("wails")
     if not binary:
@@ -230,13 +176,6 @@ def wails(root=ROOT):
     if not Path(binary).is_file() or run([binary, "version"], capture=True).splitlines()[0] != "v" + version:
         raise SuiteError(f"Install the pinned CLI: go install github.com/wailsapp/wails/v2/cmd/wails@v{version}")
     return binary
-
-
-def verify_shared_ui(workspace, root=ROOT):
-    try:
-        sync_ui.check(workspace, root)
-    except (ValueError, OSError) as error:
-        raise SuiteError(str(error)) from error
 
 
 def build_tool_names(target):
@@ -353,18 +292,22 @@ def tauri_suite_config(source, component, version):
     return json.dumps(dict(config, version=version))
 
 
-def build(workspace, target, arch, root=ROOT):
+def build(target, arch, root=ROOT):
     native_target(target, arch)
+    assert_clean_worktree(root)
     tool_record = inspect_build_toolchain(root, target, arch)
     tool_digest = build_toolchain_digest(tool_record)
-    verify_shared_ui(workspace, root)
-    lock = read_lock(root)
+    manifest = read_manifest(root)
+    inject_icons(root)
     for tool in ("git", "npm", "go", "cargo", "rustc"):
         require(tool)
     wails_binary = wails(root)
+    head = source_commit(root)
+    receipts = root / "dist/receipts"
+    receipts.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["VITE_SIMLAB_SUITE"] = "1"
-    env["SAIO_VERSION"] = lock["suiteVersion"]
+    env["SAIO_VERSION"] = manifest["suiteVersion"]
     if target == "darwin":
         env["CGO_ENABLED"] = "1"
         env["CGO_CFLAGS"] = env.get("CGO_CFLAGS", "") + " -mmacosx-version-min=13.0"
@@ -374,44 +317,34 @@ def build(workspace, target, arch, root=ROOT):
         env["CGO_ENABLED"] = "0"
         triple = "aarch64-pc-windows-msvc" if arch == "arm64" else "x86_64-pc-windows-msvc"
         env["CARGO_TARGET_" + triple.upper().replace("-", "_") + "_RUSTFLAGS"] = "-C target-feature=+crt-static"
-    for repo in lock["repositories"]:
-        assert_source(workspace, repo, root)
-        source = workspace / repo["directory"]
-        components = [item for item in lock["components"] if item["repository"] == repo["id"]]
-        if repo.get("cargoLock"):
-            cargo_lock = source / "Cargo.lock"
-            if cargo_lock.exists() and digest(cargo_lock) != repo["cargoLockSha256"]:
-                raise SuiteError(f"Dependency lock differs: {cargo_lock}")
-            shutil.copy2(root / repo["cargoLock"], cargo_lock)
-        if repo["id"] == "modbus":
-            run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=source, env=env)
-        for component in components:
-            if repo["id"] == "modbus":
-                args = [bash(), (source / "go/scripts/suite.sh").as_posix(), component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath"]
-                if target == "windows":
-                    args += ["-webview2", "error"]
-                run(args, cwd=source, env=env)
-            else:
-                frontend = source / component["frontend"]
-                run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, env=env)
-                run(["npm", "run", "build"], cwd=frontend, env=env)
-                cli = frontend / "node_modules/@tauri-apps/cli/tauri.js"
-                args = [require("node"), cli, "build", "--ci", "--features", "simlab-suite", "--config", tauri_suite_config(source, component, lock["suiteVersion"])]
-                args += ["--bundles", "app"] if target == "darwin" else ["--no-bundle"]
-                if target == "windows":
-                    args += ["--target", triple]
-                run(args + ["--", "--locked"], cwd=source / component["project"], env=env)
-            source_exe = payload_executable(source, component, target, arch)
-            write_json(workspace / ".state" / (component["id"] + ".build.json"), {
-                "commit": repo["commit"], "patchSha256": digest(root / repo["patch"]),
-                "platform": target, "architecture": arch, "sha256": digest(source_exe), "suiteBuild": True,
-                "suiteVersion": lock["suiteVersion"],
-                "payloadTreeSha256": source_payload_digest(source, component, target, arch),
-                "toolchainSha256": tool_digest,
-            })
-        # Record only changes made by the explicit tool invocations above;
-        # subsequent unrecorded source edits cause the next build to fail.
-        record_state(workspace, repo, root)
+    installed = set()
+    for component in manifest["components"]:
+        source = root / "components" / component["repository"]
+        if component["repository"] == "modbus":
+            if component["repository"] not in installed:
+                run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=source, env=env)
+                installed.add(component["repository"])
+            args = [bash(), (source / "go/scripts/suite.sh").as_posix(), component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath"]
+            if target == "windows":
+                args += ["-webview2", "error"]
+            run(args, cwd=source, env=env)
+        else:
+            frontend = source / component["frontend"]
+            run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, env=env)
+            run(["npm", "run", "build"], cwd=frontend, env=env)
+            cli = frontend / "node_modules/@tauri-apps/cli/tauri.js"
+            args = [require("node"), cli, "build", "--ci", "--features", "simlab-suite", "--config", tauri_suite_config(source, component, manifest["suiteVersion"])]
+            args += ["--bundles", "app"] if target == "darwin" else ["--no-bundle"]
+            if target == "windows":
+                args += ["--target", triple]
+            run(args + ["--", "--locked"], cwd=source / component["project"], env=env)
+        source_exe = payload_executable(source, component, target, arch)
+        write_json(receipts / (component["id"] + ".build.json"), {
+            "commit": head, "platform": target, "architecture": arch, "sha256": digest(source_exe), "suiteBuild": True,
+            "suiteVersion": manifest["suiteVersion"],
+            "payloadTreeSha256": source_payload_digest(source, component, target, arch),
+            "toolchainSha256": tool_digest,
+        })
     run(["npm", "ci", "--no-audit", "--no-fund"], cwd=root / "frontend", env=env)
     args = [wails_binary, "build", "-platform", f"{target}/{arch}", "-trimpath"]
     if target == "linux":
@@ -419,8 +352,8 @@ def build(workspace, target, arch, root=ROOT):
     if target == "windows":
         args += ["-webview2", "error"]
     run(args, cwd=root, env=env)
-    write_json(workspace / ".state/launcher.build.json", launcher_receipt(root, lock, target, arch, tool_record))
-    write_json(workspace / ".state/toolchain.build.json", tool_record)
+    write_json(receipts / "launcher.build.json", launcher_receipt(root, manifest, target, arch, tool_record))
+    write_json(receipts / "toolchain.build.json", tool_record)
 
 
 def app_entry(app):
@@ -439,15 +372,24 @@ def app_entry(app):
     return entry, info
 
 
+def cargo_target(source):
+    override = os.environ.get("CARGO_TARGET_DIR")
+    return Path(override) if override else source / "target"
+
+
 def payload_executable(source, component, target, arch=None):
-    if target == "darwin":
-        app = source / (component["project"] + "/build/bin" if component["repository"] == "modbus" else "target/release/bundle/macos") / (component["product"] + ".app")
-        return app_entry(app)[0]
-    folder = source / (component["project"] + "/build/bin" if component["repository"] == "modbus" else "target/release")
-    if target == "windows" and arch and component["repository"] != "modbus":
+    if component["repository"] == "modbus":
+        folder = source / component["project"] / "build/bin"
+        if target == "darwin":
+            return app_entry(folder / (component["product"] + ".app"))[0]
+        return folder / (component["binary"] + (".exe" if target == "windows" else ""))
+    base = cargo_target(source)
+    if target == "windows" and arch:
         triple = "aarch64-pc-windows-msvc" if arch == "arm64" else "x86_64-pc-windows-msvc"
-        folder = source / "target" / triple / "release"
-    return folder / (component["binary"] + (".exe" if target == "windows" else ""))
+        base = base / triple
+    if target == "darwin":
+        return app_entry(base / "release/bundle/macos" / (component["product"] + ".app"))[0]
+    return base / "release" / (component["binary"] + (".exe" if target == "windows" else ""))
 
 
 def safe_path(root, relative):
@@ -547,10 +489,10 @@ def copy_launcher(root, target, destination):
     return destination / name
 
 
-def launcher_receipt(root, lock, target, arch, tool_record):
+def launcher_receipt(root, manifest, target, arch, tool_record):
     config = json.loads((root / "wails.json").read_text(encoding="utf-8"))
-    if config["info"]["productVersion"] != lock["suiteVersion"]:
-        raise SuiteError("Launcher source version does not match the suite lock")
+    if config["info"]["productVersion"] != manifest["suiteVersion"]:
+        raise SuiteError("Launcher source version does not match the suite manifest")
     if target == "darwin":
         app = root / "build/bin/Simulator All-in-One.app"
         entry, _ = app_entry(app)
@@ -560,7 +502,7 @@ def launcher_receipt(root, lock, target, arch, tool_record):
             entry = copy_launcher(root, target, Path(directory))
             snapshot = tree_snapshot(Path(directory))
     entry = root / "build/bin/Simulator All-in-One.app/Contents/MacOS/SAIO" if target == "darwin" else root / "build/bin" / ("SAIO.exe" if target == "windows" else "SAIO")
-    return {"suiteVersion": lock["suiteVersion"], "platform": target, "architecture": arch,
+    return {"suiteVersion": manifest["suiteVersion"], "platform": target, "architecture": arch,
             "sourceFingerprint": launcher_source_fingerprint(root), "sha256": digest(entry),
             "payloadTreeSha256": tree_digest(snapshot),
             "toolchainSha256": build_toolchain_digest(tool_record)}
@@ -587,20 +529,18 @@ def assert_architecture(executable, target, arch):
             raise SuiteError(f"Linux architecture mismatch: {executable}")
 
 
-def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
-    lock = read_lock(root)
-    repos = {item["id"]: item for item in lock["repositories"]}
-    for repo in repos.values():
-        assert_source(workspace, repo, root, allow_adopt=adopt)
-    tool_record = None
-    if not (adopt and target == "darwin"):
-        tool_stamp = workspace / ".state/toolchain.build.json"
-        if not tool_stamp.is_file():
-            raise SuiteError("Missing build toolchain record; run a complete native build")
-        tool_record = validate_build_toolchain(json.loads(tool_stamp.read_text(encoding="utf-8")), root, target, arch)
-        stamp = workspace / ".state/launcher.build.json"
-        if not stamp.is_file() or json.loads(stamp.read_text(encoding="utf-8")) != launcher_receipt(root, lock, target, arch, tool_record):
-            raise SuiteError("Missing or stale launcher source/version/payload receipt")
+def collect(target, arch, root=ROOT, identity="-"):
+    manifest = read_manifest(root)
+    assert_clean_worktree(root)
+    head = source_commit(root)
+    receipts = root / "dist/receipts"
+    tool_stamp = receipts / "toolchain.build.json"
+    if not tool_stamp.is_file():
+        raise SuiteError("Missing build toolchain record; run a complete native build")
+    tool_record = validate_build_toolchain(json.loads(tool_stamp.read_text(encoding="utf-8")), root, target, arch)
+    stamp = receipts / "launcher.build.json"
+    if not stamp.is_file() or json.loads(stamp.read_text(encoding="utf-8")) != launcher_receipt(root, manifest, target, arch, tool_record):
+        raise SuiteError("Missing or stale launcher source/version/payload receipt")
     output = root / "dist/staging" / f"{target}-{arch}"
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".collect-", dir=output.parent) as directory:
@@ -608,8 +548,8 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
         if target == "darwin":
             source = root / "build/bin/Simulator All-in-One.app"
             root_entry, info = app_entry(source)
-            if info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
-                raise SuiteError("Launcher version does not match components.lock.json")
+            if info.get("CFBundleShortVersionString") != manifest["suiteVersion"]:
+                raise SuiteError("Launcher version does not match components.json")
             if tuple(map(int, info.get("LSMinimumSystemVersion", "0").split("."))) < (13, 0):
                 raise SuiteError("The suite launcher must declare macOS 13.0 or later")
             assert_architecture(root_entry, target, arch)
@@ -626,22 +566,20 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             copy_launcher(root, target, suite_root)
         launcher_files = tree_snapshot(suite_root) if target != "darwin" else None
         entries = []
-        for component in lock["components"]:
-            repo = repos[component["repository"]]
-            source = workspace / repo["directory"]
+        for component in manifest["components"]:
+            source = root / "components" / component["repository"]
             original = payload_executable(source, component, target, arch)
             if not original.is_file():
                 raise SuiteError(f"Missing required role {component['id']}: {original}")
             assert_architecture(original, target, arch)
-            receipt = workspace / ".state" / (component["id"] + ".build.json")
-            if not (adopt and target == "darwin"):
-                expected = {"commit": repo["commit"], "patchSha256": digest(root / repo["patch"]), "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "suiteVersion": lock["suiteVersion"], "payloadTreeSha256": source_payload_digest(source, component, target, arch), "toolchainSha256": build_toolchain_digest(tool_record)}
-                if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != expected:
-                    raise SuiteError(f"Missing or stale suite-build receipt: {component['id']}")
+            receipt = receipts / (component["id"] + ".build.json")
+            expected = {"commit": head, "platform": target, "architecture": arch, "sha256": digest(original), "suiteBuild": True, "suiteVersion": manifest["suiteVersion"], "payloadTreeSha256": source_payload_digest(source, component, target, arch), "toolchainSha256": build_toolchain_digest(tool_record)}
+            if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != expected:
+                raise SuiteError(f"Missing or stale suite-build receipt: {component['id']}")
             if target == "darwin":
                 source_app = original.parents[2]
                 _, info = app_entry(source_app)
-                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
+                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != manifest["suiteVersion"]:
                     raise SuiteError(f"Child bundle identity/version mismatch: {component['id']}")
                 child = suite_root / "Helpers" / (component["product"] + ".app")
                 shutil.copytree(source_app, child, symlinks=True)
@@ -651,22 +589,22 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
             else:
                 executable = copy_portable(source, component, target, suite_root / "apps" / component["id"], arch)
                 payload_root = executable.parent
-            entries.append({"id": component["id"], "version": lock["suiteVersion"], "sourceVersion": component.get("sourceVersion", ""),
-                            "sourceCommit": repo["commit"], "sourcePatchSha256": digest(root / repo["patch"]), "executable": executable.relative_to(suite_root).as_posix(), "sha256": digest(executable), "suiteBuild": True,
+            entries.append({"id": component["id"], "version": manifest["suiteVersion"],
+                            "sourceCommit": head, "executable": executable.relative_to(suite_root).as_posix(), "sha256": digest(executable), "suiteBuild": True,
                             "payloadRoot": payload_root.relative_to(suite_root).as_posix(), "payloadFiles": tree_snapshot(payload_root)})
         assert_tree_links(suite_root)
-        manifest = suite_root / ("Resources/suite-manifest.json" if target == "darwin" else "suite-manifest.json")
-        manifest_value = {"schemaVersion": 1, "suiteVersion": lock["suiteVersion"], "platform": target, "architecture": arch, "components": entries}
+        manifest_path = suite_root / ("Resources/suite-manifest.json" if target == "darwin" else "suite-manifest.json")
+        manifest_value = {"schemaVersion": 1, "suiteVersion": manifest["suiteVersion"], "sourceCommit": head, "platform": target, "architecture": arch, "components": entries}
         if tool_record is not None:
             manifest_value["buildToolchain"] = tool_record
         if launcher_files is not None:
             manifest_value["launcherFiles"] = launcher_files
-        write_json(manifest, manifest_value)
+        write_json(manifest_path, manifest_value)
         if target == "darwin":
             # Child hashes are final; only sign the outer app now.
             run(["codesign", "--force", "--sign", identity, app])
             run(["codesign", "--verify", "--deep", "--strict", app])
-        verify_manifest(suite_root, lock, root=root)
+        verify_manifest(suite_root, manifest, root=root)
         previous = output.with_name(".previous-" + temporary.name)
         if output.exists():
             output.rename(previous)
@@ -682,17 +620,16 @@ def collect(workspace, target, arch, root=ROOT, adopt=False, identity="-"):
     return output
 
 
-def verify_manifest(suite_root, lock=None, root=ROOT):
+def verify_manifest(suite_root, manifest=None, root=ROOT):
     manifest_path = suite_root / ("Resources/suite-manifest.json" if suite_root.name == "Contents" else "suite-manifest.json")
     value = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = value.get("components", [])
     if value.get("schemaVersion") != 1 or len(entries) != len(EXPECTED_IDS) or {item["id"] for item in entries} != EXPECTED_IDS:
         raise SuiteError("Manifest is incomplete or contains duplicate/unknown roles")
-    expected = {item["id"]: item for item in lock["components"]} if lock else {}
-    repos = {item["id"]: item for item in lock["repositories"]} if lock else {}
+    expected = {item["id"]: item for item in manifest["components"]} if manifest else {}
     if value.get("platform") not in ("darwin", "windows", "linux") or value.get("architecture") not in ("amd64", "arm64"):
         raise SuiteError("Unsupported manifest target")
-    if lock and value.get("suiteVersion") != lock["suiteVersion"]:
+    if manifest and value.get("suiteVersion") != manifest["suiteVersion"]:
         raise SuiteError("Suite version mismatch")
     if "buildToolchain" in value:
         validate_build_toolchain(value["buildToolchain"], root, value["platform"], value["architecture"])
@@ -710,16 +647,13 @@ def verify_manifest(suite_root, lock=None, root=ROOT):
             raise SuiteError(f"Payload missing or checksum mismatch: {item['id']}")
         if "payloadFiles" in item and tree_snapshot(safe_path(suite_root, item["payloadRoot"])) != item["payloadFiles"]:
             raise SuiteError(f"Payload resource tree changed: {item['id']}")
-        if lock:
+        if manifest:
             component = expected[item["id"]]
-            repo = repos[component["repository"]]
-            if (item["sourceCommit"] != repo["commit"]
-                    or item.get("sourceVersion", "") != component.get("sourceVersion", "")
-                    or item.get("sourcePatchSha256") != digest(root / repo["patch"])):
-                raise SuiteError(f"Component version/source mismatch: {item['id']}")
+            if item["sourceCommit"] != value.get("sourceCommit"):
+                raise SuiteError(f"Component source commit mismatch: {item['id']}")
             if value["platform"] == "darwin":
                 _, info = app_entry(executable.parents[2])
-                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != lock["suiteVersion"]:
+                if info.get("CFBundleIdentifier") != component["bundleId"] or info.get("CFBundleShortVersionString") != manifest["suiteVersion"]:
                     raise SuiteError(f"Component bundle identity mismatch: {item['id']}")
     assert_tree_links(suite_root)
     return value
@@ -731,15 +665,15 @@ def suite_root_for(root, target, arch):
 
 
 def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
-    lock = read_lock(root)
+    manifest = read_manifest(root)
     stage = root / "dist/staging" / f"{target}-{arch}"
     suite_root = suite_root_for(root, target, arch)
-    manifest = verify_manifest(suite_root, lock, root=root)
-    if manifest["platform"] != target or manifest["architecture"] != arch:
+    manifest_value = verify_manifest(suite_root, manifest, root=root)
+    if manifest_value["platform"] != target or manifest_value["architecture"] != arch:
         raise SuiteError("Package target does not match the staged manifest")
     output = root / "dist/packages"
     output.mkdir(parents=True, exist_ok=True)
-    name = f"SAIO_{lock['suiteVersion']}_{target}-{arch}"
+    name = f"SAIO_{manifest['suiteVersion']}_{target}-{arch}"
     if target == "darwin":
         require("ditto")
         require("hdiutil")
@@ -764,7 +698,7 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
         except toolchain.ToolchainError as error:
             raise SuiteError(str(error)) from error
         destination = output / (name + "-portable.exe")
-        windows_portable.build(stage, destination, lock["suiteVersion"], root, run, digest)
+        windows_portable.build(stage, destination, manifest["suiteVersion"], root, run, digest)
         assert_architecture(destination, target, arch)
     else:
         native_target(target, arch)
@@ -785,7 +719,7 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
             with tarfile.open(temporary.name, "w:gz") as archive:
                 archive.add(stage, arcname="SAIO", recursive=True)
             payload_hash = digest(temporary.name)
-            header = (root / "packaging/linux/self-extract.sh").read_text(encoding="utf-8").replace("@PAYLOAD_SHA256@", payload_hash).replace("@INDEX_SHA256@", digest(index)).replace("@VERSION@", lock["suiteVersion"]).replace("@ARCH@", arch)
+            header = (root / "packaging/linux/self-extract.sh").read_text(encoding="utf-8").replace("@PAYLOAD_SHA256@", payload_hash).replace("@INDEX_SHA256@", digest(index)).replace("@VERSION@", manifest["suiteVersion"]).replace("@ARCH@", arch)
             with destination.open("wb") as stream:
                 stream.write(header.encode())
                 stream.write(Path(temporary.name).read_bytes())
@@ -796,23 +730,22 @@ def package(target, arch, root=ROOT, webview2=None, webview2_sha256=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["bootstrap", "build", "collect", "verify", "package"])
-    parser.add_argument("--workspace", type=Path, default=ROOT / ".components")
+    parser.add_argument("command", choices=["icons", "build", "collect", "verify", "package"])
     parser.add_argument("--platform", choices=["darwin", "windows", "linux"], default={"Darwin": "darwin", "Windows": "windows", "Linux": "linux"}.get(host_platform.system()))
     parser.add_argument("--arch", choices=["arm64", "amd64"], default="arm64" if host_platform.machine().lower() in ("arm64", "aarch64") else "amd64")
-    parser.add_argument("--adopt-existing", action="store_true", help="Explicitly accept this initial macOS build after exact patch and bundle-ID checks")
     parser.add_argument("--signing-identity", default=os.environ.get("SIMLAB_SIGNING_IDENTITY", "-"))
     parser.add_argument("--webview2", type=Path)
     parser.add_argument("--webview2-sha256")
     args = parser.parse_args()
-    if args.command == "bootstrap":
-        bootstrap(args.workspace.resolve())
+    if args.command == "icons":
+        inject_icons()
+        print("Injected role icons into all component trees")
     elif args.command == "build":
-        build(args.workspace.resolve(), args.platform, args.arch)
+        build(args.platform, args.arch)
     elif args.command == "collect":
-        collect(args.workspace.resolve(), args.platform, args.arch, adopt=args.adopt_existing, identity=args.signing_identity)
+        collect(args.platform, args.arch, identity=args.signing_identity)
     elif args.command == "verify":
-        value = verify_manifest(suite_root_for(ROOT, args.platform, args.arch), read_lock())
+        value = verify_manifest(suite_root_for(ROOT, args.platform, args.arch), read_manifest())
         print(f"Verified {len(value['components'])}/{len(EXPECTED_IDS)} roles for {args.platform}/{args.arch}")
     else:
         package(args.platform, args.arch, webview2=args.webview2, webview2_sha256=args.webview2_sha256)

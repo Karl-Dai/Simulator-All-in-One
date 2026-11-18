@@ -1,4 +1,3 @@
-.components/
 .scaffold/
 .tools/
 dist/
@@ -15,3 +14,15 @@ __pycache__/
 .codegraph/
 .playwright-cli/
 .slim/deepwork/
+
+# Legacy clone workspace from the pre-monorepo assembly; safe to delete.
+.components/
+
+# Monorepo: generated role icons (injected by scripts/suite.py icons)
+components/*/*/public/suite-icon.svg
+components/*/crates/*/suite-icons/
+components/*/go/cmd/*/suite-icons/
+components/modbus/go/internal/suitehost/icons/
+storage/rust/target/
+/Simulator-All-in-One
+/output/

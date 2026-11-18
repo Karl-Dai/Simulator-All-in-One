@@ -1,4 +1,5 @@
 import importlib.util
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -15,46 +16,101 @@ SPEC = importlib.util.spec_from_file_location("suite", Path(__file__).resolve().
 suite = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(suite)
 
+HEAD = "a" * 40
+
 
 class SuiteTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        self.workspace = self.root / ".components"
-        self.lock = suite.read_lock()
-        for repo in self.lock["repositories"]:
-            (self.root / repo["patch"]).parent.mkdir(exist_ok=True)
-            (self.root / repo["patch"]).write_text("fixture patch\n")
-            if repo.get("cargoLock"):
-                target = self.root / repo["cargoLock"]
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text("fixture dependency lock\n")
-                repo["cargoLockSha256"] = suite.digest(target)
-        suite.write_json(self.root / "components.lock.json", self.lock)
+        self.manifest = suite.read_manifest()
+        suite.write_json(self.root / "components.json",
+                         {k: v for k, v in self.manifest.items() if k != "suiteVersion"})
         shutil.copyfile(suite.ROOT / "toolchain.lock.json", self.root / "toolchain.lock.json")
+        suite.write_json(self.root / "wails.json", {"info": {"productVersion": self.manifest["suiteVersion"]}})
+        for repo in {c["repository"] for c in self.manifest["components"]}:
+            (self.root / "components" / repo).mkdir(parents=True)
+
+    def component_source(self, component):
+        return self.root / "components" / component["repository"]
+
+    def test_read_manifest_requires_twelve_roles_and_wails_version(self):
+        value = suite.read_manifest(self.root)
+        self.assertEqual(value["suiteVersion"], json.loads((suite.ROOT / "wails.json").read_text())["info"]["productVersion"])
+        broken = {k: v for k, v in self.manifest.items() if k != "suiteVersion"}
+        broken["components"] = broken["components"][:-1]
+        suite.write_json(self.root / "components.json", broken)
+        with self.assertRaisesRegex(suite.SuiteError, "twelve supported component IDs"):
+            suite.read_manifest(self.root)
+        suite.write_json(self.root / "components.json", dict(broken, schemaVersion=1, components=self.manifest["components"]))
+        with self.assertRaisesRegex(suite.SuiteError, "twelve supported component IDs"):
+            suite.read_manifest(self.root)
 
     def test_tauri_version_override_preserves_standalone_source_and_suite_identity(self):
-        component = self.lock["components"][2]
-        project = self.workspace / component["project"]
+        component = self.manifest["components"][2]
+        project = self.component_source(component) / component["project"]
         project.mkdir(parents=True)
         config = {"identifier": component["bundleId"], "bundle": {"createUpdaterArtifacts": False}}
         path = project / "tauri.suite.conf.json"
         suite.write_json(path, config)
         original = path.read_bytes()
-        override = json.loads(suite.tauri_suite_config(self.workspace, component, "9.8.7"))
+        override = json.loads(suite.tauri_suite_config(self.component_source(component), component, "9.8.7"))
         self.assertEqual(override, dict(config, version="9.8.7"))
         self.assertEqual(path.read_bytes(), original)
 
-    def test_collect_rejects_previous_suite_version_receipts(self):
-        self.recorded_mac_fixture()
-        path = self.workspace / ".state/modbus.master.build.json"
-        receipt = json.loads(path.read_text())
-        receipt["suiteVersion"] = "0.0.1"
-        suite.write_json(path, receipt)
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"):
-            with self.assertRaisesRegex(suite.SuiteError, "stale suite-build receipt"):
-                suite.collect(self.workspace, "darwin", "arm64", root=self.root)
+    def test_build_rejects_dirty_worktree_before_any_tool_invocation(self):
+        with patch.object(suite, "native_target"), \
+                patch.object(suite, "git", return_value=" M components/modbus/go/app.go"), \
+                patch.object(suite, "run") as run:
+            with self.assertRaisesRegex(suite.SuiteError, "clean git worktree"):
+                suite.build("darwin", "arm64", self.root)
+        run.assert_not_called()
+        with patch.object(suite, "git", return_value=""):
+            suite.assert_clean_worktree(self.root)
+
+    def test_build_rejects_wrong_tools_before_reading_components_or_compiling(self):
+        with patch.object(suite, "native_target"), patch.object(suite, "assert_clean_worktree"), \
+                patch.object(suite.toolchain, "check_tools", side_effect=suite.toolchain.ToolchainError("node version mismatch")), \
+                patch.object(suite, "inject_icons") as icons, patch.object(suite, "run") as run:
+            with self.assertRaisesRegex(suite.SuiteError, "node version mismatch"):
+                suite.build("darwin", "arm64", self.root)
+        icons.assert_not_called()
+        run.assert_not_called()
+
+    def test_inject_icons_copies_role_assets_and_rejects_missing_sources(self):
+        shutil.copytree(suite.ROOT / "assets/roles", self.root / "assets/roles")
+        suite.inject_icons(self.root)
+        sizes = ("32x32.png", "128x128.png", "128x128@2x.png", "icon.png", "icon.icns", "icon.ico")
+        for component in self.manifest["components"]:
+            source = self.root / "assets/roles" / component["id"]
+            repo = self.component_source(component)
+            targets = [repo / component["frontend"] / "public/suite-icon.svg"]
+            targets += [repo / component["project"] / "suite-icons" / name for name in sizes]
+            if component["repository"] == "modbus":
+                targets.append(repo / "go/internal/suitehost/icons" / (component["id"] + ".png"))
+            for target in targets:
+                self.assertTrue(target.is_file(), target)
+            self.assertEqual((repo / component["frontend"] / "public/suite-icon.svg").read_bytes(),
+                             (source / "icon.svg").read_bytes())
+        (self.root / "assets/roles/modbus.master/icon.svg").unlink()
+        with self.assertRaisesRegex(suite.SuiteError, "Missing role icon"):
+            suite.inject_icons(self.root)
+
+    def test_payload_executable_honors_cargo_target_dir(self):
+        component = next(c for c in self.manifest["components"] if c["repository"] == "iec104")
+        source = self.component_source(component)
+        default = suite.payload_executable(source, component, "linux")
+        self.assertEqual(default, source / "target/release" / component["binary"])
+        with patch.dict(os.environ, {"CARGO_TARGET_DIR": "/short/t"}):
+            self.assertEqual(suite.payload_executable(source, component, "linux"),
+                             Path("/short/t/release") / component["binary"])
+            self.assertEqual(suite.payload_executable(source, component, "windows", "amd64"),
+                             Path("/short/t/x86_64-pc-windows-msvc/release") / (component["binary"] + ".exe"))
+        modbus = next(c for c in self.manifest["components"] if c["repository"] == "modbus")
+        with patch.dict(os.environ, {"CARGO_TARGET_DIR": "/short/t"}):
+            self.assertEqual(suite.payload_executable(self.component_source(modbus), modbus, "linux"),
+                             self.component_source(modbus) / modbus["project"] / "build/bin" / modbus["binary"])
 
     def toolchain_fixture(self, target="darwin", arch="arm64"):
         locked = suite.toolchain.load_lock(self.root / "toolchain.lock.json")
@@ -66,14 +122,22 @@ class SuiteTests(unittest.TestCase):
                            "matches": True, "path": "/fixture/bin/" + name}
                           for name in suite.build_tool_names(target)]}
 
-    def test_build_rejects_wrong_tools_before_reading_components_or_compiling(self):
-        with patch.object(suite, "native_target"), \
-                patch.object(suite.toolchain, "check_tools", side_effect=suite.toolchain.ToolchainError("node version mismatch")), \
-                patch.object(suite, "verify_shared_ui") as shared, patch.object(suite, "run") as run:
-            with self.assertRaisesRegex(suite.SuiteError, "node version mismatch"):
-                suite.build(self.workspace, "darwin", "arm64", self.root)
-        shared.assert_not_called()
-        run.assert_not_called()
+    def make_app(self, app, identity, version, content=b"fixture"):
+        binary = app / "Contents/MacOS/payload"
+        binary.parent.mkdir(parents=True)
+        binary.write_bytes(content)
+        info = {"CFBundleExecutable": "payload", "CFBundleIdentifier": identity,
+                "CFBundleShortVersionString": version, "LSMinimumSystemVersion": "13.0"}
+        (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
+        return binary
+
+    def mac_fixture(self):
+        version = self.manifest["suiteVersion"]
+        self.make_app(self.root / "build/bin/Simulator All-in-One.app", "cloud.carldai.simlab", version)
+        for component in self.manifest["components"]:
+            source = self.component_source(component)
+            parent = source / (component["project"] + "/build/bin" if component["repository"] == "modbus" else "target/release/bundle/macos")
+            self.make_app(parent / (component["product"] + ".app"), component["bundleId"], version)
 
     def recorded_mac_fixture(self):
         self.mac_fixture()
@@ -84,38 +148,55 @@ class SuiteTests(unittest.TestCase):
         (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
         for name in ("main.go", "app.go", "go.mod", "go.sum"):
             (self.root / name).write_text("fixture source")
-        suite.write_json(self.root / "wails.json", {"info": {"productVersion": self.lock["suiteVersion"]}})
+        suite.write_json(self.root / "wails.json", {"info": {"productVersion": self.manifest["suiteVersion"]}})
         record = self.toolchain_fixture()
-        suite.write_json(self.workspace / ".state/toolchain.build.json", record)
-        suite.write_json(self.workspace / ".state/launcher.build.json",
-                         suite.launcher_receipt(self.root, self.lock, "darwin", "arm64", record))
-        repos = {repo["id"]: repo for repo in self.lock["repositories"]}
-        for component in self.lock["components"]:
-            repo = repos[component["repository"]]
-            source = self.workspace / repo["directory"]
+        receipts = self.root / "dist/receipts"
+        suite.write_json(receipts / "toolchain.build.json", record)
+        suite.write_json(receipts / "launcher.build.json",
+                         suite.launcher_receipt(self.root, self.manifest, "darwin", "arm64", record))
+        for component in self.manifest["components"]:
+            source = self.component_source(component)
             binary = suite.payload_executable(source, component, "darwin", "arm64")
-            suite.write_json(self.workspace / ".state" / (component["id"] + ".build.json"), {
-                "commit": repo["commit"], "patchSha256": suite.digest(self.root / repo["patch"]),
+            suite.write_json(receipts / (component["id"] + ".build.json"), {
+                "commit": HEAD,
                 "platform": "darwin", "architecture": "arm64", "sha256": suite.digest(binary),
-                "suiteBuild": True, "suiteVersion": self.lock["suiteVersion"], "payloadTreeSha256": suite.source_payload_digest(source, component, "darwin", "arm64"),
+                "suiteBuild": True, "suiteVersion": self.manifest["suiteVersion"],
+                "payloadTreeSha256": suite.source_payload_digest(source, component, "darwin", "arm64"),
                 "toolchainSha256": suite.build_toolchain_digest(record),
             })
         return record
 
+    def collect_mocks(self):
+        stack = ExitStack()
+        stack.enter_context(patch.object(suite, "assert_clean_worktree"))
+        stack.enter_context(patch.object(suite, "source_commit", return_value=HEAD))
+        stack.enter_context(patch.object(suite, "assert_architecture"))
+        return stack
+
+    def test_collect_rejects_previous_suite_version_receipts(self):
+        self.recorded_mac_fixture()
+        path = self.root / "dist/receipts/modbus.master.build.json"
+        receipt = json.loads(path.read_text())
+        receipt["suiteVersion"] = "0.0.1"
+        suite.write_json(path, receipt)
+        with self.collect_mocks():
+            with self.assertRaisesRegex(suite.SuiteError, "stale suite-build receipt"):
+                suite.collect("darwin", "arm64", root=self.root)
+
     def test_collect_preserves_saved_toolchain_without_installed_compilers(self):
         record = self.recorded_mac_fixture()
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), \
+        with self.collect_mocks(), \
                 patch.object(suite, "sign_app"), patch.object(suite, "run"), \
                 patch.object(suite.toolchain, "check_tools", side_effect=AssertionError("collect must not inspect tools")):
-            output = suite.collect(self.workspace, "darwin", "arm64", root=self.root)
-        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
+            output = suite.collect("darwin", "arm64", root=self.root)
+        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.manifest, root=self.root)
         self.assertEqual(manifest["buildToolchain"], record)
 
     def test_verify_and_package_reject_stale_or_invalid_toolchain_before_packaging(self):
         record = self.recorded_mac_fixture()
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), \
+        with self.collect_mocks(), \
                 patch.object(suite, "sign_app"), patch.object(suite, "run"):
-            output = suite.collect(self.workspace, "darwin", "arm64", root=self.root)
+            output = suite.collect("darwin", "arm64", root=self.root)
         root = output / "Simulator All-in-One.app/Contents"
         path = root / "Resources/suite-manifest.json"
         original = json.loads(path.read_text())
@@ -124,7 +205,7 @@ class SuiteTests(unittest.TestCase):
             suite.write_json(path, dict(original, buildToolchain=bad_record))
             with self.subTest(record=bad_record), patch.object(suite, "run") as command:
                 with self.assertRaises(suite.SuiteError):
-                    suite.verify_manifest(root, self.lock, root=self.root)
+                    suite.verify_manifest(root, self.manifest, root=self.root)
                 with self.assertRaises(suite.SuiteError):
                     suite.package("darwin", "arm64", root=self.root)
                 command.assert_not_called()
@@ -133,7 +214,7 @@ class SuiteTests(unittest.TestCase):
         changed["tools"]["node"]["version"] = "99.0.0"
         suite.write_json(self.root / "toolchain.lock.json", changed)
         with self.assertRaisesRegex(suite.SuiteError, "stale build toolchain"):
-            suite.verify_manifest(root, self.lock, root=self.root)
+            suite.verify_manifest(root, self.manifest, root=self.root)
 
     def test_collect_rejects_changed_toolchain_or_mixed_receipts_and_keeps_old_stage(self):
         self.recorded_mac_fixture()
@@ -146,27 +227,18 @@ class SuiteTests(unittest.TestCase):
         locked = json.loads(original)
         locked["tools"]["node"]["version"] = "99.0.0"
         suite.write_json(lock_path, locked)
-        with patch.object(suite, "assert_source"):
+        with self.collect_mocks():
             with self.assertRaisesRegex(suite.SuiteError, "stale build toolchain"):
-                suite.collect(self.workspace, "darwin", "arm64", root=self.root)
+                suite.collect("darwin", "arm64", root=self.root)
         lock_path.write_bytes(original)
-        receipt = self.workspace / ".state/modbus.master.build.json"
+        receipt = self.root / "dist/receipts/modbus.master.build.json"
         value = json.loads(receipt.read_text())
         value["toolchainSha256"] = "0" * 64
         suite.write_json(receipt, value)
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"):
+        with self.collect_mocks():
             with self.assertRaisesRegex(suite.SuiteError, "stale suite-build receipt"):
-                suite.collect(self.workspace, "darwin", "arm64", root=self.root)
+                suite.collect("darwin", "arm64", root=self.root)
         self.assertEqual(marker.read_text(), "preserve")
-
-    def make_app(self, app, identity, version, content=b"fixture"):
-        binary = app / "Contents/MacOS/payload"
-        binary.parent.mkdir(parents=True)
-        binary.write_bytes(content)
-        info = {"CFBundleExecutable": "payload", "CFBundleIdentifier": identity,
-                "CFBundleShortVersionString": version, "LSMinimumSystemVersion": "13.0"}
-        (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
-        return binary
 
     def test_windows_build_uses_git_bash_instead_of_system_wsl_shim(self):
         git = self.root / "Git/cmd/git.exe"
@@ -183,40 +255,8 @@ class SuiteTests(unittest.TestCase):
         with self.assertRaisesRegex(suite.SuiteError, "WSL"):
             suite.git_bash(git)
 
-    def test_all_roles_reject_stale_shared_ui_before_native_build(self):
-        spec = importlib.util.spec_from_file_location("sync_ui", suite.ROOT / "scripts/sync_ui.py")
-        sync_ui = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(sync_ui)
-        shutil.copytree(suite.ROOT / "ui", self.root / "ui")
-        shutil.copytree(suite.ROOT / "storage/go", self.root / "storage/go")
-        shutil.copytree(suite.ROOT / "storage/rust", self.root / "storage/rust")
-        shutil.copytree(suite.ROOT / "assets/roles", self.root / "assets/roles")
-        targets = []
-        for source, target in sync_ui.assets(self.workspace, self.root):
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target)
-            targets.append(target)
-        for directory in sync_ui.frontend_directories(self.workspace, self.root):
-            suite.write_json(directory / ".source.json", sync_ui.public_manifest(self.root))
-        suite.verify_shared_ui(self.workspace, self.root)
-        for target in targets:
-            original = target.read_bytes()
-            target.write_bytes(original + b"stale")
-            with self.subTest(target=target):
-                with self.assertRaisesRegex(suite.SuiteError, "Stale shared UI"):
-                    suite.verify_shared_ui(self.workspace, self.root)
-            target.write_bytes(original)
-
-    def mac_fixture(self):
-        self.make_app(self.root / "build/bin/Simulator All-in-One.app", "cloud.carldai.simlab", self.lock["suiteVersion"])
-        repos = {item["id"]: item for item in self.lock["repositories"]}
-        for component in self.lock["components"]:
-            source = self.workspace / repos[component["repository"]]["directory"]
-            parent = source / (component["project"] + "/build/bin" if component["repository"] == "modbus" else "target/release/bundle/macos")
-            self.make_app(parent / (component["product"] + ".app"), component["bundleId"], self.lock["suiteVersion"])
-
     def test_collect_hashes_after_child_signing_and_before_outer_signing(self):
-        self.mac_fixture()
+        self.recorded_mac_fixture()
         signed = []
 
         def sign_child(app, identity):
@@ -228,33 +268,33 @@ class SuiteTests(unittest.TestCase):
             if args[:3] == ["codesign", "--force", "--sign"]:
                 app = Path(args[-1])
                 manifest = app / "Contents/Resources/suite-manifest.json"
-                self.assertEqual(len(signed), len(self.lock["components"]))
+                self.assertEqual(len(signed), len(self.manifest["components"]))
                 self.assertTrue(manifest.is_file())
-                suite.verify_manifest(app / "Contents", self.lock, root=self.root)
+                suite.verify_manifest(app / "Contents", self.manifest, root=self.root)
 
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), \
+        with self.collect_mocks(), \
                 patch.object(suite, "sign_app", side_effect=sign_child), patch.object(suite, "run", side_effect=command):
-            output = suite.collect(self.workspace, "darwin", "arm64", root=self.root, adopt=True)
-        self.assertEqual(len(signed), len(self.lock["components"]))
-        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
-        self.assertNotIn("buildToolchain", manifest, "adopting old binaries must not invent build evidence")
+            output = suite.collect("darwin", "arm64", root=self.root)
+        self.assertEqual(len(signed), len(self.manifest["components"]))
+        manifest = suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.manifest, root=self.root)
+        self.assertEqual(manifest["sourceCommit"], HEAD)
         self.assertTrue(all(item["sha256"] == __import__("hashlib").sha256(b"fixturesigned").hexdigest() for item in manifest["components"]))
         resource = output / "Simulator All-in-One.app/Contents/Helpers/ModbusMaster.app/Contents/unrecorded-resource"
         resource.write_text("unrecorded build output")
         with self.assertRaisesRegex(suite.SuiteError, "resource tree changed"):
-            suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.lock, root=self.root)
+            suite.verify_manifest(output / "Simulator All-in-One.app/Contents", self.manifest, root=self.root)
 
     def test_missing_role_leaves_previous_complete_stage_untouched(self):
-        self.mac_fixture()
-        missing = self.workspace / "OPCUASim/target/release/bundle/macos/OPCUAServer.app"
-        __import__("shutil").rmtree(missing)
+        self.recorded_mac_fixture()
+        missing = self.root / "components/opcua/target/release/bundle/macos/OPCUAServer.app"
+        shutil.rmtree(missing)
         output = self.root / "dist/staging/darwin-arm64"
         output.mkdir(parents=True)
         marker = output / "previous-good-package"
         marker.write_text("preserve")
-        with patch.object(suite, "assert_source"), patch.object(suite, "assert_architecture"), patch.object(suite, "sign_app"):
+        with self.collect_mocks(), patch.object(suite, "sign_app"):
             with self.assertRaises(suite.SuiteError):
-                suite.collect(self.workspace, "darwin", "arm64", root=self.root, adopt=True)
+                suite.collect("darwin", "arm64", root=self.root)
         self.assertEqual(marker.read_text(), "preserve")
 
     def test_manifest_rejects_missing_duplicate_tampered_and_escaping_roles(self):
@@ -263,32 +303,20 @@ class SuiteTests(unittest.TestCase):
             binary = self.root / "apps" / role / "payload"
             binary.parent.mkdir(parents=True)
             binary.write_bytes(role.encode())
-            entries.append({"id": role, "version": "0.1.0", "sourceCommit": "a" * 40,
+            entries.append({"id": role, "version": "0.1.0", "sourceCommit": HEAD,
                             "executable": binary.relative_to(self.root).as_posix(),
                             "sha256": suite.digest(binary), "suiteBuild": True})
-        manifest = {"schemaVersion": 1, "suiteVersion": "0.1.0", "platform": "linux", "architecture": "amd64", "components": entries}
+        manifest = {"schemaVersion": 1, "suiteVersion": "0.1.0", "sourceCommit": HEAD,
+                    "platform": "linux", "architecture": "amd64", "components": entries}
         target = self.root / "suite-manifest.json"
         suite.write_json(target, manifest)
         suite.verify_manifest(self.root)
-        for bad_entries in ([dict(entries[0], version="99.0.0")] + entries[1:], entries[:-1], entries[:-1] + [entries[0]], [dict(entries[0], sha256="0" * 64)] + entries[1:], [dict(entries[0], executable="../outside")] + entries[1:]):
+        expected_manifest = dict(self.manifest, suiteVersion="0.1.0")
+        for bad_entries in ([dict(entries[0], version="99.0.0")] + entries[1:], entries[:-1], entries[:-1] + [entries[0]], [dict(entries[0], sha256="0" * 64)] + entries[1:], [dict(entries[0], executable="../outside")] + entries[1:], [dict(entries[0], sourceCommit="b" * 40)] + entries[1:]):
             with self.subTest(entries=bad_entries):
                 suite.write_json(target, dict(manifest, components=bad_entries))
                 with self.assertRaises(suite.SuiteError):
-                    suite.verify_manifest(self.root)
-
-    def test_bootstrap_rejects_dirty_clone_without_changing_it(self):
-        first = self.lock["repositories"][0]
-        repo = self.workspace / first["directory"]
-        repo.mkdir(parents=True)
-        subprocess.run(["git", "init", "-q", repo], check=True)
-        file = repo / "source"
-        file.write_text("original")
-        subprocess.run(["git", "-C", repo, "add", "source"], check=True)
-        subprocess.run(["git", "-C", repo, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture"], check=True)
-        file.write_text("user's uncommitted work")
-        with self.assertRaisesRegex(suite.SuiteError, "dirty checkout"):
-            suite.bootstrap(self.workspace, root=self.root)
-        self.assertEqual(file.read_text(), "user's uncommitted work")
+                    suite.verify_manifest(self.root, expected_manifest, root=self.root)
 
     def test_wails_doctype_plist_and_malicious_entry(self):
         app = self.root / "Payload.app"

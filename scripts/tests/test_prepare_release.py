@@ -17,7 +17,7 @@ class ReleaseTests(unittest.TestCase):
         self.artifacts = self.root / 'artifacts'
         self.artifacts.mkdir()
         self.output = self.root / 'output'
-        (self.root / 'components.lock.json').write_text('{"suiteVersion":"0.1.1"}')
+        (self.root / 'wails.json').write_text('{"info":{"productVersion":"0.1.1"}}')
         (self.root / 'CHANGELOG.md').write_text('## [0.1.1] - 2026-11-05\nCurrent notes\n\n## [0.1.0] - 2026-10-30\nOld notes\n')
         for suffix in ('darwin-arm64.dmg', 'darwin-arm64.zip', 'darwin-amd64.dmg', 'darwin-amd64.zip', 'windows-amd64-portable.exe', 'linux-amd64.run'):
             package = self.artifacts / ('SAIO_0.1.1_' + suffix)

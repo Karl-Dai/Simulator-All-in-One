@@ -23,9 +23,8 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os
-          version = json.load(open('components.lock.json'))['suiteVersion']
+          version = json.load(open('wails.json'))['info']['productVersion']
           assert os.environ['RELEASE_REF'] == 'refs/tags/v' + version, 'Run this workflow on the matching version tag'
-          assert json.load(open('wails.json'))['info']['productVersion'] == version
           assert json.load(open('frontend/package.json'))['version'] == version
           assert f'## [{version}] - ' in open('CHANGELOG.md').read()
           PY

@@ -19,7 +19,7 @@ class PackageReuseTests(unittest.TestCase):
                     "head_sha": "a" * 40}
         reuse.validate_origin(metadata, "owner/suite", ["packaging/linux/validation.Dockerfile", "scripts/smoke.py"], "linux")
         reuse.validate_origin(metadata, "owner/suite", ["packaging/windows/check-payload.ps1"], "windows")
-        for path in ("main.go", "patches/pmu.patch", "components.lock.json", "frontend/src/App.vue", "scripts/suite.py",
+        for path in ("main.go", "components/pmu/crates/shared/pmu_storage.rs", "components.json", "frontend/src/App.vue", "scripts/suite.py",
                      "toolchain.lock.json", "scripts/toolchain.py"):
             with self.subTest(path=path), self.assertRaises(reuse.suite.SuiteError):
                 reuse.validate_origin(metadata, "owner/suite", [path], "linux")
