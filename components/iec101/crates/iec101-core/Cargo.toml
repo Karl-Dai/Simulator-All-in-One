@@ -1,0 +1,15 @@
+[package]
+name = "iec101-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77.2"
+description = "IEC 60870-5-101 FT1.2 link layer and application layer"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
+serialport = "4.10"
+tokio-serial = "5.5"

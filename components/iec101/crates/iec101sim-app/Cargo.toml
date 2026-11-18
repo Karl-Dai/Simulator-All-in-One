@@ -1,0 +1,29 @@
+[package]
+name = "iec101sim-app"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "iec101sim_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+iec101-core = { path = "../iec101-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tauri = { version = "2.10.3", features = [] }
+tauri-plugin-log = "2"
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "=0.41.0", features = ["bundled", "backup"] }
+sha2 = "0.10"
+tempfile = "3"
+log = "0.4"
+
+[features]
+default = []
+simlab-suite = []
