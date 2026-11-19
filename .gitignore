@@ -28,3 +28,4 @@ storage/rust/target/
 /output/
 components/*/crates/*/tauri.suite.conf.json
 components/modbus/go/cmd/*/.simlab-build.lock/
+components/*/*/tsconfig.tsbuildinfo

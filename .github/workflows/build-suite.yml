@@ -187,6 +187,12 @@ jobs:
         shell: pwsh
         run: |
           $lock = Get-Content packaging/windows/webview2.lock.json -Raw | ConvertFrom-Json
+          $key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $installed = (Get-ItemProperty $key -ErrorAction SilentlyContinue).pv
+          if ($installed -and $installed -ne '0.0.0.0' -and [version]$installed -ge [version]$lock.installerVersion) {
+            Write-Host "WebView2 $installed already present on the CI host; skipping install"
+            exit 0
+          }
           python scripts/fetch.py $lock.url $lock.sha256 .tools/WebView2Runtime.exe
           if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the verified CI prerequisite' }
           $signature = Get-AuthenticodeSignature .tools/WebView2Runtime.exe
