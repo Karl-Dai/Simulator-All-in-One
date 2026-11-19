@@ -58,6 +58,15 @@ func New(root, dataDir string) *Service {
 	return &Service{root: root, dataDir: dataDir, manifest: m, manifestErr: err, prefs: prefs, prefsStore: store, prefsErr: prefsErr, warning: warning, starting: map[string]bool{}}
 }
 
+// Close releases the preferences database. Windows keeps WAL files locked
+// until every connection is closed, so tests and shutdown paths must call it.
+func (s *Service) Close() error {
+	if s.prefsStore != nil {
+		return s.prefsStore.Close()
+	}
+	return nil
+}
+
 func DefaultDataDir() (string, error) {
 	if root, configured := os.LookupEnv("SIMLAB_DATA_DIR"); configured {
 		if !filepath.IsAbs(root) {

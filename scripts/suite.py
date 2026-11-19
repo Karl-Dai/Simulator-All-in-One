@@ -136,7 +136,7 @@ def source_commit(root=ROOT):
 def assert_clean_worktree(root=ROOT):
     status = git(root, "status", "--porcelain", "--untracked-files=no")
     if status.strip():
-        raise SuiteError("Suite builds require a clean git worktree; commit or stash tracked changes first")
+        raise SuiteError("Suite builds require a clean git worktree; commit or stash tracked changes first:\n" + status.strip())
 
 
 def inject_icons(root=ROOT):

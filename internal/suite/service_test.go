@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+func newService(t *testing.T, root, data string) *Service {
+	t.Helper()
+	s := New(root, data)
+	t.Cleanup(func() { _ = s.Close() })
+	return s
+}
+
 func fixture(t *testing.T, body string) (string, string, Manifest) {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "SimLab 中文 suite")
@@ -52,7 +59,7 @@ func writeManifest(t *testing.T, root string, m Manifest) {
 
 func TestCompleteManifestAndIntegrity(t *testing.T) {
 	root, data, _ := fixture(t, "program")
-	s := New(root, data)
+	s := newService(t, root, data)
 	if got := s.Snapshot(); len(got.Roles) != len(Roles) {
 		t.Fatalf("roles: %d", len(got.Roles))
 	} else {
@@ -123,7 +130,7 @@ func TestRejectsSymlinkOutsideSuite(t *testing.T) {
 
 func TestPreferencesConcurrencyAndReload(t *testing.T) {
 	root, data, _ := fixture(t, "program")
-	s := New(root, data)
+	s := newService(t, root, data)
 	var wg sync.WaitGroup
 	for _, role := range Roles {
 		wg.Add(1)
@@ -139,7 +146,7 @@ func TestPreferencesConcurrencyAndReload(t *testing.T) {
 	if _, err := s.SetTheme("dark"); err != nil {
 		t.Fatal(err)
 	}
-	got := New(root, data).Snapshot().Preferences
+	got := newService(t, root, data).Snapshot().Preferences
 	if len(got.Favorites) != len(Roles) || got.Theme != "dark" {
 		t.Fatalf("preferences: %+v", got)
 	}
@@ -151,7 +158,7 @@ func TestPreferencesConcurrencyAndReload(t *testing.T) {
 
 func TestSetLanguagePersistedAndNormalized(t *testing.T) {
 	root, data, _ := fixture(t, "program")
-	s := New(root, data)
+	s := newService(t, root, data)
 	if got := s.Snapshot().Preferences.Language; got != "en" {
 		t.Fatalf("new installation must default to English: %q", got)
 	}
@@ -159,7 +166,7 @@ func TestSetLanguagePersistedAndNormalized(t *testing.T) {
 		if _, err := s.SetLanguage(language); err != nil {
 			t.Fatal(err)
 		}
-		if got := New(root, data).Snapshot().Preferences.Language; got != language {
+		if got := newService(t, root, data).Snapshot().Preferences.Language; got != language {
 			t.Fatalf("language preference changed on reload: want %q, got %q", language, got)
 		}
 	}
@@ -170,7 +177,7 @@ func TestSetLanguagePersistedAndNormalized(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte(legacy), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := New(root, data).Snapshot().Preferences.Language; got != "en" {
+	if got := newService(t, root, data).Snapshot().Preferences.Language; got != "en" {
 		t.Fatalf("legacy language normalized: %q", got)
 	}
 }
@@ -180,7 +187,7 @@ func TestCorruptPreferencesPreserved(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(data, "launcher.json"), []byte("broken"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	service := New(root, data)
+	service := newService(t, root, data)
 	got := service.Snapshot()
 	if got.Warning == "" || got.Preferences.Theme != "system" {
 		t.Fatalf("recovery: %+v", got)
@@ -202,7 +209,7 @@ func TestLaunchUsesBundleAndDataEnvironment(t *testing.T) {
 	root, data, _ := fixture(t, "#!/bin/sh\nprintf '%s\\n%s' \"$SIMLAB_DATA_DIR\" \"$PWD\" > \"$SIMLAB_TEST_CAPTURE\"\nsleep 1\n")
 	capture := filepath.Join(t.TempDir(), "capture")
 	t.Setenv("SIMLAB_TEST_CAPTURE", capture)
-	s := New(root, data)
+	s := newService(t, root, data)
 	result, err := s.Launch("modbus.master")
 	if err != nil {
 		t.Fatal(err)
@@ -243,7 +250,7 @@ func TestEarlyFailureIsNotRecordedAsSuccess(t *testing.T) {
 		t.Skip("POSIX helper")
 	}
 	root, data, _ := fixture(t, "#!/bin/sh\nexit 7\n")
-	s := New(root, data)
+	s := newService(t, root, data)
 	if _, err := s.Launch("modbus.slave"); err == nil {
 		t.Fatal("early failure accepted")
 	}
@@ -257,7 +264,7 @@ func TestEarlyNormalExitIsNotTreatedAsOpenWindow(t *testing.T) {
 		t.Skip("POSIX helper")
 	}
 	root, data, _ := fixture(t, "#!/bin/sh\nexit 0\n")
-	s := New(root, data)
+	s := newService(t, root, data)
 	if _, err := s.Launch("pmu.sub"); err == nil {
 		t.Fatal("early normal exit accepted as open window")
 	}
@@ -274,7 +281,7 @@ func TestLinuxMissingRuntimeCannotLaunch(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(root, "runtime")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := New(root, data).Launch("modbus.master"); err == nil {
+	if _, err := newService(t, root, data).Launch("modbus.master"); err == nil {
 		t.Fatal("missing Linux runtime accepted")
 	}
 }
@@ -295,7 +302,7 @@ func TestLauncherMigrationAndStaleWriter(t *testing.T) {
 	root, data, _ := fixture(t, "program")
 	legacy := `{"schemaVersion":1,"theme":"dark","language":"zh-CN","favorites":["pmu.sub"],"recent":{}}`
 	os.WriteFile(filepath.Join(data, "launcher.json"), []byte(legacy), 0600)
-	a, b := New(root, data), New(root, data)
+	a, b := newService(t, root, data), newService(t, root, data)
 	if a.Snapshot().Preferences.Theme != "dark" {
 		t.Fatal("legacy not restored")
 	}
@@ -309,7 +316,7 @@ func TestLauncherMigrationAndStaleWriter(t *testing.T) {
 	if string(contents) != legacy {
 		t.Fatal("migration changed legacy")
 	}
-	if New(root, data).Snapshot().Preferences.Theme != "light" {
+	if newService(t, root, data).Snapshot().Preferences.Theme != "light" {
 		t.Fatal("legacy was reimported")
 	}
 }
@@ -321,13 +328,14 @@ func TestInvalidStoredPreferencesBlockDefaults(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() { _ = store.Close() })
 		if _, err = store.Load("preferences", nil); err != nil {
 			t.Fatal(err)
 		}
 		if err = store.Save("preferences", value); err != nil {
 			t.Fatal(err)
 		}
-		service := New(t.TempDir(), root)
+		service := newService(t, t.TempDir(), root)
 		if service.warning == "" {
 			t.Fatal("invalid stored preferences accepted")
 		}

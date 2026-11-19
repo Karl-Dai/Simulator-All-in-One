@@ -82,7 +82,12 @@ func openFile(path, role string, readonly bool) (*Store, error) {
 	}
 	dsn := path
 	if readonly {
-		dsn = (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}).String()
+		u := &url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}
+		// Windows drive letters must not become the URI authority: file:///C:/...
+		if !strings.HasPrefix(u.Path, "/") {
+			u.Path = "/" + u.Path
+		}
+		dsn = u.String()
 	}
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
