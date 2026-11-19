@@ -324,7 +324,7 @@ def build(target, arch, root=ROOT):
             if component["repository"] not in installed:
                 run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=source, env=env)
                 installed.add(component["repository"])
-            args = [bash(), (source / "go/scripts/suite.sh").as_posix(), component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath"]
+            args = [bash(), (source / "go/scripts/suite.sh").as_posix(), component["id"].split(".")[1], "-platform", f"{target}/{arch}", "-trimpath", "-m"]
             if target == "windows":
                 args += ["-webview2", "error"]
             run(args, cwd=source, env=env)
@@ -346,7 +346,7 @@ def build(target, arch, root=ROOT):
             "toolchainSha256": tool_digest,
         })
     run(["npm", "ci", "--no-audit", "--no-fund"], cwd=root / "frontend", env=env)
-    args = [wails_binary, "build", "-platform", f"{target}/{arch}", "-trimpath"]
+    args = [wails_binary, "build", "-platform", f"{target}/{arch}", "-trimpath", "-m"]
     if target == "linux":
         args += ["-tags", "webkit2_41"]
     if target == "windows":
